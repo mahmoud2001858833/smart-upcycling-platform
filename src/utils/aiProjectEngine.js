@@ -9,8 +9,8 @@
  * - Contextual Project AI Consultation
  */
 
-const SUPABASE_URL = "https://esifpjjehdnpkhyilctv.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWZwamplaGRucGtoeWlsY3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxNzQ5NDYsImV4cCI6MjA2MDc1MDk0Nn0.xfaLcyAgvZx2yKsNAdf94cuNZQfXPGQcAYb1xiSYI7k";
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "https://esifpjjehdnpkhyilctv.supabase.co";
+const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWZwamplaGRucGtoeWlsY3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxNzQ5NDYsImV4cCI6MjA2MDc1MDk0Nn0.xfaLcyAgvZx2yKsNAdf94cuNZQfXPGQcAYb1xiSYI7k";
 
 export const COMMON_MATERIALS = [
   'زجاجات بلاستيكية', 'علب معدنية', 'كرتون', 'ورق', 'قماش قديم',
