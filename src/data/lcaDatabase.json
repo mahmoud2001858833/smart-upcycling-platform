@@ -1,0 +1,1202 @@
+[
+  {
+    "source_id": "SRC-PLAS-001",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB (Intergovernmental Panel on Climate Change Emission Factor Database)",
+    "scope": "Virgin PET Resin (Polyethylene Terephthalate) production cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 2.85,
+    "application_context": "Baseline avoided emission factor when replacing newly manufactured PET containers with upcycled items."
+  },
+  {
+    "source_id": "SRC-PLAS-002",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin PET beverage bottles manufacturing (materials + forming)",
+    "emission_factor_kg_co2e_per_kg": 3.12,
+    "application_context": "Used to calculate upstream embodied emissions for post-consumer soda and water bottles."
+  },
+  {
+    "source_id": "SRC-PLAS-003",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16 (Waste Reduction Model)",
+    "scope": "PET pellet production from virgin petrochemical feedstocks",
+    "emission_factor_kg_co2e_per_kg": 2.47,
+    "application_context": "Conservative North American benchmark for avoided raw polymer synthesis."
+  },
+  {
+    "source_id": "SRC-PLAS-004",
+    "category": "Plastics & Polymers",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polyethylene terephthalate, amorphous, at plant, GLO",
+    "emission_factor_kg_co2e_per_kg": 2.78,
+    "application_context": "Global multi-regional average for industrial PET raw material synthesis."
+  },
+  {
+    "source_id": "SRC-PLAS-005",
+    "category": "Plastics & Polymers",
+    "authority": "ADEME Base Empreinte (France)",
+    "scope": "Granulés de PET vierge - production et transport amont",
+    "emission_factor_kg_co2e_per_kg": 2.63,
+    "application_context": "European grid-adjusted factor for virgin PET raw resin inputs."
+  },
+  {
+    "source_id": "SRC-PLAS-006",
+    "category": "Plastics & Polymers",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "PET pellet production (Cradle-to-Gate Europe average)",
+    "emission_factor_kg_co2e_per_kg": 2.91,
+    "application_context": "Industrial lifecycle assessment benchmark for thermoforming/blow-molding grade PET."
+  },
+  {
+    "source_id": "SRC-PLAS-007",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "PET Landfilling baseline (anaerobic inert containment & transport)",
+    "emission_factor_kg_co2e_per_kg": 0.04,
+    "application_context": "Accounts for fugitive equipment emissions during sanitary landfilling."
+  },
+  {
+    "source_id": "SRC-PLAS-008",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Closed-loop PET bottle mechanical recycling processing energy",
+    "emission_factor_kg_co2e_per_kg": 1.1,
+    "application_context": "Benchmark for industrial mechanical recycling vs. zero-emission direct household upcycling."
+  },
+  {
+    "source_id": "SRC-PLAS-009",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin HDPE (High-Density Polyethylene) resin synthesis",
+    "emission_factor_kg_co2e_per_kg": 1.95,
+    "application_context": "Avoided cradle-to-gate impact for rigid plastic jugs (detergent, milk, shampoo bottles)."
+  },
+  {
+    "source_id": "SRC-PLAS-010",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "HDPE container manufacturing from virgin natural gas liquids",
+    "emission_factor_kg_co2e_per_kg": 1.88,
+    "application_context": "Calculates offset from diverting thick-walled household plastic containers."
+  },
+  {
+    "source_id": "SRC-PLAS-011",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin HDPE blow molding containers",
+    "emission_factor_kg_co2e_per_kg": 2.21,
+    "application_context": "UK standard for finished molded HDPE utility goods."
+  },
+  {
+    "source_id": "SRC-PLAS-012",
+    "category": "Plastics & Polymers",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polyethylene, high density, granulate, at plant, RER",
+    "emission_factor_kg_co2e_per_kg": 1.92,
+    "application_context": "Applied when upcycling heavy-duty HDPE buckets and crates."
+  },
+  {
+    "source_id": "SRC-PLAS-013",
+    "category": "Plastics & Polymers",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Polyéthylène haute densité (PEHD) vierge",
+    "emission_factor_kg_co2e_per_kg": 1.84,
+    "application_context": "French national benchmark for virgin HDPE feedstock avoidance."
+  },
+  {
+    "source_id": "SRC-PLAS-014",
+    "category": "Plastics & Polymers",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "HDPE extrusion and blow molding compounding",
+    "emission_factor_kg_co2e_per_kg": 2.05,
+    "application_context": "Used for heavy plastic lids, caps, and chemical bottles."
+  },
+  {
+    "source_id": "SRC-PLAS-015",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin LDPE (Low-Density Polyethylene) pellet synthesis",
+    "emission_factor_kg_co2e_per_kg": 2.1,
+    "application_context": "Applied to flexible film, grocery bags, and squeezable plastic packaging."
+  },
+  {
+    "source_id": "SRC-PLAS-016",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "LDPE film extrusion and processing cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 2.35,
+    "application_context": "Baseline for avoided plastic wrap and thin shopping bags upcycling."
+  },
+  {
+    "source_id": "SRC-PLAS-017",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin LDPE packaging film manufacturing",
+    "emission_factor_kg_co2e_per_kg": 2.45,
+    "application_context": "Embodied footprint of sheet polyethylene used in home crafts."
+  },
+  {
+    "source_id": "SRC-PLAS-018",
+    "category": "Plastics & Polymers",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polyethylene, low density, granulate, at plant, GLO",
+    "emission_factor_kg_co2e_per_kg": 2.18,
+    "application_context": "Global production footprint for film-grade LDPE polymer."
+  },
+  {
+    "source_id": "SRC-PLAS-019",
+    "category": "Plastics & Polymers",
+    "authority": "ADEME Base Empreinte",
+    "scope": "PEBD (Polyéthylène basse densité) film vierge",
+    "emission_factor_kg_co2e_per_kg": 2.15,
+    "application_context": "European standard for agricultural and household flexible PE plastics."
+  },
+  {
+    "source_id": "SRC-PLAS-020",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin PP (Polypropylene) homopolymer production",
+    "emission_factor_kg_co2e_per_kg": 1.98,
+    "application_context": "Applied to yogurt cups, takeaway food containers, and medicine bottles."
+  },
+  {
+    "source_id": "SRC-PLAS-021",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "Polypropylene resin manufacture cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 1.85,
+    "application_context": "US baseline for durable kitchenware and food tub material."
+  },
+  {
+    "source_id": "SRC-PLAS-022",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin PP injection molded products",
+    "emission_factor_kg_co2e_per_kg": 2.3,
+    "application_context": "Conversion factor for rigid PP closures, containers, and cutlery."
+  },
+  {
+    "source_id": "SRC-PLAS-023",
+    "category": "Plastics & Polymers",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polypropylene, granulate, at plant, RER",
+    "emission_factor_kg_co2e_per_kg": 1.94,
+    "application_context": "European manufacturing data for injection-grade PP polymers."
+  },
+  {
+    "source_id": "SRC-PLAS-024",
+    "category": "Plastics & Polymers",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "PP copolymer production and compounding",
+    "emission_factor_kg_co2e_per_kg": 2.12,
+    "application_context": "Impact resistance polypropylene used in storage totes and bins."
+  },
+  {
+    "source_id": "SRC-PLAS-025",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin PS (Polystyrene) general purpose production",
+    "emission_factor_kg_co2e_per_kg": 3.4,
+    "application_context": "Applied to CD jewel cases, disposable cups, and clear rigid packaging."
+  },
+  {
+    "source_id": "SRC-PLAS-026",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "General Purpose Polystyrene (GPPS) resin",
+    "emission_factor_kg_co2e_per_kg": 3.28,
+    "application_context": "High-impact avoided carbon score due to styrene monomer intensity."
+  },
+  {
+    "source_id": "SRC-PLAS-027",
+    "category": "Plastics & Polymers",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Expanded Polystyrene (EPS) foam packaging",
+    "emission_factor_kg_co2e_per_kg": 3.65,
+    "application_context": "Applied to Styrofoam coolers and protective electronic packing corners."
+  },
+  {
+    "source_id": "SRC-PLAS-028",
+    "category": "Plastics & Polymers",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin PVC (Polyvinyl Chloride) suspension polymerization",
+    "emission_factor_kg_co2e_per_kg": 2.42,
+    "application_context": "Applied strictly for cold mechanical repurposing of scrap PVC pipes."
+  },
+  {
+    "source_id": "SRC-PLAS-029",
+    "category": "Plastics & Polymers",
+    "authority": "US EPA WARM v16",
+    "scope": "PVC rigid profile and conduit manufacturing",
+    "emission_factor_kg_co2e_per_kg": 2.38,
+    "application_context": "Baseline for avoided plumbing pipe scrap and vinyl construction trim."
+  },
+  {
+    "source_id": "SRC-PLAS-030",
+    "category": "Plastics & Polymers",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polyvinylchloride, suspension polymerised, at plant, GLO",
+    "emission_factor_kg_co2e_per_kg": 2.65,
+    "application_context": "Comprehensive global average for structural PVC polymers."
+  },
+  {
+    "source_id": "SRC-PAP-031",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "US EPA WARM v16",
+    "scope": "Virgin Corrugated Cardboard containerboard cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 1.14,
+    "application_context": "Avoided upstream footprint when transforming virgin corrugated shipping boxes."
+  },
+  {
+    "source_id": "SRC-PAP-032",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Corrugated Board box manufacturing",
+    "emission_factor_kg_co2e_per_kg": 1.22,
+    "application_context": "UK official conversion factor for shipping and packaging carton board."
+  },
+  {
+    "source_id": "SRC-PAP-033",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "IPCC EFDB",
+    "scope": "Uncoated woodfree paper pulp production",
+    "emission_factor_kg_co2e_per_kg": 1.32,
+    "application_context": "Primary virgin pulp baseline for office paper, notebooks, and print waste."
+  },
+  {
+    "source_id": "SRC-PAP-034",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Kraftliner paperboard production, at plant, Europe",
+    "emission_factor_kg_co2e_per_kg": 0.98,
+    "application_context": "Unbleached structural linerboard used in heavy-duty cardboard boxes."
+  },
+  {
+    "source_id": "SRC-PAP-035",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Carton ondulé vierge - fabrication et transformation",
+    "emission_factor_kg_co2e_per_kg": 1.19,
+    "application_context": "Standard factor for corrugated boxes converted in European supply chains."
+  },
+  {
+    "source_id": "SRC-PAP-036",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Testliner (recycled fiber paperboard manufacturing)",
+    "emission_factor_kg_co2e_per_kg": 0.45,
+    "application_context": "Industrial benchmark comparing mechanical re-pulping vs. direct DIY reuse."
+  },
+  {
+    "source_id": "SRC-PAP-037",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "US EPA WARM v16",
+    "scope": "Cardboard Landfilling Methane generation (anaerobic decay, flaring accounted)",
+    "emission_factor_kg_co2e_per_kg": 1.08,
+    "application_context": "Crucial end-of-life avoided emission from keeping biodegradable fiber out of landfills."
+  },
+  {
+    "source_id": "SRC-PAP-038",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Commercial and industrial paper and cardboard to landfill",
+    "emission_factor_kg_co2e_per_kg": 0.94,
+    "application_context": "Methane generation potential avoided by zero-waste upcycling."
+  },
+  {
+    "source_id": "SRC-PAP-039",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "World Bank What a Waste 2.0 / Decision Maker GHG Model",
+    "scope": "Paper waste anaerobic decay in unmanaged landfills",
+    "emission_factor_kg_co2e_per_kg": 1.15,
+    "application_context": "Regional model for avoiding methane surge in developing municipal dumpsites."
+  },
+  {
+    "source_id": "SRC-PAP-040",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "IPCC EFDB",
+    "scope": "Chemical pulp Kraft bleaching and processing",
+    "emission_factor_kg_co2e_per_kg": 0.85,
+    "application_context": "Avoided chemical processing impact of white bleached cardstock."
+  },
+  {
+    "source_id": "SRC-PAP-041",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "US EPA WARM v16",
+    "scope": "Mixed paper manufacturing cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 1.05,
+    "application_context": "Composite paper streams including cereal boxes, junk mail, and magazines."
+  },
+  {
+    "source_id": "SRC-PAP-042",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin office copy paper (A4 / Letter sheets)",
+    "emission_factor_kg_co2e_per_kg": 1.45,
+    "application_context": "High-grade virgin white document paper repurposing."
+  },
+  {
+    "source_id": "SRC-PAP-043",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Newsprint paper production from mechanical pulp",
+    "emission_factor_kg_co2e_per_kg": 1.1,
+    "application_context": "Repurposing old newspapers into seedling pots or paper mache crafts."
+  },
+  {
+    "source_id": "SRC-PAP-044",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Papier graphique blanc et papier d'impression",
+    "emission_factor_kg_co2e_per_kg": 1.38,
+    "application_context": "Standard graphic paper footprint for educational craft upcycling."
+  },
+  {
+    "source_id": "SRC-PAP-045",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "ISO 14040/44 Industry Benchmark (CEPI)",
+    "scope": "Virgin Folding Boxboard (FBB) manufacture",
+    "emission_factor_kg_co2e_per_kg": 1.25,
+    "application_context": "Food packaging, pharmaceutical cartons, and consumer gift boxes."
+  },
+  {
+    "source_id": "SRC-PAP-046",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "US EPA WARM v16",
+    "scope": "Newspaper landfill decomposition factor",
+    "emission_factor_kg_co2e_per_kg": 0.72,
+    "application_context": "Lignin-rich newsprint biodegradation carbon footprint in landfills."
+  },
+  {
+    "source_id": "SRC-PAP-047",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Paper and cardboard open windrow composting emissions",
+    "emission_factor_kg_co2e_per_kg": 0.18,
+    "application_context": "Alternative organic diversion route comparative baseline."
+  },
+  {
+    "source_id": "SRC-PAP-048",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Sulfite bleached pulp production, at plant",
+    "emission_factor_kg_co2e_per_kg": 1.28,
+    "application_context": "Avoided footprint for fine paper and parchment repurposing."
+  },
+  {
+    "source_id": "SRC-PAP-049",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Solid Bleached Board (SBB) premium luxury packaging",
+    "emission_factor_kg_co2e_per_kg": 1.35,
+    "application_context": "Cosmetics boxes, confectionery cartons converted into drawer dividers."
+  },
+  {
+    "source_id": "SRC-PAP-050",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "IPCC EFDB",
+    "scope": "Thermomechanical pulp (TMP) processing",
+    "emission_factor_kg_co2e_per_kg": 1.02,
+    "application_context": "Magazine and catalog paper stock lifecycle baseline."
+  },
+  {
+    "source_id": "SRC-PAP-051",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "US EPA WARM v16",
+    "scope": "Corrugated cardboard combustion in waste-to-energy facilities",
+    "emission_factor_kg_co2e_per_kg": 0.52,
+    "application_context": "Fossil emissions offset when avoiding commercial incineration."
+  },
+  {
+    "source_id": "SRC-PAP-052",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Boîtes et étuis en carton compact plat",
+    "emission_factor_kg_co2e_per_kg": 1.08,
+    "application_context": "Cereal, shoe, and shoe box cardboard crafts."
+  },
+  {
+    "source_id": "SRC-PAP-053",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Shredded paper void-fill packaging alternative",
+    "emission_factor_kg_co2e_per_kg": 0.65,
+    "application_context": "Direct displacement of bubble wrap with DIY shredded paper."
+  },
+  {
+    "source_id": "SRC-PAP-054",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Corrugated packaging converting and rotary die-cutting",
+    "emission_factor_kg_co2e_per_kg": 0.28,
+    "application_context": "Industrial conversion process energy saved through manual upcycling."
+  },
+  {
+    "source_id": "SRC-PAP-055",
+    "category": "Paper, Pulp & Cardboard",
+    "authority": "World Bank Waste Datasets",
+    "scope": "Global municipal paper waste lifecycle baseline",
+    "emission_factor_kg_co2e_per_kg": 1.0,
+    "application_context": "Standard global default for generalized paper stream diversion."
+  },
+  {
+    "source_id": "SRC-MET-056",
+    "category": "Metals",
+    "authority": "International Aluminium Institute (IAI)",
+    "scope": "Primary Smelted Ingot (Global Smelting Power Mix)",
+    "emission_factor_kg_co2e_per_kg": 11.5,
+    "application_context": "Primary benchmark for avoided bauxite mining and Hall-Héroult electrolysis."
+  },
+  {
+    "source_id": "SRC-MET-057",
+    "category": "Metals",
+    "authority": "US EPA WARM v16",
+    "scope": "Virgin Aluminum Ingot production cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 9.12,
+    "application_context": "US energy mix baseline for virgin aluminum production."
+  },
+  {
+    "source_id": "SRC-MET-058",
+    "category": "Metals",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Aluminum Cans manufacturing (sheet casting + stamping)",
+    "emission_factor_kg_co2e_per_kg": 11.85,
+    "application_context": "High-impact calculation for upcycling soda and beverage aluminum cans."
+  },
+  {
+    "source_id": "SRC-MET-059",
+    "category": "Metals",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Primary aluminium, liquid, at plant, GLO",
+    "emission_factor_kg_co2e_per_kg": 12.4,
+    "application_context": "Global market cradle-to-gate factor for liquid primary aluminum."
+  },
+  {
+    "source_id": "SRC-MET-060",
+    "category": "Metals",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Aluminium primaire de première fusion (Europe mix)",
+    "emission_factor_kg_co2e_per_kg": 8.6,
+    "application_context": "Hydro-powered European aluminum baseline for raw metal substitution."
+  },
+  {
+    "source_id": "SRC-MET-061",
+    "category": "Metals",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Aluminum rolled foil and thin sheet virgin",
+    "emission_factor_kg_co2e_per_kg": 10.9,
+    "application_context": "Kitchen foil and aluminum pie pan upcycling assessments."
+  },
+  {
+    "source_id": "SRC-MET-062",
+    "category": "Metals",
+    "authority": "US EPA WARM v16",
+    "scope": "Secondary Recycled Aluminum Ingot remelting",
+    "emission_factor_kg_co2e_per_kg": 0.82,
+    "application_context": "Demonstrates 95% energy savings compared to virgin smelting."
+  },
+  {
+    "source_id": "SRC-MET-063",
+    "category": "Metals",
+    "authority": "World Steel Association (worldsteel)",
+    "scope": "Basic Oxygen Furnace (BOF) Primary Crude Steel",
+    "emission_factor_kg_co2e_per_kg": 2.32,
+    "application_context": "Global benchmark for iron ore reduction and blast furnace crude steel."
+  },
+  {
+    "source_id": "SRC-MET-064",
+    "category": "Metals",
+    "authority": "US EPA WARM v16",
+    "scope": "Virgin Steel Sheet and Tinplate Can production",
+    "emission_factor_kg_co2e_per_kg": 2.15,
+    "application_context": "Applied when upcycling canned food tins (tomato, tuna, bean cans)."
+  },
+  {
+    "source_id": "SRC-MET-065",
+    "category": "Metals",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Tin-plated steel cans manufacturing",
+    "emission_factor_kg_co2e_per_kg": 2.45,
+    "application_context": "Preserved food container repurposing into pencil holders and lanterns."
+  },
+  {
+    "source_id": "SRC-MET-066",
+    "category": "Metals",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Steel, unalloyed, at plant, GLO",
+    "emission_factor_kg_co2e_per_kg": 2.2,
+    "application_context": "General structural steel wire, nails, and fasteners repurposing."
+  },
+  {
+    "source_id": "SRC-MET-067",
+    "category": "Metals",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Acier laminé à chaud et fer blanc",
+    "emission_factor_kg_co2e_per_kg": 2.1,
+    "application_context": "Standard tinplate and sheet steel conversion factor."
+  },
+  {
+    "source_id": "SRC-MET-068",
+    "category": "Metals",
+    "authority": "US EPA WARM v16",
+    "scope": "Electric Arc Furnace (EAF) Recycled Steel",
+    "emission_factor_kg_co2e_per_kg": 0.55,
+    "application_context": "Industrial secondary remelting emissions vs. DIY direct crafting."
+  },
+  {
+    "source_id": "SRC-MET-069",
+    "category": "Metals",
+    "authority": "International Copper Association (ICA)",
+    "scope": "Primary Refined Cathode Copper cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 4.1,
+    "application_context": "Scrap electrical wiring, plumbing pipe, and decorative copper craft."
+  },
+  {
+    "source_id": "SRC-MET-070",
+    "category": "Metals",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Copper wire drawing and annealing, at plant",
+    "emission_factor_kg_co2e_per_kg": 4.45,
+    "application_context": "High-value calculation when repurposing discarded electrical cord wiring."
+  },
+  {
+    "source_id": "SRC-MET-071",
+    "category": "Metals",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Scrap copper remelting and refining",
+    "emission_factor_kg_co2e_per_kg": 1.2,
+    "application_context": "Shows substantial emission abatement by direct copper craft reuse."
+  },
+  {
+    "source_id": "SRC-MET-072",
+    "category": "Metals",
+    "authority": "IPCC EFDB",
+    "scope": "Brass alloy casting and extrusion (Cu-Zn)",
+    "emission_factor_kg_co2e_per_kg": 3.8,
+    "application_context": "Vintage hardware, door knobs, and decorative brass fixture reuse."
+  },
+  {
+    "source_id": "SRC-MET-073",
+    "category": "Metals",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Stainless Steel Grade 304 (18/8) virgin production",
+    "emission_factor_kg_co2e_per_kg": 5.8,
+    "application_context": "High-nickel stainless steel cutlery, cookware, and thermos flask repurposing."
+  },
+  {
+    "source_id": "SRC-MET-074",
+    "category": "Metals",
+    "authority": "US EPA WARM v16",
+    "scope": "Metal Landfilling inert baseline containment",
+    "emission_factor_kg_co2e_per_kg": 0.02,
+    "application_context": "Non-degradable metal burial baseline handling emissions."
+  },
+  {
+    "source_id": "SRC-MET-075",
+    "category": "Metals",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Ferraille et métaux ferreux mixtes post-consommation",
+    "emission_factor_kg_co2e_per_kg": 1.8,
+    "application_context": "Mixed household metallic scrap items diversion coefficient."
+  },
+  {
+    "source_id": "SRC-TEX-076",
+    "category": "Textiles & Fabrics",
+    "authority": "Textile Exchange LCA Benchmark",
+    "scope": "Conventional Raw Cotton cultivation, ginning, and baling",
+    "emission_factor_kg_co2e_per_kg": 4.15,
+    "application_context": "Agricultural upstream stage footprint (fertilizers, irrigation diesel, harvesting)."
+  },
+  {
+    "source_id": "SRC-TEX-077",
+    "category": "Textiles & Fabrics",
+    "authority": "US EPA WARM v16",
+    "scope": "Virgin Cotton apparel manufacturing cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 14.8,
+    "application_context": "Full life cycle footprint of finished consumer cotton clothing."
+  },
+  {
+    "source_id": "SRC-TEX-078",
+    "category": "Textiles & Fabrics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Cotton Denim Fabric and finished Jeans production",
+    "emission_factor_kg_co2e_per_kg": 16.2,
+    "application_context": "Essential factor for heavy twill denim jeans upcycling into bags, insulation, aprons."
+  },
+  {
+    "source_id": "SRC-TEX-079",
+    "category": "Textiles & Fabrics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Jean en coton conventionnel confectionné",
+    "emission_factor_kg_co2e_per_kg": 15.5,
+    "application_context": "Validated French LCA score for adult pair of denim jeans (~650g)."
+  },
+  {
+    "source_id": "SRC-TEX-080",
+    "category": "Textiles & Fabrics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Yarn spinning and indigo dye finishing of cotton warp",
+    "emission_factor_kg_co2e_per_kg": 8.9,
+    "application_context": "Embodied chemical and thermal energy in dyed textile yarn."
+  },
+  {
+    "source_id": "SRC-TEX-081",
+    "category": "Textiles & Fabrics",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Finished woven cotton textile fabric, global average",
+    "emission_factor_kg_co2e_per_kg": 13.2,
+    "application_context": "Cotton shirts, bedsheets, and curtains repurposed into cleaning rags or tote bags."
+  },
+  {
+    "source_id": "SRC-TEX-082",
+    "category": "Textiles & Fabrics",
+    "authority": "IPCC EFDB",
+    "scope": "Natural textile anaerobic landfill decomposition (Methane emissions)",
+    "emission_factor_kg_co2e_per_kg": 2.1,
+    "application_context": "Crucial factor: organic cotton fibers decompose in anaerobic landfills generating CH4."
+  },
+  {
+    "source_id": "SRC-TEX-083",
+    "category": "Textiles & Fabrics",
+    "authority": "US EPA WARM v16",
+    "scope": "Textile Landfilling net greenhouse gas coefficient",
+    "emission_factor_kg_co2e_per_kg": 1.85,
+    "application_context": "Avoided landfill burden when textile waste is upcycled into durable goods."
+  },
+  {
+    "source_id": "SRC-TEX-084",
+    "category": "Textiles & Fabrics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Polyester (PET) synthetic fabric clothing",
+    "emission_factor_kg_co2e_per_kg": 7.2,
+    "application_context": "Activewear, fleece jackets, and synthetic linings repurposing."
+  },
+  {
+    "source_id": "SRC-TEX-085",
+    "category": "Textiles & Fabrics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Polyester staple fiber production from DMT/PTA",
+    "emission_factor_kg_co2e_per_kg": 5.4,
+    "application_context": "Embodied footprint of synthetic polyester stuffing and fleece blankets."
+  },
+  {
+    "source_id": "SRC-TEX-086",
+    "category": "Textiles & Fabrics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Tissu polyester synthétique confectionné",
+    "emission_factor_kg_co2e_per_kg": 6.8,
+    "application_context": "European standard for post-consumer polyester upcycling."
+  },
+  {
+    "source_id": "SRC-TEX-087",
+    "category": "Textiles & Fabrics",
+    "authority": "Textile Exchange Preferred Fiber Benchmark",
+    "scope": "Mechanically Recycled Polyester (rPET) textile fiber",
+    "emission_factor_kg_co2e_per_kg": 2.1,
+    "application_context": "Industrial textile recycling vs. zero-emission household repurposing."
+  },
+  {
+    "source_id": "SRC-TEX-088",
+    "category": "Textiles & Fabrics",
+    "authority": "IPCC EFDB",
+    "scope": "Virgin Sheep Wool shearing, scouring, and greige fiber",
+    "emission_factor_kg_co2e_per_kg": 24.5,
+    "application_context": "High-impact avoidance due to enteric fermentation emissions in sheep husbandry."
+  },
+  {
+    "source_id": "SRC-TEX-089",
+    "category": "Textiles & Fabrics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Finished Wool garment cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 28.1,
+    "application_context": "Upcycling old wool sweaters into felted mittens, cushions, or thermal wraps."
+  },
+  {
+    "source_id": "SRC-TEX-090",
+    "category": "Textiles & Fabrics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Nylon 6 (Polyamide 6) textile filament production",
+    "emission_factor_kg_co2e_per_kg": 11.8,
+    "application_context": "Applied to windbreakers, backpacks, and umbrella fabric repurposing."
+  },
+  {
+    "source_id": "SRC-TEX-091",
+    "category": "Textiles & Fabrics",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Viscose / Rayon cellulose staple fiber production",
+    "emission_factor_kg_co2e_per_kg": 4.9,
+    "application_context": "Regenerated cellulose scarves and dress fabric upcycling."
+  },
+  {
+    "source_id": "SRC-TEX-092",
+    "category": "Textiles & Fabrics",
+    "authority": "US EPA WARM v16",
+    "scope": "Mechanical textile shredding and rag shoddy production",
+    "emission_factor_kg_co2e_per_kg": 0.45,
+    "application_context": "Processing energy saved by manual cutting over industrial shredding."
+  },
+  {
+    "source_id": "SRC-TEX-093",
+    "category": "Textiles & Fabrics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Incinération des textiles usagés en fin de vie",
+    "emission_factor_kg_co2e_per_kg": 1.45,
+    "application_context": "Fossil and biogenic emissions avoided by preventing garment incineration."
+  },
+  {
+    "source_id": "SRC-TEX-094",
+    "category": "Textiles & Fabrics",
+    "authority": "ISO 14040/44 Industry Benchmark (CELC)",
+    "scope": "European Flax / Linen woven fabric",
+    "emission_factor_kg_co2e_per_kg": 3.7,
+    "application_context": "Natural linen tablecloths, shirts upcycled into reusable produce bags."
+  },
+  {
+    "source_id": "SRC-TEX-095",
+    "category": "Textiles & Fabrics",
+    "authority": "World Bank What a Waste 2.0",
+    "scope": "Mixed post-consumer municipal textile waste stream",
+    "emission_factor_kg_co2e_per_kg": 8.5,
+    "application_context": "Blended fabric default (poly-cotton, spandex mixes) diversion coefficient."
+  },
+  {
+    "source_id": "SRC-GLS-096",
+    "category": "Glass & Ceramics",
+    "authority": "European Container Glass Federation (FEVE)",
+    "scope": "Virgin Container Glass furnace melt (virgin batch)",
+    "emission_factor_kg_co2e_per_kg": 0.95,
+    "application_context": "Furnace gas combustion and carbonate calcination footprint avoided."
+  },
+  {
+    "source_id": "SRC-GLS-097",
+    "category": "Glass & Ceramics",
+    "authority": "US EPA WARM v16",
+    "scope": "Virgin Glass Container manufacturing cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 0.89,
+    "application_context": "Standard US benchmark for pickle jars, condiment bottles, and glass jugs."
+  },
+  {
+    "source_id": "SRC-GLS-098",
+    "category": "Glass & Ceramics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Virgin Glass Bottles and Jars manufacturing",
+    "emission_factor_kg_co2e_per_kg": 0.98,
+    "application_context": "Official UK conversion factor for empty food and beverage glass vessels."
+  },
+  {
+    "source_id": "SRC-GLS-099",
+    "category": "Glass & Ceramics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Packaging glass, white and colored, at plant, Europe",
+    "emission_factor_kg_co2e_per_kg": 0.92,
+    "application_context": "Used when upcycling wine bottles into candle holders, self-watering carafes."
+  },
+  {
+    "source_id": "SRC-GLS-100",
+    "category": "Glass & Ceramics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Emballage verre blanc standardisé",
+    "emission_factor_kg_co2e_per_kg": 0.88,
+    "application_context": "French reference for household jam, sauce, and food jar reuse."
+  },
+  {
+    "source_id": "SRC-GLS-101",
+    "category": "Glass & Ceramics",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Flat float glass for architectural and furniture windows",
+    "emission_factor_kg_co2e_per_kg": 1.25,
+    "application_context": "Picture frame glass, window panes repurposed into cold frames/greenhouses."
+  },
+  {
+    "source_id": "SRC-GLS-102",
+    "category": "Glass & Ceramics",
+    "authority": "US EPA WARM v16",
+    "scope": "Recycled Cullet Container glass remelt (100% cullet furnace)",
+    "emission_factor_kg_co2e_per_kg": 0.58,
+    "application_context": "Shows remaining high thermal energy of melting glass vs. cold craft reuse."
+  },
+  {
+    "source_id": "SRC-GLS-103",
+    "category": "Glass & Ceramics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Closed-loop cullet glass remelting and forming",
+    "emission_factor_kg_co2e_per_kg": 0.61,
+    "application_context": "Comparative savings metric for industrial cullet recycling."
+  },
+  {
+    "source_id": "SRC-GLS-104",
+    "category": "Glass & Ceramics",
+    "authority": "IPCC EFDB",
+    "scope": "Ceramic clay tile and pottery kiln firing (gas kiln)",
+    "emission_factor_kg_co2e_per_kg": 0.72,
+    "application_context": "Terracotta flower pots, ceramic mugs, and broken mosaic tiles."
+  },
+  {
+    "source_id": "SRC-GLS-105",
+    "category": "Glass & Ceramics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Sanitary ceramics and porcelain production, at plant",
+    "emission_factor_kg_co2e_per_kg": 1.15,
+    "application_context": "High-fire porcelain plates and bowls repurposed into mosaic or tiered stands."
+  },
+  {
+    "source_id": "SRC-GLS-106",
+    "category": "Glass & Ceramics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Vaisselle en céramique et faïence émaillée",
+    "emission_factor_kg_co2e_per_kg": 1.05,
+    "application_context": "Kitchen crockery reuse and chipped dishware artistic repurposing."
+  },
+  {
+    "source_id": "SRC-GLS-107",
+    "category": "Glass & Ceramics",
+    "authority": "US EPA WARM v16",
+    "scope": "Glass Landfilling inert burial baseline",
+    "emission_factor_kg_co2e_per_kg": 0.01,
+    "application_context": "Baseline landfill handling footprint for heavy inert mineral glass."
+  },
+  {
+    "source_id": "SRC-GLS-108",
+    "category": "Glass & Ceramics",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Tempered borosilicate glass cookware (Pyrex-type)",
+    "emission_factor_kg_co2e_per_kg": 1.4,
+    "application_context": "Thermal shock resistant glassware repurposing into planter trays."
+  },
+  {
+    "source_id": "SRC-GLS-109",
+    "category": "Glass & Ceramics",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Glass crushed aggregate downcycling (civil engineering)",
+    "emission_factor_kg_co2e_per_kg": 0.08,
+    "application_context": "Compares high-value upcycling to low-grade aggregate crushing."
+  },
+  {
+    "source_id": "SRC-GLS-110",
+    "category": "Glass & Ceramics",
+    "authority": "ISO 14040/44 Industry Benchmark (Cerame-Unie)",
+    "scope": "Vitrified earthenware and terracotta ceramics",
+    "emission_factor_kg_co2e_per_kg": 0.82,
+    "application_context": "Terracotta pots repurposed into olla irrigation pots."
+  },
+  {
+    "source_id": "SRC-GLS-111",
+    "category": "Glass & Ceramics",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Glass wool / fiber insulation mat manufacture",
+    "emission_factor_kg_co2e_per_kg": 1.6,
+    "application_context": "Comparative footprint for alternative insulation materials."
+  },
+  {
+    "source_id": "SRC-GLS-112",
+    "category": "Glass & Ceramics",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Bouteilles de vin en verre lourd (>500g)",
+    "emission_factor_kg_co2e_per_kg": 1.08,
+    "application_context": "Heavy wine bottles upcycled into hanging wind chimes, desktop lamps."
+  },
+  {
+    "source_id": "SRC-GLS-113",
+    "category": "Glass & Ceramics",
+    "authority": "IPCC EFDB",
+    "scope": "Limestone and soda ash calcination process emissions in glassmaking",
+    "emission_factor_kg_co2e_per_kg": 0.22,
+    "application_context": "Direct chemical decarbonation emissions avoided by reusing intact glass."
+  },
+  {
+    "source_id": "SRC-GLS-114",
+    "category": "Glass & Ceramics",
+    "authority": "US EPA WARM v16",
+    "scope": "Glass transport to secondary processing facility",
+    "emission_factor_kg_co2e_per_kg": 0.05,
+    "application_context": "Avoided heavy-haul freight emissions for local on-site DIY reuse."
+  },
+  {
+    "source_id": "SRC-GLS-115",
+    "category": "Glass & Ceramics",
+    "authority": "World Bank What a Waste 2.0",
+    "scope": "Municipal post-consumer glass waste lifecycle baseline",
+    "emission_factor_kg_co2e_per_kg": 0.9,
+    "application_context": "Global composite benchmark for municipal container glass diversion."
+  },
+  {
+    "source_id": "SRC-ELE-116",
+    "category": "Electronic Waste & Household Components",
+    "authority": "UN Global E-waste Monitor (UNITAR / ITU)",
+    "scope": "Mixed Small Consumer WEEE (cradle-to-gate embodied mix)",
+    "emission_factor_kg_co2e_per_kg": 18.5,
+    "application_context": "Avoided embodied emissions from raw materials in small household gadgets."
+  },
+  {
+    "source_id": "SRC-ELE-117",
+    "category": "Electronic Waste & Household Components",
+    "authority": "US EPA WARM v16",
+    "scope": "Personal Computer Desktop/Laptop manufacturing cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 45.0,
+    "application_context": "Upcycling PC cases, heat sinks, and fans into home cooling or organizer units."
+  },
+  {
+    "source_id": "SRC-ELE-118",
+    "category": "Electronic Waste & Household Components",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Small household electrical appliances (WEEE)",
+    "emission_factor_kg_co2e_per_kg": 12.4,
+    "application_context": "Kettles, toasters, blenders non-electrical casings and parts reuse."
+  },
+  {
+    "source_id": "SRC-ELE-119",
+    "category": "Electronic Waste & Household Components",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Printed Circuit Board (PCB), multi-layer, surface mounted",
+    "emission_factor_kg_co2e_per_kg": 38.5,
+    "application_context": "Repurposing dead circuit boards into artistic coasters and tech jewelry."
+  },
+  {
+    "source_id": "SRC-ELE-120",
+    "category": "Electronic Waste & Household Components",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Smartphone cradle-to-gate lifecycle (mass normalized)",
+    "emission_factor_kg_co2e_per_kg": 275.0,
+    "application_context": "High-intensity micro-electronics; repurposing old phone screens/bodies into smart desk clocks."
+  },
+  {
+    "source_id": "SRC-ELE-121",
+    "category": "Electronic Waste & Household Components",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Lithium-ion Battery Pack NMC chemistry production",
+    "emission_factor_kg_co2e_per_kg": 14.2,
+    "application_context": "Second-life casing and pack framing (strictly adhering to battery handling safety)."
+  },
+  {
+    "source_id": "SRC-ELE-122",
+    "category": "Electronic Waste & Household Components",
+    "authority": "IPCC EFDB",
+    "scope": "E-waste mechanical shredding and hydrometallurgical refining",
+    "emission_factor_kg_co2e_per_kg": 3.2,
+    "application_context": "Avoided chemical recycling energy through direct functional repurposing."
+  },
+  {
+    "source_id": "SRC-ELE-123",
+    "category": "Electronic Waste & Household Components",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Power cables, USB cords, and copper data wiring",
+    "emission_factor_kg_co2e_per_kg": 4.8,
+    "application_context": "Repurposing old charging cables into cord ties, weaving material, and gaskets."
+  },
+  {
+    "source_id": "SRC-ELE-124",
+    "category": "Electronic Waste & Household Components",
+    "authority": "US EPA WARM v16",
+    "scope": "Flat panel display (LCD/LED) monitor assembly",
+    "emission_factor_kg_co2e_per_kg": 28.0,
+    "application_context": "Repurposing monitor backlight diffusers into ultra-bright photography light panels."
+  },
+  {
+    "source_id": "SRC-ELE-125",
+    "category": "Electronic Waste & Household Components",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "AC-DC Power adapter / wall charger unit",
+    "emission_factor_kg_co2e_per_kg": 16.5,
+    "application_context": "Repurposing casing, magnetic copper transformer cores into craft projects."
+  },
+  {
+    "source_id": "SRC-ELE-126",
+    "category": "Electronic Waste & Household Components",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Petit électroménager et bureautique usagée",
+    "emission_factor_kg_co2e_per_kg": 9.8,
+    "application_context": "Printer casings, scanner glass repurposing into light boxes."
+  },
+  {
+    "source_id": "SRC-ELE-127",
+    "category": "Electronic Waste & Household Components",
+    "authority": "UN Global E-waste Monitor",
+    "scope": "Cathode Ray Tube (CRT) glass lead-stabilized disposal",
+    "emission_factor_kg_co2e_per_kg": 1.8,
+    "application_context": "Safe heavy glass handling benchmark."
+  },
+  {
+    "source_id": "SRC-ELE-128",
+    "category": "Electronic Waste & Household Components",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Ferrite transformer and speaker permanent magnets",
+    "emission_factor_kg_co2e_per_kg": 3.9,
+    "application_context": "Harvesting powerful neodymium and ferrite magnets from dead speakers for tool racks."
+  },
+  {
+    "source_id": "SRC-ELE-129",
+    "category": "Electronic Waste & Household Components",
+    "authority": "US EPA WARM v16",
+    "scope": "WEEE Landfilling hazardous barrier leachate containment",
+    "emission_factor_kg_co2e_per_kg": 0.85,
+    "application_context": "Avoided hazardous waste handling and environmental containment impact."
+  },
+  {
+    "source_id": "SRC-ELE-130",
+    "category": "Electronic Waste & Household Components",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "IT and telecommunications equipment scrap mix",
+    "emission_factor_kg_co2e_per_kg": 22.0,
+    "application_context": "Keyboards, mice, and networking router plastic housings."
+  },
+  {
+    "source_id": "SRC-ELE-131",
+    "category": "Electronic Waste & Household Components",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Optical storage media (CD / DVD Polycarbonate with aluminum film)",
+    "emission_factor_kg_co2e_per_kg": 5.1,
+    "application_context": "Upcycling scratched compact discs into bird deterrents, solar reflectors, clock faces."
+  },
+  {
+    "source_id": "SRC-ELE-132",
+    "category": "Electronic Waste & Household Components",
+    "authority": "ISO 14040/44 Industry Benchmark (LightingEurope)",
+    "scope": "Household LED bulb lamp assembly (aluminum heat sink + driver)",
+    "emission_factor_kg_co2e_per_kg": 8.2,
+    "application_context": "Repurposing burned-out LED bulb domes as diffuse mini lamp shades."
+  },
+  {
+    "source_id": "SRC-ELE-133",
+    "category": "Electronic Waste & Household Components",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Moteurs électriques miniatures (DC motors)",
+    "emission_factor_kg_co2e_per_kg": 6.5,
+    "application_context": "Harvesting low-voltage 5V-12V fans from PCs for solar aeration stations."
+  },
+  {
+    "source_id": "SRC-ELE-134",
+    "category": "Electronic Waste & Household Components",
+    "authority": "IPCC EFDB",
+    "scope": "Incineration of brominated flame retardant electronic plastics",
+    "emission_factor_kg_co2e_per_kg": 3.8,
+    "application_context": "High toxic and carbon emissions prevented by keeping e-plastics out of incinerators."
+  },
+  {
+    "source_id": "SRC-ELE-135",
+    "category": "Electronic Waste & Household Components",
+    "authority": "World Bank E-Waste Guidelines",
+    "scope": "Avoided informal sector open burning / acid leaching baseline",
+    "emission_factor_kg_co2e_per_kg": 15.0,
+    "application_context": "Extreme mitigation factor for diverting electronic scrap from primitive burning."
+  },
+  {
+    "source_id": "SRC-ORG-136",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "IPCC EFDB Guidelines for National GHG Inventories",
+    "scope": "Municipal Solid Waste (MSW) Anaerobic Landfill Methane Generation",
+    "emission_factor_kg_co2e_per_kg": 1.25,
+    "application_context": "Core international benchmark for methane ($CH_4$) emissions generated per kg of mixed organic waste."
+  },
+  {
+    "source_id": "SRC-ORG-137",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "US EPA WARM v16",
+    "scope": "Food Waste Landfill Methane Generation (net of flaring)",
+    "emission_factor_kg_co2e_per_kg": 0.74,
+    "application_context": "Baseline for diverting coffee grounds, citrus peels into natural dyes or seedling pots."
+  },
+  {
+    "source_id": "SRC-ORG-138",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Composting of organic garden and green waste",
+    "emission_factor_kg_co2e_per_kg": 0.1,
+    "application_context": "Aerobic biological cycle comparison benchmark."
+  },
+  {
+    "source_id": "SRC-ORG-139",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Anaerobic digestion of biowaste with biogas utilization",
+    "emission_factor_kg_co2e_per_kg": 0.08,
+    "application_context": "Controlled industrial biomethane generation comparison baseline."
+  },
+  {
+    "source_id": "SRC-ORG-140",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Déchets de bois et sciure de bois massif",
+    "emission_factor_kg_co2e_per_kg": 0.42,
+    "application_context": "Natural wood offcuts, sawdust, and wooden fruit crate upcycling."
+  },
+  {
+    "source_id": "SRC-ORG-141",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "US EPA WARM v16",
+    "scope": "Dimensional lumber and timber harvesting cradle-to-gate",
+    "emission_factor_kg_co2e_per_kg": 0.58,
+    "application_context": "Virgin timber substitution when making planters or shelves from pallet scrap."
+  },
+  {
+    "source_id": "SRC-ORG-142",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Wood pallets and packing cases upcycling credit",
+    "emission_factor_kg_co2e_per_kg": 0.62,
+    "application_context": "Standard wooden transport pallet dismantling and repurposing into furniture."
+  },
+  {
+    "source_id": "SRC-ORG-143",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "IPCC EFDB",
+    "scope": "Open uncontrolled burning of municipal organic/dry waste",
+    "emission_factor_kg_co2e_per_kg": 2.4,
+    "application_context": "High-risk disposal path avoided; accounts for black carbon and CO2."
+  },
+  {
+    "source_id": "SRC-ORG-144",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "Sphera GaBi LCA Database",
+    "scope": "Natural wine cork stoppers production from cork oak bark",
+    "emission_factor_kg_co2e_per_kg": 0.35,
+    "application_context": "Upcycling wine bottle corks into trivets, bulletin boards, floating keychains."
+  },
+  {
+    "source_id": "SRC-ORG-145",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "US EPA WARM v16",
+    "scope": "Scrap automotive rubber tires ambient crumb shredding",
+    "emission_factor_kg_co2e_per_kg": 1.6,
+    "application_context": "Repurposing discarded rubber tires into garden planters or swings."
+  },
+  {
+    "source_id": "SRC-ORG-146",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "UK DESNZ / DEFRA GHG Conversion Factors 2023",
+    "scope": "Scrap tire combustion for kiln fuel vs. whole tire landfilling",
+    "emission_factor_kg_co2e_per_kg": 1.85,
+    "application_context": "Avoided tire fire hazardous emissions and landfill stockpiling."
+  },
+  {
+    "source_id": "SRC-ORG-147",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "ADEME Base Empreinte",
+    "scope": "Cuir naturel tanné et chutes de maroquinerie",
+    "emission_factor_kg_co2e_per_kg": 18.2,
+    "application_context": "Repurposing old leather belts, shoes, and handbags into tool holsters, handles."
+  },
+  {
+    "source_id": "SRC-ORG-148",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "Ecoinvent 3.10 Database",
+    "scope": "Municipal waste incineration with energy recovery (R1 criteria)",
+    "emission_factor_kg_co2e_per_kg": 0.48,
+    "application_context": "Incineration net fossil emission displacement baseline."
+  },
+  {
+    "source_id": "SRC-ORG-149",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "World Bank What a Waste 2.0",
+    "scope": "Unmanaged open municipal dumpsite methane and fire risk",
+    "emission_factor_kg_co2e_per_kg": 1.65,
+    "application_context": "Applied when calculating high impact in developing municipal zones."
+  },
+  {
+    "source_id": "SRC-ORG-150",
+    "category": "Organic & Miscellaneous Waste / Landfill",
+    "authority": "ISO 14040/44 Industry Benchmark (ISWA)",
+    "scope": "Multi-material municipal residual average end-of-life",
+    "emission_factor_kg_co2e_per_kg": 0.95,
+    "application_context": "Standard general residual waste benchmark for unidentified mixed composite scraps."
+  }
+]

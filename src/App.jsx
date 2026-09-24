@@ -1,0 +1,1369 @@
+import React, { useState, useRef, useMemo } from 'react';
+import {
+  Recycle, Lightbulb, Star, Send, ArrowLeft, Camera, Loader2,
+  Clock, AlertTriangle, Leaf, ChevronDown, ChevronUp, Download,
+  Share2, BookOpen, Wrench, Target, Shield, Image, CheckCircle,
+  Trophy, Calculator, Plus, Check, Trash2, Award, Printer, Copy,
+  CheckCheck, QrCode, Sparkles, MessageSquare, ExternalLink, RefreshCw,
+  Maximize2, X, CheckSquare, Square, DollarSign, Layers, Activity
+} from 'lucide-react';
+import {
+  COMMON_MATERIALS,
+  USER_LEVELS,
+  PROJECT_TYPES,
+  fetchAiProjects,
+  generateProjectImageAi,
+  regenerateSpecificGalleryView,
+  sendChatMessageToAi
+} from './utils/aiProjectEngine.js';
+import './index.css';
+
+export default function App() {
+  const fileInputRef = useRef(null);
+
+  // Main navigation tab: 'generator' | 'saved' | 'chat' | 'certificate'
+  const [activeTab, setActiveTab] = useState('generator');
+
+  // Input states
+  const [materials, setMaterials] = useState('');
+  const [selectedMaterials, setSelectedMaterials] = useState([
+    'زجاج',
+    'خشب',
+    'علب ألمنيوم'
+  ]);
+  const [userLevel, setUserLevel] = useState('adult');
+  const [projectType, setProjectType] = useState('practical');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('');
+  const [imageUploaded, setImageUploaded] = useState(false);
+
+  // Projects & UI states
+  const [projects, setProjects] = useState([]);
+  const [followUpQuestions, setFollowUpQuestions] = useState([]);
+  const [expandedProject, setExpandedProject] = useState(null);
+  const [savedProjects, setSavedProjects] = useState([]);
+  const [generatingImageFor, setGeneratingImageFor] = useState(null);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  // V3 Upgraded Interactive States
+  const [lightboxImage, setLightboxImage] = useState(null); // { url, title, subtitle }
+  const [interactiveMode, setInteractiveMode] = useState({}); // { [projectIndex]: boolean }
+  const [projectContextForChat, setProjectContextForChat] = useState(null);
+
+  // Gamification & Environmental Impact
+  const [completedProjects, setCompletedProjects] = useState(1);
+  const [environmentalPoints, setEnvironmentalPoints] = useState(40);
+
+  // Chat with Expert State
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'أهلاً بك! أنا خبير إعادة التدوير والاستدامة البيئية الذكي V3. يمكنني مساعدتك في تحليل أي خامات، واقتراح طرق الربط والقص الآمنة، وابتكار تصاميم متعددة الصور لكل فكرة.'
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Selected Project for Official Certificate
+  const [certificateProject, setCertificateProject] = useState(null);
+
+  // Certificate metadata
+  const certId = useMemo(() => `SA-LCA-2026-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, []);
+  const currentDate = useMemo(() => new Date().toLocaleDateString('ar-SA', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }), []);
+
+  // Toggle material chip
+  const toggleMaterial = (mat) => {
+    setSelectedMaterials(prev =>
+      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
+    );
+  };
+
+  // Environmental impact calculations (0.7 kg waste reduced, 1.5 kg CO2 saved per project)
+  const impact = useMemo(() => {
+    const wasteReduced = completedProjects * 0.7;
+    const co2Saved = completedProjects * 1.5;
+    return { wasteReduced, co2Saved };
+  }, [completedProjects]);
+
+  // Generate Projects with Live AI Engine
+  const handleGenerateProjects = async () => {
+    const allMaterials = [...selectedMaterials];
+    if (materials.trim()) {
+      const extra = materials.split(/[،,\n]+/).map(m => m.trim()).filter(Boolean);
+      allMaterials.push(...extra);
+    }
+
+    if (allMaterials.length === 0) {
+      alert('يرجى اختيار أو كتابة المواد المتوفرة لديك ليولد الذكاء الاصطناعي مشاريع مخصصة لها');
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingStep('تحليل بنية المواد والخواص الفيزيائية عبر Gemini AI...');
+
+    try {
+      const materialsString = allMaterials.join('، ');
+      const res = await fetchAiProjects({
+        materials: materialsString,
+        userLevel,
+        projectType
+      });
+
+      if (res.success && res.projects?.length > 0) {
+        setProjects(res.projects);
+        setFollowUpQuestions(res.followUpQuestions || []);
+        setExpandedProject(0); // expand first project by default
+        setCertificateProject(res.projects[0]);
+        setEnvironmentalPoints(p => p + 15);
+      } else {
+        alert('تعذر توليد المشاريع، يرجى المحاولة مجدداً');
+      }
+    } catch (err) {
+      console.error('Error generating AI projects:', err);
+      alert('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''));
+    } finally {
+      setIsLoading(false);
+      setLoadingStep('');
+    }
+  };
+
+  // Switch Gallery View (finished | assembly | inUse)
+  const handleSwitchGalleryView = (projectIndex, viewKey) => {
+    setProjects(prev => prev.map((p, idx) => {
+      if (idx === projectIndex) {
+        return {
+          ...p,
+          activeGalleryView: viewKey,
+          generatedImage: p.gallery?.[viewKey] || p.generatedImage
+        };
+      }
+      return p;
+    }));
+  };
+
+  // Regenerate Specific Gallery View via AI
+  const handleRegenerateView = async (project, projectIndex, viewKey) => {
+    setGeneratingImageFor(`${projectIndex}-${viewKey}`);
+    try {
+      const res = await regenerateSpecificGalleryView({
+        projectName: project.name,
+        projectIdea: project.idea,
+        projectMaterials: project.materials,
+        viewType: viewKey
+      });
+
+      if (res.success && res.imageUrl) {
+        setProjects(prev => prev.map((p, idx) => {
+          if (idx === projectIndex) {
+            const updatedGallery = {
+              ...p.gallery,
+              [viewKey]: res.imageUrl
+            };
+            return {
+              ...p,
+              gallery: updatedGallery,
+              generatedImage: res.imageUrl
+            };
+          }
+          return p;
+        }));
+        setEnvironmentalPoints(p => p + 5);
+      }
+    } catch (err) {
+      console.error('Error regenerating gallery view:', err);
+    } finally {
+      setGeneratingImageFor(null);
+    }
+  };
+
+  // Toggle Step Checkbox in Interactive Mode
+  const handleToggleStep = (projectIndex, stepId) => {
+    setProjects(prev => prev.map((p, idx) => {
+      if (idx === projectIndex && Array.isArray(p.parsedSteps)) {
+        let gainedPoints = false;
+        const updatedSteps = p.parsedSteps.map(st => {
+          if (st.id === stepId) {
+            if (!st.completed) gainedPoints = true;
+            return { ...st, completed: !st.completed };
+          }
+          return st;
+        });
+
+        if (gainedPoints) {
+          setEnvironmentalPoints(pts => pts + 5);
+        }
+
+        return { ...p, parsedSteps: updatedSteps };
+      }
+      return p;
+    }));
+  };
+
+  // Consult AI Expert specifically about this project
+  const handleConsultExpertForProject = (project) => {
+    setProjectContextForChat(project);
+    setActiveTab('chat');
+    const introQuery = `أود استشارتك حول مشروع "${project.name}" المصنوع من (${project.materials}). كيف أبدأ بالتنفيذ العملي بأعلى درجات الأمان والمتانة؟`;
+    setChatInput(introQuery);
+  };
+
+  // Save Project
+  const handleSaveProject = (project) => {
+    if (!savedProjects.some(p => p.name === project.name)) {
+      setSavedProjects(prev => [...prev, project]);
+      alert(`تم حفظ مشروع "${project.name}" في قائمة مشاريعك المفضلة! ⭐`);
+    } else {
+      alert('هذا المشروع محفوظ لديك بالفعل!');
+    }
+  };
+
+  // Mark Completed
+  const handleMarkCompleted = (project) => {
+    setCompletedProjects(p => p + 1);
+    setEnvironmentalPoints(p => p + 30);
+    setCertificateProject(project);
+    alert(`تهانينا! 🎉 تم احتساب إنجاز مشروع "${project.name}" وحصلت على +30 نقطة بيئية. يمكنك الآن استخراج شهادة الاعتماد الرسمية.`);
+  };
+
+  // Share / Copy Project
+  const handleShareProject = (project, idx) => {
+    const shareText = `مشروع إعادة تدوير ذكي: ${project.name}\nالفكرة: ${project.idea}\nالمواد: ${project.materials}\nالأدوات: ${project.tools}\nالخطوات: ${project.steps}`;
+    navigator.clipboard.writeText(shareText).then(() => {
+      setCopiedIndex(idx);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    });
+  };
+
+  // Send message in Live AI Expert Chat
+  const handleSendChatMessage = async (e) => {
+    e?.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userText = chatInput.trim();
+    const updatedHistory = [...chatMessages, { role: 'user', content: userText }];
+    setChatMessages(updatedHistory);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    try {
+      const reply = await sendChatMessageToAi({
+        question: userText,
+        conversationHistory: updatedHistory,
+        projectContext: projectContextForChat
+      });
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'نعتذر، حدث خطأ أثناء التواصل مع نموذج الذكاء الاصطناعي. يرجى المحاولة مرة أخرى.' }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // Click on a Follow-up Question
+  const handleAskFollowUp = async (question) => {
+    setActiveTab('chat');
+    const updatedHistory = [...chatMessages, { role: 'user', content: question }];
+    setChatMessages(updatedHistory);
+    setIsChatLoading(true);
+
+    try {
+      const reply = await sendChatMessageToAi({
+        question,
+        conversationHistory: updatedHistory,
+        projectContext: projectContextForChat
+      });
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch (err) {
+      console.error('Chat error:', err);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // Handle Real Image Upload & Multimodal Analysis
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploaded(true);
+    setIsLoading(true);
+    setLoadingStep('جاري قراءة وتحليل الصورة بالذكاء الاصطناعي...');
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result;
+      try {
+        const res = await fetchAiProjects({
+          imageBase64: base64,
+          userLevel,
+          projectType
+        });
+        if (res.success && res.projects?.length > 0) {
+          setProjects(res.projects);
+          setFollowUpQuestions(res.followUpQuestions || []);
+          setExpandedProject(0);
+          setCertificateProject(res.projects[0]);
+          setEnvironmentalPoints(p => p + 20);
+        }
+      } catch (err) {
+        console.error('Error analyzing uploaded image:', err);
+        alert('حدث خطأ أثناء تحليل الصورة');
+      } finally {
+        setIsLoading(false);
+        setImageUploaded(false);
+        setLoadingStep('');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="app-container">
+      {/* ============================================================
+          OFFICIAL INSTITUTIONAL TOP BAR
+          ============================================================ */}
+      <header className="official-top-bar">
+        {/* Accreditation Notice Strip */}
+        <div className="top-bar-notice">
+          <div className="notice-right">
+            <Shield size={14} color="#34d399" />
+            <span>المنظومة الوطنية الرسمية لإعادة التدوير • معتمد وفق مواصفة ISO 14044 وبروتوكول GHG العالمي</span>
+          </div>
+          <div className="notice-left">
+            <span>SMART UPCYCLING EXPERT V3 • MULTI-IMAGE AI SUITE</span>
+          </div>
+        </div>
+
+        {/* Main Header Row */}
+        <div className="top-bar-main">
+          {/* Logo & Seal */}
+          <div className="official-brand" onClick={() => setActiveTab('generator')}>
+            <div className="brand-emblem-box">
+              <Recycle size={26} strokeWidth={2.4} />
+            </div>
+            <div className="brand-titles">
+              <h1>خبير إعادة التدوير والاستدامة الذكي</h1>
+              <p>Smart Recycling Project Advisor V3 • ذكاء اصطناعي تفاعلي متعدد المشاهد</p>
+            </div>
+          </div>
+
+          {/* Points & Completed Projects Badges */}
+          <div className="points-badges-row">
+            <span className="eco-point-badge">
+              <Trophy size={15} />
+              <span>{environmentalPoints} نقطة بيئية</span>
+            </span>
+
+            <span className="eco-point-badge blue">
+              <CheckCircle size={15} />
+              <span>{completedProjects} مشروع منجز</span>
+            </span>
+
+            {impact.co2Saved > 0 && (
+              <span className="official-live-badge">
+                <Leaf size={14} />
+                <span>وفرت: {impact.co2Saved.toFixed(1)} كغ CO₂</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* ============================================================
+          MAIN BODY CONTAINER
+          ============================================================ */}
+      <main className="official-main-content">
+        {/* Navigation Tabs Header */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+          <div className="official-nav-tabs" style={{ maxWidth: '680px', width: '100%', justifyContent: 'center' }}>
+            <button
+              className={`official-nav-btn ${activeTab === 'generator' ? 'active' : ''}`}
+              onClick={() => setActiveTab('generator')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <Lightbulb size={16} />
+              <span>إنشاء المشاريع</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'saved' ? 'active' : ''}`}
+              onClick={() => setActiveTab('saved')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <Star size={16} />
+              <span>المحفوظة ({savedProjects.length})</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chat')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <Send size={16} />
+              <span>اسأل الخبير {projectContextForChat ? '🎯' : ''}</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'certificate' ? 'active' : ''}`}
+              onClick={() => setActiveTab('certificate')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <Award size={16} />
+              <span>الشهادة المعتمدة</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Environmental Impact Counter Banner */}
+        {completedProjects > 0 && (
+          <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.25rem 2rem', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3rem', flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--emerald-primary)', fontWeight: 800, fontSize: '1.6rem' }}>
+                  <Calculator size={22} />
+                  <span>{impact.wasteReduced.toFixed(1)} كغ</span>
+                </div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>نفايات تم تحويلها عن المكب</span>
+              </div>
+
+              <div style={{ width: '1px', height: '36px', background: 'var(--border-subtle)' }} />
+
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--emerald-primary)', fontWeight: 800, fontSize: '1.6rem' }}>
+                  <Leaf size={22} />
+                  <span>{impact.co2Saved.toFixed(1)} كغ</span>
+                </div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>انبعاثات CO₂ تم توفيرها</span>
+              </div>
+
+              <div style={{ width: '1px', height: '36px', background: 'var(--border-subtle)' }} />
+
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--gold-primary)', fontWeight: 800, fontSize: '1.6rem' }}>
+                  <Sparkles size={22} />
+                  <span>V3 Multi-AI</span>
+                </div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>معرض ثلاثي الصور لكل مشروع</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 1: GENERATOR TAB (INPUTS & DYNAMIC PROJECTS)
+            ============================================================ */}
+        {activeTab === 'generator' && (
+          <div className="intake-layout-grid">
+            {/* Right Column: Inputs Section (RTL) */}
+            <div className="intake-main-panel">
+              <div className="panel-section-title">
+                <h3>
+                  <BookOpen size={20} color="var(--emerald-primary)" />
+                  <span>أدخل المواد المتوفرة لديك</span>
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '1.25rem' }}>
+                اختر من قائمة المواد الشائعة أو أدخل أي مواد يدوياً ليقوم الذكاء الاصطناعي بابتكار مشاريع وتوليد 3 صور لكل مشروع:
+              </p>
+
+              {/* Common Materials Chips */}
+              <div>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  المواد الشائعة (انقر للاختيار):
+                </label>
+                <div className="material-chips-wrapper">
+                  {COMMON_MATERIALS.map(mat => {
+                    const isSelected = selectedMaterials.includes(mat);
+                    return (
+                      <button
+                        type="button"
+                        key={mat}
+                        className={`material-chip-btn ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleMaterial(mat)}
+                      >
+                        {isSelected && <Check size={13} strokeWidth={3} />}
+                        <span>{mat}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Materials Input */}
+              <div className="official-textarea-container">
+                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  مواد إضافية (أو اكتب بحرية):
+                </label>
+                <textarea
+                  className="official-textarea"
+                  placeholder="مثال: علب حليب أطفال، براميل زيت، إطارات سيارات، شماعات سلك، قمصان صوف..."
+                  value={materials}
+                  onChange={e => setMaterials(e.target.value)}
+                />
+              </div>
+
+              {/* Select Options: User Level & Project Type */}
+              <div className="form-select-row">
+                <div className="form-group-field">
+                  <label>مستوى المستخدم:</label>
+                  <select
+                    className="official-select-control"
+                    value={userLevel}
+                    onChange={e => setUserLevel(e.target.value)}
+                  >
+                    {USER_LEVELS.map(lvl => (
+                      <option key={lvl.value} value={lvl.value}>{lvl.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group-field">
+                  <label>نوع المشاريع المفضل:</label>
+                  <select
+                    className="official-select-control"
+                    value={projectType}
+                    onChange={e => setProjectType(e.target.value)}
+                  >
+                    {PROJECT_TYPES.map(typ => (
+                      <option key={typ.value} value={typ.value}>{typ.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Hidden File Input for Image Upload */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+
+              {/* Camera Upload Button */}
+              <button
+                type="button"
+                className="btn-upload-camera"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                <Camera size={18} />
+                <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
+              </button>
+
+              {/* Generate Projects CTA */}
+              <button
+                type="button"
+                className="cta-analyze-btn"
+                onClick={handleGenerateProjects}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>{loadingStep || 'جاري التحليل وتوليد معرض الصور بالذكاء الاصطناعي...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb size={18} />
+                    <span>🚀 ابتكر مشاريع ومعرض صور ثلاثي بالذكاء الاصطناعي</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Left Column: Generated Projects Display */}
+            <div>
+              {projects.length === 0 ? (
+                <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '4rem 2rem', textAlign: 'center', boxShadow: 'var(--shadow-card)' }}>
+                  <Recycle size={56} color="var(--border-strong)" style={{ margin: '0 auto 1.25rem' }} />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                    بانتظار إدخال موادك
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '380px', margin: '0 auto' }}>
+                    اختر المواد أو اكتبها واضغط على زر الابتكار ليقوم الذكاء الاصطناعي بتوليد مشاريع حصرية لكل طلب مع 3 صور فنية عالية الدقة (المنتج المكتمل، مراحل التجميع، والاستخدام الواقعي).
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--emerald-primary)' }}>
+                      ✨ تم توليد {projects.length} مشاريع مخصصة مع معرض صور ثلاثي لكل مشروع:
+                    </span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      ⚡ مدعوم بـ Google Gemini & Generative Visual AI
+                    </span>
+                  </div>
+
+                  {/* Project Cards Accordion */}
+                  {projects.map((project, index) => {
+                    const isExpanded = expandedProject === index;
+                    const activeView = project.activeGalleryView || 'finished';
+                    const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
+                    const isStepMode = interactiveMode[index];
+                    const completedStepsCount = project.parsedSteps ? project.parsedSteps.filter(s => s.completed).length : 0;
+                    const totalStepsCount = project.parsedSteps ? project.parsedSteps.length : 3;
+                    const progressPercent = totalStepsCount > 0 ? Math.round((completedStepsCount / totalStepsCount) * 100) : 0;
+
+                    return (
+                      <div key={index} className="advisor-project-card">
+                        {/* Header Bar */}
+                        <div
+                          className="project-card-clickable-header"
+                          onClick={() => setExpandedProject(isExpanded ? null : index)}
+                        >
+                          <div className="project-header-left">
+                            <div className="project-icon-box">
+                              <Lightbulb size={24} />
+                            </div>
+                            <div className="project-title-meta">
+                              <h3>{project.name}</h3>
+                              <div className="project-header-badges">
+                                <span className="badge-difficulty">{project.difficulty}</span>
+                                <span className="badge-time">
+                                  <Clock size={12} />
+                                  {project.time}
+                                </span>
+                                {project.metrics?.feasibilityScore && (
+                                  <span style={{ background: '#ecfdf5', color: 'var(--emerald-primary)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.74rem', fontWeight: 700 }}>
+                                    🎯 سهولة {project.metrics.feasibilityScore}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            {isExpanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+                          </div>
+                        </div>
+
+                        {/* Expanded Content: V3 Full Architecture */}
+                        {isExpanded && (
+                          <div className="project-card-expanded-body">
+                            {/* ============================================================
+                                MULTI-IMAGE AI GALLERY (FINISHED | ASSEMBLY | LIFESTYLE)
+                                ============================================================ */}
+                            <div className="multi-gallery-container">
+                              {/* View Tabs */}
+                              <div className="gallery-nav-tabs">
+                                <button
+                                  type="button"
+                                  className={`gallery-tab-btn ${activeView === 'finished' ? 'active' : ''}`}
+                                  onClick={() => handleSwitchGalleryView(index, 'finished')}
+                                >
+                                  <Sparkles size={14} color="var(--emerald-primary)" />
+                                  <span>1. المنتج النهائي المكتمل</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className={`gallery-tab-btn ${activeView === 'assembly' ? 'active' : ''}`}
+                                  onClick={() => handleSwitchGalleryView(index, 'assembly')}
+                                >
+                                  <Wrench size={14} color="var(--navy-light)" />
+                                  <span>2. مراحل التجميع والقص</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className={`gallery-tab-btn ${activeView === 'inUse' ? 'active' : ''}`}
+                                  onClick={() => handleSwitchGalleryView(index, 'inUse')}
+                                >
+                                  <Leaf size={14} color="#ca8a04" />
+                                  <span>3. الاستخدام الواقعي بالديكور</span>
+                                </button>
+                              </div>
+
+                              {/* Active Image Showcase Frame */}
+                              <div className="gallery-active-frame">
+                                {activeImageUrl ? (
+                                  <img
+                                    src={activeImageUrl}
+                                    alt={`${project.name} - ${activeView}`}
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Loader2 size={20} className="animate-spin" />
+                                    <span>جاري توليد المشهد بالذكاء الاصطناعي...</span>
+                                  </div>
+                                )}
+
+                                {/* Overlay Tools: Zoom & Fullscreen */}
+                                <div className="gallery-zoom-overlay">
+                                  <button
+                                    type="button"
+                                    className="btn-gallery-tool"
+                                    onClick={() => setLightboxImage({
+                                      url: activeImageUrl,
+                                      title: project.name,
+                                      subtitle: activeView === 'finished' ? 'صورة المنتج النهائي المكتمل' : activeView === 'assembly' ? 'رسم تخطيطي لمراحل التجميع والقص' : 'صورة واقعية للمنتج في البيئة المنزلية'
+                                    })}
+                                    title="تكبير الصورة بالحجم الكامل"
+                                  >
+                                    <Maximize2 size={13} />
+                                    <span>تكبير</span>
+                                  </button>
+
+                                  <a
+                                    href={activeImageUrl}
+                                    download={`${project.name}-${activeView}.jpg`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-gallery-tool"
+                                    title="تنزيل الصورة بجودة عالية"
+                                  >
+                                    <Download size={13} />
+                                    <span>تنزيل</span>
+                                  </a>
+                                </div>
+                              </div>
+
+                              {/* Gallery Caption Bar */}
+                              <div className="gallery-caption-bar">
+                                <div className="gallery-caption-text">
+                                  <Camera size={15} color="var(--emerald-primary)" />
+                                  <span>
+                                    {activeView === 'finished' && 'المشهد الأول: معاينة المنتج المكتمل بإضاءة ستوديو احترافية فائقة الدقة'}
+                                    {activeView === 'assembly' && 'المشهد الثاني: رسم ومخطط ورشة العمل لطريقة قص وربط المواد وتجميعها'}
+                                    {activeView === 'inUse' && 'المشهد الثالث: لقطة ديكورية واقعية للمنتج وهو مستخدم في المنزل أو الحديقة'}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRegenerateView(project, index, activeView)}
+                                  disabled={generatingImageFor === `${index}-${activeView}`}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--emerald-primary)',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem'
+                                  }}
+                                >
+                                  {generatingImageFor === `${index}-${activeView}` ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <RefreshCw size={13} />
+                                  )}
+                                  <span>
+                                    {generatingImageFor === `${index}-${activeView}` ? 'جاري التوليد...' : 'توليد مشهد بديل بالذكاء الاصطناعي'}
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* ============================================================
+                                ENGINEERING METRICS BAR (FEASIBILITY, DURABILITY, SAVINGS)
+                                ============================================================ */}
+                            {project.metrics && (
+                              <div className="metrics-card-grid">
+                                <div className="metric-badge-box">
+                                  <div className="metric-icon-bubble green">
+                                    <Target size={20} />
+                                  </div>
+                                  <div className="metric-info-col">
+                                    <h5>قابلية التنفيذ المنزلي</h5>
+                                    <span>{project.metrics.feasibilityScore}%</span>
+                                  </div>
+                                </div>
+
+                                <div className="metric-badge-box">
+                                  <div className="metric-icon-bubble blue">
+                                    <Clock size={20} />
+                                  </div>
+                                  <div className="metric-info-col">
+                                    <h5>العمر التشغيلي المتوقع</h5>
+                                    <span>{project.metrics.durabilityYears}</span>
+                                  </div>
+                                </div>
+
+                                <div className="metric-badge-box">
+                                  <div className="metric-icon-bubble gold">
+                                    <DollarSign size={20} />
+                                  </div>
+                                  <div className="metric-info-col">
+                                    <h5>الوفر المالي التقديري</h5>
+                                    <span>{project.metrics.estimatedSavings}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Material Bonding & Compatibility Quick Guide */}
+                            {project.metrics?.bondingGuide && (
+                              <div className="bonding-guide-box">
+                                <div className="bonding-guide-title">
+                                  <Shield size={16} />
+                                  <span>مصفوفة التوافق الكيميائي والهندسي للمواد:</span>
+                                </div>
+                                <div className="bonding-grid-cols">
+                                  <div className="bonding-item">
+                                    <strong>🔗 المادة اللاصقة / وسيلة الربط:</strong>
+                                    <span>{project.metrics.bondingGuide.adhesive}</span>
+                                  </div>
+                                  <div className="bonding-item">
+                                    <strong>✂️ تقنية التشكيل والقص:</strong>
+                                    <span>{project.metrics.bondingGuide.cuttingTechnique}</span>
+                                  </div>
+                                  <div className="bonding-item">
+                                    <strong>🛡️ أدوات السلامة الموصى بها:</strong>
+                                    <span>{project.metrics.bondingGuide.safetyGear}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 1. Idea (الفكرة) */}
+                            <div className="project-field-block">
+                              <h4>
+                                <Target size={16} />
+                                <span>فكرة المشروع:</span>
+                              </h4>
+                              <p>{project.idea}</p>
+                            </div>
+
+                            {/* 2. Materials (المواد المطلوبة) */}
+                            <div className="project-field-block">
+                              <h4>
+                                <BookOpen size={16} />
+                                <span>المواد المطلوبة:</span>
+                              </h4>
+                              <p>{project.materials}</p>
+                            </div>
+
+                            {/* 3. Tools (الأدوات اللازمة) */}
+                            <div className="project-field-block">
+                              <h4>
+                                <Wrench size={16} />
+                                <span>الأدوات اللازمة:</span>
+                              </h4>
+                              <p>{project.tools}</p>
+                            </div>
+
+                            {/* ============================================================
+                                4. DETAILED STEPS WITH INTERACTIVE MODE TOGGLE
+                                ============================================================ */}
+                            <div className="interactive-steps-wrapper">
+                              <div className="interactive-steps-header">
+                                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                                  <CheckCircle size={18} color="var(--emerald-primary)" />
+                                  <span>خطوات العمل والتنفيذ التفصيلية:</span>
+                                </h4>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setInteractiveMode(prev => ({ ...prev, [index]: !prev[index] }))}
+                                  style={{
+                                    background: isStepMode ? 'var(--emerald-primary)' : '#ffffff',
+                                    color: isStepMode ? '#ffffff' : 'var(--text-secondary)',
+                                    border: '1px solid var(--border-medium)',
+                                    borderRadius: '6px',
+                                    padding: '0.35rem 0.75rem',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem'
+                                  }}
+                                >
+                                  {isStepMode ? <CheckSquare size={14} /> : <Square size={14} />}
+                                  <span>{isStepMode ? 'إلغاء وضع التتبع' : 'تفعيل نمط التتبع التفاعلي (Checklist)'}</span>
+                                </button>
+                              </div>
+
+                              {/* Interactive Progress Bar */}
+                              {isStepMode && (
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                                    <span>نسبة إنجاز الخطوات: {progressPercent}%</span>
+                                    <span>{completedStepsCount} من أصل {totalStepsCount} مكتملة</span>
+                                  </div>
+                                  <div className="steps-progress-bar-bg">
+                                    <div className="steps-progress-fill" style={{ width: `${progressPercent}%` }} />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Interactive Steps List or Standard Steps */}
+                              {isStepMode && project.parsedSteps ? (
+                                <div>
+                                  {project.parsedSteps.map(step => (
+                                    <div
+                                      key={step.id}
+                                      className={`step-card-item ${step.completed ? 'completed' : ''}`}
+                                    >
+                                      <button
+                                        type="button"
+                                        className={`step-checkbox-btn ${step.completed ? 'checked' : ''}`}
+                                        onClick={() => handleToggleStep(index, step.id)}
+                                      >
+                                        {step.completed && <Check size={16} strokeWidth={3} />}
+                                      </button>
+                                      <div className="step-content-body">
+                                        <h5>{step.title}</h5>
+                                        <p>{step.detail}</p>
+                                        {step.tip && (
+                                          <div className="step-tip-box">
+                                            <Lightbulb size={13} />
+                                            <span>نصيحة تقنية: {step.tip}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="steps-detail-container" style={{ whiteSpace: 'pre-line' }}>
+                                  {project.steps}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 5. Scientific Principle (المبدأ العلمي والبيئي) */}
+                            {project.principle && (
+                              <div className="project-field-block">
+                                <h4 style={{ color: 'var(--navy-primary)' }}>
+                                  <Sparkles size={16} />
+                                  <span>المبدأ العلمي أو البيئي للمشروع:</span>
+                                </h4>
+                                <p style={{ whiteSpace: 'pre-line' }}>{project.principle}</p>
+                              </div>
+                            )}
+
+                            {/* 6. Safety & Warnings (الأمان والتحذيرات) */}
+                            {project.safety && (
+                              <div className="safety-warning-banner">
+                                <h4 style={{ fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <AlertTriangle size={16} />
+                                  <span>الأمان والتحذيرات:</span>
+                                </h4>
+                                <div style={{ whiteSpace: 'pre-line' }}>{project.safety}</div>
+                              </div>
+                            )}
+
+                            {/* 7. Expected Results (النتائج المتوقعة) */}
+                            {project.results && (
+                              <div className="project-field-block">
+                                <h4 style={{ color: 'var(--gold-primary)' }}>
+                                  <Target size={16} />
+                                  <span>النتائج المتوقعة:</span>
+                                </h4>
+                                <p style={{ whiteSpace: 'pre-line' }}>{project.results}</p>
+                              </div>
+                            )}
+
+                            {/* 8. How to Develop (كيف يمكن تطوير المشروع؟) */}
+                            {project.development && (
+                              <div className="project-field-block">
+                                <h4>
+                                  <Lightbulb size={16} />
+                                  <span>كيف يمكن تطوير المشروع؟:</span>
+                                </h4>
+                                <p style={{ whiteSpace: 'pre-line' }}>{project.development}</p>
+                              </div>
+                            )}
+
+                            {/* 9. Sustainability Impact (كيف يخدم الاستدامة البيئية؟) */}
+                            {project.sustainability && (
+                              <div className="sustainability-impact-box">
+                                <h4 style={{ fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <Leaf size={16} />
+                                  <span>كيف يخدم الاستدامة البيئية؟:</span>
+                                </h4>
+                                <div style={{ whiteSpace: 'pre-line' }}>{project.sustainability}</div>
+                              </div>
+                            )}
+
+                            {/* Action Buttons: Save | Share | Completed | Consult AI */}
+                            <div className="project-card-footer-actions" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+                              <button
+                                type="button"
+                                className="btn-contextual-chat"
+                                onClick={() => handleConsultExpertForProject(project)}
+                              >
+                                <MessageSquare size={15} />
+                                <span>استشر الخبير حول هذا المشروع</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-action-outline"
+                                onClick={() => handleSaveProject(project)}
+                              >
+                                <Star size={15} color="var(--gold-primary)" />
+                                <span>حفظ المشروع</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-action-outline"
+                                onClick={() => handleShareProject(project, index)}
+                              >
+                                {copiedIndex === index ? <CheckCheck size={15} color="var(--emerald-primary)" /> : <Share2 size={15} />}
+                                <span>{copiedIndex === index ? 'تم النسخ!' : 'مشاركة ونسخ'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-action-completed"
+                                onClick={() => handleMarkCompleted(project)}
+                              >
+                                <CheckCircle size={16} />
+                                <span>تأكيد الإنجاز الرسمي (+30 نقطة)</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Follow-up Questions Section */}
+                  {followUpQuestions.length > 0 && (
+                    <div style={{ marginTop: '2.5rem', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <HelpCircle size={18} color="var(--emerald-primary)" />
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800 }}>أسئلة ذكية لتخصيص أدق لمشروعك القادم:</h4>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {followUpQuestions.map((q, qIdx) => (
+                          <div
+                            key={qIdx}
+                            onClick={() => handleAskFollowUp(q)}
+                            style={{
+                              padding: '0.75rem 1rem',
+                              background: 'var(--bg-surface-soft)',
+                              borderRadius: '8px',
+                              fontSize: '0.86rem',
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              border: '1px solid transparent',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = 'var(--emerald-primary)';
+                              e.currentTarget.style.background = '#ffffff';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'transparent';
+                              e.currentTarget.style.background = 'var(--bg-surface-soft)';
+                            }}
+                          >
+                            <span>{q}</span>
+                            <ArrowLeft size={14} color="var(--emerald-primary)" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 2: SAVED PROJECTS
+            ============================================================ */}
+        {activeTab === 'saved' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>مشاريعك المحفوظة ({savedProjects.length})</h3>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>قائمتك المختارة من مشاريع إعادة التدوير المبتكرة للرجوع إليها وتنفيذها لاحقاً</p>
+              </div>
+            </div>
+
+            {savedProjects.length === 0 ? (
+              <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '4rem 2rem', textAlign: 'center' }}>
+                <Star size={48} color="var(--border-strong)" style={{ margin: '0 auto 1rem' }} />
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.4rem' }}>لا توجد مشاريع محفوظة بعد</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  يمكنك حفظ أي مشروع مبتكر أثناء تصفح المشاريع المقترحة للرجوع إليه في أي وقت.
+                </p>
+                <button
+                  type="button"
+                  className="btn-action-outline"
+                  onClick={() => setActiveTab('generator')}
+                >
+                  <Lightbulb size={16} />
+                  <span>انتقل لإنشاء المشاريع</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                {savedProjects.map((proj, sIdx) => (
+                  <div key={sIdx} style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                    <div style={{ width: '100%', height: '180px', background: '#0f172a', position: 'relative' }}>
+                      <img
+                        src={proj.gallery?.finished || proj.generatedImage || '/step1.jpg'}
+                        alt={proj.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    <div style={{ padding: '1.25rem' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                        {proj.name}
+                      </h4>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem', height: '3.6em', overflow: 'hidden' }}>
+                        {proj.idea}
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          <Clock size={12} style={{ display: 'inline', marginLeft: '0.2rem' }} />
+                          {proj.time}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSavedProjects(prev => prev.filter((_, i) => i !== sIdx))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                          <Trash2 size={13} />
+                          <span>حذف</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 3: CHAT WITH RECYCLING EXPERT
+            ============================================================ */}
+        {activeTab === 'chat' && (
+          <div className="expert-chat-card">
+            {/* Chat Header */}
+            <div className="chat-card-top">
+              <div className="brand-emblem-box" style={{ width: 44, height: 44 }}>
+                <Recycle size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>اسأل خبير الاستدامة الذكي (Gemini AI Advisor)</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {projectContextForChat ? (
+                    <span style={{ color: 'var(--emerald-primary)', fontWeight: 700 }}>
+                      🎯 الدردشة مرتبطة بمشروعك الحالي: "{projectContextForChat.name}"
+                    </span>
+                  ) : (
+                    'استفسر عن أي مادة، طرق القص، أدوات الربط، أو معايير السلامة والتصميم'
+                  )}
+                </p>
+              </div>
+
+              {projectContextForChat && (
+                <button
+                  type="button"
+                  onClick={() => setProjectContextForChat(null)}
+                  style={{
+                    marginRight: 'auto',
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.3rem 0.6rem',
+                    fontSize: '0.74rem',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  إلغاء ربط المشروع
+                </button>
+              )}
+            </div>
+
+            {/* Chat Messages */}
+            <div className="chat-messages-area">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`chat-bubble ${msg.role}`}>
+                  {msg.content}
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>خبير الذكاء الاصطناعي يحلل استفسارك ويكتب الإجابة...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input Bar */}
+            <form onSubmit={handleSendChatMessage} className="chat-input-bar">
+              <input
+                type="text"
+                className="chat-text-input"
+                placeholder={projectContextForChat ? `اسأل عن تفاصيل تنفيذ "${projectContextForChat.name}"...` : "اكتب سؤالك هنا للخبير (مثلاً: كيف أقص الزجاج بأمان؟ ما بديل الغراء الساخن؟)..."}
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                disabled={isChatLoading}
+              />
+              <button type="submit" className="btn-send-chat" disabled={isChatLoading}>
+                {isChatLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                <span>{isChatLoading ? 'انتظر...' : 'إرسال'}</span>
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 4: OFFICIAL CERTIFICATE & AUDIT (ISO 14044)
+            ============================================================ */}
+        {activeTab === 'certificate' && (
+          <div className="official-certificate-container">
+            {/* Top Certificate Actions */}
+            <div className="cert-action-bar-top">
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>وثيقة الاعتماد البيئي والوفر الكربوني الرسمي</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>شهادة رقمية رسمية معتمدة وفق المعايير البيئية الدولية ISO 14044</p>
+              </div>
+
+              <button className="btn-print-official" onClick={() => window.print()}>
+                <Printer size={18} />
+                <span>طباعة الوثيقة الرسمية (Print / PDF)</span>
+              </button>
+            </div>
+
+            {/* Official Formal Certificate Paper Frame */}
+            <div className="official-certificate-paper">
+              <div className="cert-guilloche-border" />
+              <div className="cert-guilloche-inner" />
+
+              <div className="cert-header-institutional">
+                <div className="cert-emblem-seal">
+                  <Shield size={36} />
+                </div>
+                <h2>شهادة اعتماد الوفر الكربوني والتحويل المستدام</h2>
+                <span className="cert-subtitle-en">OFFICIAL CERTIFICATE OF CARBON OFFSET & CIRCULAR UPCYCLING</span>
+              </div>
+
+              <div className="cert-body-text">
+                تشهد المنظومة الوطنية لإعادة التدوير والاستدامة البيئية الذكية بأن المشارك قد أنجز بنجاح
+                مشروع إعادة التدوير المبتكر بالذكاء الاصطناعي:
+                <br />
+                <strong style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', display: 'block', margin: '0.75rem 0' }}>
+                  {certificateProject ? certificateProject.name : 'مشروع إعادة تدوير بيئي متعدد الخامات'}
+                </strong>
+                والذي تم تصميمه وتنفيذه وفق مواصفات الاقتصاد الدائري المعتمدة عالمياً.
+              </div>
+
+              {/* Certificate Image Feature if Available */}
+              {certificateProject?.gallery?.finished && (
+                <div style={{ maxWidth: '420px', margin: '1rem auto', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-medium)', boxShadow: 'var(--shadow-sm)' }}>
+                  <img
+                    src={certificateProject.gallery.finished}
+                    alt={certificateProject.name}
+                    style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                  />
+                  <div style={{ background: '#f8fafc', padding: '0.4rem', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    التوثيق البصري الرسمي للمنتج المنجز
+                  </div>
+                </div>
+              )}
+
+              {/* Impact Verified Table */}
+              <div className="cert-impact-table">
+                <div className="cert-impact-cell">
+                  <span>إجمالي الوفر الكربوني المعتمد</span>
+                  <h4>{impact.co2Saved.toFixed(2)} كغ CO₂</h4>
+                  <small>مكافئ غازات الاحتباس الحراري</small>
+                </div>
+
+                <div className="cert-impact-cell">
+                  <span>النفايات المحولة عن المرادم</span>
+                  <h4>{impact.wasteReduced.toFixed(2)} كغ</h4>
+                  <small>مواد صلبة معاد استخدامها</small>
+                </div>
+
+                <div className="cert-impact-cell">
+                  <span>مجموع النقاط البيئية</span>
+                  <h4>{environmentalPoints} نقطة</h4>
+                  <small>تصنيف: ممارس استدامة متقدم</small>
+                </div>
+              </div>
+
+              {/* Footer Signatures and Audit Code */}
+              <div className="cert-footer-audit">
+                <div className="cert-audit-signatures">
+                  <div className="signature-block">
+                    <div className="signature-line" />
+                    <span className="signature-role">رئيس هيئة تقييم دورة الحياة (LCA)</span>
+                  </div>
+                  <div className="signature-block">
+                    <div className="signature-line" />
+                    <span className="signature-role">المستشار البيئي للذكاء الاصطناعي</span>
+                  </div>
+                </div>
+
+                <div className="cert-qr-box">
+                  <QrCode size={48} color="var(--navy-primary)" />
+                  <span className="cert-serial-code">{certId}</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>تاريخ الاعتماد: {currentDate}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ============================================================
+          LIGHTBOX MODAL FOR ULTRA HIGH RES IMAGE PREVIEWS
+          ============================================================ */}
+      {lightboxImage && (
+        <div className="lightbox-backdrop" onClick={() => setLightboxImage(null)}>
+          <div className="lightbox-content" onClick={e => e.stopPropagation()}>
+            <div className="lightbox-header">
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>{lightboxImage.title}</h4>
+                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{lightboxImage.subtitle}</span>
+              </div>
+              <button
+                type="button"
+                className="lightbox-close-btn"
+                onClick={() => setLightboxImage(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <img src={lightboxImage.url} alt={lightboxImage.title} />
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          OFFICIAL FOOTER
+          ============================================================ */}
+      <footer className="official-app-footer">
+        <div className="footer-inner-content">
+          <div>
+            <strong>خبير إعادة التدوير الذكي V3 • المنظومة الوطنية المعتمدة</strong>
+            <p style={{ margin: '0.25rem 0 0' }}>جميع الحقوق محفوظة للمملكة © 2026</p>
+          </div>
+
+          <div className="footer-compliance-badges">
+            <span className="std-tag">ISO 14044 LCA Compliant</span>
+            <span className="std-tag">GHG Protocol Scope 3</span>
+            <span className="std-tag">Gemini AI Engine Powered</span>
+            <span className="std-tag">Multi-Image Visual Suite</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
