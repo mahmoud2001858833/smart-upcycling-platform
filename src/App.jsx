@@ -185,7 +185,7 @@ export default function App() {
     }
 
     if (allMaterials.length === 0) {
-      alert('يرجى اختيار أو كتابة المواد المتوفرة لديك ليولد الذكاء الاصطناعي مشاريع مخصصة لها');
+      showToast('يرجى اختيار أو كتابة المواد المتوفرة لديك ليولد الذكاء الاصطناعي مشاريع مخصصة لها', 'info');
       return;
     }
 
@@ -203,15 +203,15 @@ export default function App() {
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
         setFollowUpQuestions(res.followUpQuestions || []);
-        setExpandedProject(0); // expand first project by default
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
+        showToast('تم توليد المشاريع بنجاح! انقر على أي مشروع لعرض تفاصيله الكاملة ✨');
       } else {
-        alert('تعذر توليد المشاريع، يرجى المحاولة مجدداً');
+        showToast('تعذر توليد المشاريع، يرجى المحاولة مجدداً', 'error');
       }
     } catch (err) {
       console.error('Error generating AI projects:', err);
-      alert('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''));
+      showToast('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''), 'error');
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -459,7 +459,6 @@ export default function App() {
         if (res.success && res.projects?.length > 0) {
           setProjects(res.projects);
           setFollowUpQuestions(res.followUpQuestions || []);
-          setExpandedProject(0);
           setCertificateProject(res.projects[0]);
           setEnvironmentalPoints(p => p + 20);
           showToast('تم فحص وتحليل الصورة واستخراج المشاريع بنجاح! 📸');
