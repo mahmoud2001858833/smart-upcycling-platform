@@ -5298,4 +5298,175 @@ img {
   transform: translateX(-2px);
 }
 
+/* ============================================================
+   AI AUTONOMOUS MISSION DIRECTOR BANNER (الموجّه الذكي الفعّال)
+   ============================================================ */
+.ai-mission-director-banner {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.08) 0%, rgba(13, 148, 136, 0.06) 50%, rgba(15, 23, 42, 0.04) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: 1.25rem;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.08);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ai-mission-director-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 140px;
+  height: 100%;
+  background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .ai-mission-director-banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+}
+
+.ai-mission-director-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+}
+
+.ai-mission-avatar-pulse {
+  width: 44px;
+  height: 44px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #059669, #0d9488);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  position: relative;
+}
+
+.ai-mission-avatar-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 1.15rem;
+  border: 1.5px solid rgba(52, 211, 153, 0.5);
+  animation: pulse 2s infinite;
+}
+
+.ai-mission-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ai-mission-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ai-mission-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #047857;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+}
+
+.ai-mission-status-dot {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0d9488;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-mission-status-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.ai-mission-headline {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.ai-mission-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.ai-mission-action-wrap {
+  flex-shrink: 0;
+}
+
+.btn-ai-autopilot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 0.95rem;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 50%, #0284c7 100%);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(13, 148, 136, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.btn-ai-autopilot:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(13, 148, 136, 0.45);
+}
+
+.btn-ai-autopilot:active {
+  transform: scale(0.97);
+}
+
+/* Modal Ultra Glass Overhaul */
+.modal-backdrop,
+.project-detail-modal-backdrop,
+.auth-modal-backdrop {
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+}
+
+.auth-modal-card {
+  border: 1.5px solid rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 35px rgba(16, 185, 129, 0.12) !important;
+}
+
+
 

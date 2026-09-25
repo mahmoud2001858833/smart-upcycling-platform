@@ -3,7 +3,8 @@ import {
   ArrowRight, Heart, Share2, Printer, Volume2, VolumeX, CheckCircle, 
   Clock, Shield, Award, Sparkles, AlertCircle, ChevronLeft, 
   ChevronRight, Wrench, Layers, Leaf, Droplets, Zap, 
-  DollarSign, CheckSquare, Square, Eye, MessageCircle
+  DollarSign, CheckSquare, Square, Eye, MessageCircle,
+  Lightbulb, Bot
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
@@ -25,6 +26,7 @@ export default function ProjectDedicatedPage({
   const [workshopMode, setWorkshopMode] = useState(false);
   const [activeAgentTab, setActiveAgentTab] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [activeStepAiTool, setActiveStepAiTool] = useState(null); // 'alternative' | 'safety' | null
 
 
   // Scroll to top on mount
@@ -839,6 +841,59 @@ export default function ProjectDedicatedPage({
                       <div className="p-3 rounded-xl bg-rose-950/25 border border-rose-800/30 text-xs text-rose-300 flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <span><strong>تنبيه الأمان:</strong> {step.infographic.safetyNotice}</span>
+                      </div>
+                    )}
+
+                    {/* Interactive AI Step Copilot Tools Strip */}
+                    <div className="pt-2.5 border-t border-neutral-800 flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] text-neutral-400 font-bold flex items-center gap-1">
+                        <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>الموجّه الذكي للخطوة:</span>
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveStepAiTool(activeStepAiTool === 'alternative' ? null : 'alternative')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border ${
+                          activeStepAiTool === 'alternative'
+                            ? 'bg-amber-500/25 text-amber-300 border-amber-500/50 shadow-sm'
+                            : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:border-amber-500/40'
+                        }`}
+                      >
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                        <span>بديل منزلي مبسط</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveStepAiTool(activeStepAiTool === 'safety' ? null : 'safety')}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border ${
+                          activeStepAiTool === 'safety'
+                            ? 'bg-rose-500/25 text-rose-300 border-rose-500/50 shadow-sm'
+                            : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:border-rose-500/40'
+                        }`}
+                      >
+                        <Shield className="w-3.5 h-3.5 text-rose-400" />
+                        <span>فحص أمان الخطوة</span>
+                      </button>
+                    </div>
+
+                    {/* Dynamic AI Guidance Drawers */}
+                    {activeStepAiTool === 'alternative' && (
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/30 to-neutral-950 border border-amber-500/30 text-xs text-amber-200 leading-relaxed space-y-1 animate-fade-in">
+                        <strong className="text-amber-400 block font-bold">💡 توجيه مهندس الورشة للبدائل المنزلية:</strong>
+                        <p className="text-neutral-300">
+                          إذا لم تتوفر لديك أدوات التثبيت أو القص المتخصصة لهذه المرحلة، يمكنك استخدام مسطرة معدنية مع مشرط حاد وتكرار التمرير بهدوء كبديل للمنشار، أو استعمال شمع السيليكون الساخن كبديل مؤقت للغراء مع الضغط لمدة 45 ثانية متواصلة لضمان الالتصاق.
+                        </p>
+                      </div>
+                    )}
+
+                    {activeStepAiTool === 'safety' && (
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-950/30 to-neutral-950 border border-rose-500/30 text-xs text-rose-200 leading-relaxed space-y-1 animate-fade-in">
+                        <strong className="text-rose-400 block font-bold">🛡️ فحص السلامة الميداني (كابتن رامي):</strong>
+                        <p className="text-neutral-300">
+                          احرص على ارتداء قفازات عمل مانعة للانزلاق لتجنب الجروح أثناء التشكيل، وتأكد من تهوية الغرفة جيداً في حال استخدام المواد اللاصقة أو البخاخات، واحرص على تثبيت القطع بملقط قبل تطبيق أي قوة ميكانيكية.
+                        </p>
                       </div>
                     )}
                   </div>
