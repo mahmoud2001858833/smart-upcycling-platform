@@ -23,7 +23,9 @@ import CarbonCalculatorView from './components/CarbonCalculatorView.jsx';
 import LcaDirectoryBrowser from './components/LcaDirectoryBrowser.jsx';
 import { useAuth } from './context/AuthContext';
 import AuthModal from './components/AuthModal';
-import ProjectDetailModal from './components/ProjectDetailModal.jsx';
+import MaterialsLibraryModal from './components/MaterialsLibraryModal.jsx';
+import ProjectDedicatedPage from './components/ProjectDedicatedPage.jsx';
+
 import {
   getSavedProjects,
   saveProjectToCloud,
@@ -31,7 +33,7 @@ import {
   getUserProfileStats,
   updateUserProfileStats
 } from './utils/supabaseSync.js';
-import { handleImageFallback, generateSvgBlueprint } from './utils/imageCatalog.js';
+import { handleImageFallback, generateSvgBlueprint, preloadProjectImages } from './utils/imageCatalog.js';
 import './index.css';
 
 export default function App() {
@@ -39,8 +41,10 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedProjectModal, setSelectedProjectModal] = useState(null);
+  const [isMaterialsLibraryOpen, setIsMaterialsLibraryOpen] = useState(false);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
+
 
   // Handle click outside for user profile menu
   useEffect(() => {
@@ -143,6 +147,33 @@ export default function App() {
     return () => { isMounted = false; };
   }, [user]);
 
+  // Deep-linking URL hash sync for dedicated project pages
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#project/')) {
+        const projId = hash.replace('#project/', '');
+        const allList = [...projects, ...savedProjects];
+        const found = allList.find(p => p.id === projId || p.name === projId);
+        if (found) {
+          setSelectedProjectModal(found);
+        }
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [projects, savedProjects]);
+
+  const handleApplyLibraryMaterials = (selectedNames) => {
+    if (selectedNames && selectedNames.length > 0) {
+      setSelectedMaterials(selectedNames);
+      showToast(`🌿 تم تحديد ${selectedNames.length} مادة من المكتبة الموسعة بنجاح!`, 'success');
+    }
+  };
+
+
   // Chat with Expert State
   const [chatMessages, setChatMessages] = useState([
     {
@@ -205,6 +236,7 @@ export default function App() {
 
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
+        res.projects.forEach(p => preloadProjectImages(p));
         setFollowUpQuestions(res.followUpQuestions || []);
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
@@ -834,12 +866,38 @@ export default function App() {
                 اختر من قائمة المواد الشائعة أو أدخل أي مواد يدوياً ليقوم الذكاء الاصطناعي بابتكار مشاريع وتوليد 3 صور لكل مشروع:
               </p>
 
-              {/* Common Materials Chips */}
+              {/* Common Materials Chips & Expanded Library Trigger */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                  المواد الشائعة (انقر للاختيار):
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    المواد الشائعة (انقر للاختيار أو تصفح المكتبة الموسعة):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsMaterialsLibraryOpen(true)}
+                    className="library-open-btn"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: '0.75rem',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      color: '#059669',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>📚 فتح مكتبة المواد الموسعة (61+ مادة مع فحص التوافق)</span>
+                  </button>
+                </div>
                 <div className="material-chips-wrapper">
+
                   {COMMON_MATERIALS.map(mat => {
                     const isSelected = selectedMaterials.includes(mat);
                     return (
@@ -1523,30 +1581,37 @@ export default function App() {
       )}
 
       {/* ============================================================
-          DEDICATED PROJECT DETAIL POP-UP MODAL (صفحة المشروع المنبثقة)
+          DEDICATED FULL PROJECT PAGE (صفحة المشروع الخاصة المنبثقة)
           ============================================================ */}
-      <ProjectDetailModal
-        project={selectedProjectModal}
-        isOpen={!!selectedProjectModal}
-        onClose={() => setSelectedProjectModal(null)}
-        onSaveProject={handleSaveProject}
-        isSaved={selectedProjectModal ? savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id)) : false}
-        onShareProject={(proj) => handleShareProject(proj, projects.findIndex(p => p.name === proj.name))}
-        isCopied={copiedIndex !== null}
-        onMarkCompleted={handleMarkCompleted}
-        onConsultExpert={handleConsultExpertForProject}
-        onOpenCertificate={(proj) => {
-          setCertificateProject(proj);
-          setActiveTab('certificate');
-        }}
-        onSwitchGalleryView={(viewKey) => handleSwitchGalleryView(null, viewKey)}
-        onRegenerateView={(viewKey) => handleRegenerateView(selectedProjectModal, null, viewKey)}
-        isRegenerating={!!generatingImageFor}
-        onToggleStep={(stepId) => handleToggleStep(null, stepId)}
-        onOpenLightbox={setLightboxImage}
-        onRegenerateStepImage={handleRegenerateStepImage}
-        isRegeneratingStepId={regeneratingStepId}
+      {selectedProjectModal && (
+        <div className="dedicated-page-overlay fixed inset-0 z-50 overflow-y-auto">
+          <ProjectDedicatedPage
+            project={selectedProjectModal}
+            onBack={() => {
+              setSelectedProjectModal(null);
+              window.location.hash = '';
+            }}
+            isSaved={savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id))}
+            onToggleSave={handleSaveProject}
+            onOpenCertificate={(proj) => {
+              setCertificateProject(proj);
+              setSelectedProjectModal(null);
+              setActiveTab('certificate');
+            }}
+          />
+        </div>
+      )}
+
+      {/* ============================================================
+          EXPANDED MATERIALS LIBRARY MODAL (مكتبة المواد الموسعة)
+          ============================================================ */}
+      <MaterialsLibraryModal
+        isOpen={isMaterialsLibraryOpen}
+        onClose={() => setIsMaterialsLibraryOpen(false)}
+        initialSelected={selectedMaterials}
+        onApplyMaterials={handleApplyLibraryMaterials}
       />
+
 
       {/* ============================================================
           SUPABASE AUTHENTICATION MODAL

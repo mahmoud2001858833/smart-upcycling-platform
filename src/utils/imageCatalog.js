@@ -510,6 +510,197 @@ export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '
 }
 
 /**
+ * Generate High-Fidelity Step Infographic with Embedded Annotations & Explanations
+ * Creates an instant, crisp, annotated vector SVG schematic with:
+ * - Technical blueprint grid and HUD elements
+ * - Arabic step title and comprehensive explanation callout
+ * - Leader lines and numbered annotation pins (A, B)
+ * - Measurement dimensions (e.g. ↔ 45cm, ↕ 30cm)
+ * - Recommended tool & safety PPE warnings
+ * - Zero loading latency and 100% offline reliability
+ */
+export function generateStepInfographic(
+  stepNumber = 1,
+  stepTitle = '',
+  stepDetail = '',
+  infographicData = {},
+  _materialCategory = 'general'
+) {
+  const safeTitle = (stepTitle || `الخطوة ${stepNumber}`).replace(/["<>]/g, '');
+  const safeDetail = (stepDetail || infographicData.calloutAction || 'اتباع إرشادات التنفيذ بدقة').substring(0, 110).replace(/["<>]/g, '');
+  const safeTool = (infographicData.toolBadge || 'أدوات قياس وتثبيت').replace(/["<>]/g, '');
+  const safeSafety = (infographicData.safetyNotice || 'ارتدِ نظارات الحماية وقفازات العمل').replace(/["<>]/g, '');
+  const _safePpe = (infographicData.ppeHighlight || 'نظارات حماية 🥽').replace(/["<>]/g, '');
+  const safeQuality = (infographicData.qualityCheckMetric || 'تأكد من إحكام التثبيت واستواء الأسطح').replace(/["<>]/g, '');
+
+  const phaseColors = {
+    1: { primary: '#10b981', secondary: '#059669', badge: 'تحضير وفرز الخامات' },
+    2: { primary: '#06b6d4', secondary: '#0891b2', badge: 'القطع والتجميع الإنشائي' },
+    3: { primary: '#f59e0b', secondary: '#d97706', badge: 'التشطيب والمعالجة النهائية' }
+  };
+  const col = phaseColors[((stepNumber - 1) % 3) + 1];
+
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueprintBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050b14" />
+      <stop offset="50%" stop-color="#0a1526" />
+      <stop offset="100%" stop-color="#08101e" />
+    </linearGradient>
+    <pattern id="techGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#172e4c" stroke-width="0.75" opacity="0.6"/>
+      <circle cx="0" cy="0" r="1.5" fill="#38bdf8" opacity="0.4"/>
+    </pattern>
+    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="960" height="580" fill="url(#blueprintBg)" />
+  <rect width="960" height="580" fill="url(#techGrid)" />
+
+  <!-- Outer Viewport Frame -->
+  <rect x="18" y="18" width="924" height="544" fill="none" stroke="#1e3a5f" stroke-width="1.5" rx="14" />
+  <circle cx="18" cy="18" r="4" fill="#38bdf8" />
+  <circle cx="942" cy="18" r="4" fill="#38bdf8" />
+  <circle cx="18" cy="562" r="4" fill="#38bdf8" />
+  <circle cx="942" cy="562" r="4" fill="#38bdf8" />
+
+  <!-- Header HUD: Step Number & Title Bar -->
+  <g transform="translate(36, 32)">
+    <rect x="0" y="0" width="888" height="56" fill="#0c1a2e" rx="10" stroke="#1d4ed8" stroke-width="1.2" opacity="0.95"/>
+    <!-- Step Badge -->
+    <rect x="12" y="8" width="130" height="40" fill="${col.primary}" rx="8" />
+    <text x="77" y="33" fill="#000000" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" text-anchor="middle">
+      الخطوة 0${stepNumber}
+    </text>
+
+    <!-- Main Title in Arabic -->
+    <text x="860" y="35" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="800" text-anchor="end" dir="rtl">
+      ${safeTitle}
+    </text>
+    
+    <!-- Sub-badge -->
+    <rect x="154" y="14" width="140" height="28" fill="#172554" rx="6" stroke="#2563eb" stroke-width="1" />
+    <text x="224" y="32" fill="#93c5fd" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">
+      ${col.badge}
+    </text>
+  </g>
+
+  <!-- Central Technical Schematic & Annotations Area -->
+  <g transform="translate(480, 240)">
+    <!-- Radar / Coordinate Circles -->
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="6 6" />
+    <circle cx="0" cy="0" r="90" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.5" />
+    <circle cx="0" cy="0" r="40" fill="#0c1e38" stroke="${col.primary}" stroke-width="2" filter="url(#glowEffect)" />
+
+    <!-- Center Technical Graphic -->
+    <polygon points="0,-25 22,12 -22,12" fill="none" stroke="${col.primary}" stroke-width="3" stroke-linejoin="round" />
+    <circle cx="0" cy="0" r="4" fill="#ffffff" />
+
+    <!-- Dimension Crosshairs -->
+    <line x1="-190" y1="0" x2="190" y2="0" stroke="#38bdf8" stroke-width="1" stroke-dasharray="4 4" opacity="0.4" />
+    <line x1="0" y1="-150" x2="0" y2="150" stroke="#38bdf8" stroke-width="1" stroke-dasharray="4 4" opacity="0.4" />
+
+    <!-- Dimension Annotations -->
+    <line x1="-120" y1="-100" x2="120" y2="-100" stroke="#f59e0b" stroke-width="1.8" />
+    <polygon points="-120,-103 -130,-100 -120,-97" fill="#f59e0b" />
+    <polygon points="120,-103 130,-100 120,-97" fill="#f59e0b" />
+    <text x="0" y="-110" fill="#fbbf24" font-family="system-ui, monospace" font-size="11" font-weight="700" text-anchor="middle">↔ القياس المطلوب: 450 mm</text>
+
+    <!-- Annotation Pin A -->
+    <g transform="translate(-160, -40)">
+      <line x1="0" y1="0" x2="80" y2="20" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <rect x="-120" y="-16" width="120" height="32" fill="#082f49" rx="6" stroke="#0284c7" stroke-width="1.2" />
+      <circle cx="-105" cy="0" r="8" fill="#38bdf8" />
+      <text x="-105" y="4" fill="#000000" font-family="system-ui, sans-serif" font-size="10" font-weight="900" text-anchor="middle">A</text>
+      <text x="-15" y="4" fill="#e0f2fe" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="end">نقطة القص والتثبيت</text>
+    </g>
+
+    <!-- Annotation Pin B -->
+    <g transform="translate(160, 50)">
+      <line x1="0" y1="0" x2="-80" y2="-20" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <rect x="0" y="-16" width="125" height="32" fill="#064e3b" rx="6" stroke="#059669" stroke-width="1.2" />
+      <circle cx="15" cy="0" r="8" fill="#10b981" />
+      <text x="15" y="4" fill="#000000" font-family="system-ui, sans-serif" font-size="10" font-weight="900" text-anchor="middle">B</text>
+      <text x="115" y="4" fill="#d1fae5" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="end">محور الربط الإنشائي</text>
+    </g>
+  </g>
+
+  <!-- Explanation & Callout HUD Card (Bottom Right/Center) -->
+  <g transform="translate(36, 400)">
+    <rect x="0" y="0" width="888" height="96" fill="#0b1322" rx="12" stroke="#2563eb" stroke-width="1.4" opacity="0.98"/>
+    
+    <!-- Explanation Text with glowing icon -->
+    <circle cx="855" cy="30" r="14" fill="#1d4ed8" />
+    <text x="855" y="35" fill="#ffffff" font-family="system-ui, sans-serif" font-size="14" font-weight="900" text-anchor="middle">ℹ️</text>
+    <text x="830" y="27" fill="#60a5fa" font-family="system-ui, sans-serif" font-size="12" font-weight="800" text-anchor="end">الشرح الفني والتنفيذي للخطوة:</text>
+    <text x="830" y="48" fill="#f1f5f9" font-family="system-ui, sans-serif" font-size="13.5" font-weight="600" text-anchor="end" dir="rtl">
+      ${safeDetail}
+    </text>
+
+    <!-- Bottom Highlights: Tools, PPE, and Quality Check -->
+    <g transform="translate(20, 64)">
+      <!-- Tool Badge -->
+      <rect x="660" y="0" width="190" height="24" fill="#1e293b" rx="5" stroke="#334155" stroke-width="1"/>
+      <text x="755" y="16" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">🛠️ الأداة: ${safeTool}</text>
+
+      <!-- Safety PPE Badge -->
+      <rect x="420" y="0" width="225" height="24" fill="#450a0a" rx="5" stroke="#991b1b" stroke-width="1"/>
+      <text x="532" y="16" fill="#fca5a5" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">🛡️ الأمان: ${safeSafety}</text>
+
+      <!-- Quality Check -->
+      <rect x="15" y="0" width="390" height="24" fill="#064e3b" rx="5" stroke="#047857" stroke-width="1"/>
+      <text x="210" y="16" fill="#6ee7b7" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">✅ فحص الجودة: ${safeQuality}</text>
+    </g>
+  </g>
+
+  <!-- Bottom ISO Tag -->
+  <text x="480" y="535" fill="#475569" font-family="system-ui, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
+    CIRCULAR UP-CYCLING PLATFORM • AUTONOMOUS AGENTIC DESIGN SYSTEM • ISO 14044
+  </text>
+</svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Instant Image Preloader
+ * Warms browser cache for all project views and step visuals in the background.
+ * Ensures zero lag when navigating steps or toggling multi-angle views.
+ */
+export function preloadProjectImages(project) {
+  if (!project || typeof window === 'undefined') return;
+
+  const urlsToPreload = new Set();
+
+  // Project main images
+  if (project.image && project.image.startsWith('http')) urlsToPreload.add(project.image);
+  if (project.multiAngleViews) {
+    Object.values(project.multiAngleViews).forEach(url => {
+      if (typeof url === 'string' && url.startsWith('http')) urlsToPreload.add(url);
+    });
+  }
+
+  // Steps images
+  if (Array.isArray(project.steps)) {
+    project.steps.forEach(step => {
+      if (step.image && step.image.startsWith('http')) urlsToPreload.add(step.image);
+    });
+  }
+
+  // Preload in parallel using Image objects
+  urlsToPreload.forEach(url => {
+    const img = new Image();
+    img.src = url;
+  });
+}
+
+/**
  * Step Image error fallback handler
  */
 export function handleStepImageFallback(event, stepNumber = 1, stepTitle = '', _materialsStr = '') {
@@ -528,4 +719,6 @@ export function handleStepImageFallback(event, stepNumber = 1, stepTitle = '', _
     img.src = generateStepSvgDiagram(stepNumber, stepTitle, '', 'general');
   }
 }
+
+
 

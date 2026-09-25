@@ -40,6 +40,8 @@ import {
   getStepImage,
   getNextStepImage
 } from './imageCatalog.js';
+import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
+
 
 /**
  * Generate 3 distinct verified HD images for each project (Finished, Assembly, InUse)
@@ -212,15 +214,21 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
       const metrics = deriveEngineeringMetrics(proj, materials || '');
       const parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, proj.materials || materials);
 
-      return {
+      const baseProj = {
         ...proj,
         id: `proj-ai-${Date.now()}-${idx}`,
+        title: proj.name,
         gallery,
         generatedImage: proj.generatedImage || gallery.finished,
+        image: proj.generatedImage || gallery.finished,
+        multiAngleViews: gallery,
         activeGalleryView: 'finished', // 'finished' | 'assembly' | 'inUse'
         metrics,
-        parsedSteps
+        parsedSteps,
+        steps: parsedSteps
       };
+
+      return orchestrateProjectSwarm(baseProj, proj.materials || materials);
     });
 
     return {
@@ -468,15 +476,20 @@ function generateTailoredFallbackProjects(materialsStr, userLevel, _projectType)
     const gallery = buildMultiImageGallery(p.name, p.idea, p.materials, idx);
     const metrics = deriveEngineeringMetrics(p, materialsStr || '');
     const parsedSteps = parseStepsToStructuredList(p.steps, p.name, p.materials);
-    return {
+    const baseProj = {
       ...p,
       id: `proj-smart-${Date.now()}-${idx}`,
+      title: p.name,
       gallery,
       generatedImage: gallery.finished,
+      image: gallery.finished,
+      multiAngleViews: gallery,
       activeGalleryView: 'finished',
       metrics,
-      parsedSteps
+      parsedSteps,
+      steps: parsedSteps
     };
+    return orchestrateProjectSwarm(baseProj, p.materials || materialsStr);
   });
 
   return {
