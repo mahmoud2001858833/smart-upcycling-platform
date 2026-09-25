@@ -258,7 +258,7 @@ export default function ProjectDedicatedPage({
       </nav>
 
       {/* Main Content Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8" style={{ margin: '0 auto', width: '100%', maxWidth: '1440px' }}>
         
         {/* Project Header Banner */}
         <div className="bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 border border-emerald-500/20 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">

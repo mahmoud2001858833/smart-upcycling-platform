@@ -1635,7 +1635,22 @@ export default function App() {
           DEDICATED FULL PROJECT PAGE (صفحة المشروع الخاصة المنبثقة)
           ============================================================ */}
       {selectedProjectModal && (
-        <div className="dedicated-page-overlay fixed inset-0 z-50 overflow-y-auto">
+        <div 
+          className="dedicated-page-overlay" 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 9999, 
+            overflowY: 'auto', 
+            backgroundColor: '#09090b', 
+            width: '100vw', 
+            height: '100vh' 
+          }}
+        >
           <ProjectDedicatedPage
             project={selectedProjectModal}
             onBack={() => {
@@ -1657,6 +1672,7 @@ export default function App() {
           EXPANDED MATERIALS LIBRARY MODAL (مكتبة المواد الموسعة)
           ============================================================ */}
       <MaterialsLibraryModal
+        key={isMaterialsLibraryOpen ? 'open' : 'closed'}
         isOpen={isMaterialsLibraryOpen}
         onClose={() => setIsMaterialsLibraryOpen(false)}
         initialSelected={selectedMaterials}
