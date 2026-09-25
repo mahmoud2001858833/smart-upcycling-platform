@@ -1591,7 +1591,7 @@ export default function App() {
               setSelectedProjectModal(null);
               window.location.hash = '';
             }}
-            isSaved={savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id))}
+            isSaved={Array.isArray(savedProjects) && savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id))}
             onToggleSave={handleSaveProject}
             onOpenCertificate={(proj) => {
               setCertificateProject(proj);

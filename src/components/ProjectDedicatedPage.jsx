@@ -6,8 +6,9 @@ import {
   DollarSign, CheckSquare, Square, Eye, MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { SWARM_AGENTS } from '../utils/multiAgentSwarm';
-import { generateStepInfographic, getStepImage } from '../utils/imageCatalog';
+import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
+import { generateStepInfographic, getStepImage } from '../utils/imageCatalog.js';
+
 
 export default function ProjectDedicatedPage({ 
   project, 
@@ -58,8 +59,30 @@ export default function ProjectDedicatedPage({
   };
 
   const steps = useMemo(() => {
-    return project?.steps || project?.parsedSteps || [];
+    const raw = project?.steps || project?.parsedSteps;
+    if (Array.isArray(raw) && raw.length > 0) return raw;
+    return [
+      {
+        id: 1,
+        title: 'الفرز والتحضير الأولي للقطع',
+        detail: 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف.',
+        tip: 'استخدم ورق صنفرة خفيف لإزالة أي نتوءات خشنة أو حادة.'
+      },
+      {
+        id: 2,
+        title: 'الهندسة والتجميع الهيكلي',
+        detail: 'ربط القطع الأساسية وفق القياسات المحددة واستخدام وسيلة التثبيت المناسبة.',
+        tip: 'اترك المادة اللاصقة تجف بالكامل قبل تطبيق أي وزن.'
+      },
+      {
+        id: 3,
+        title: 'التشطيب واللمسات الجمالية',
+        detail: 'إضافة طبقة الحماية أو الطلاء البيئي وتركيب العناصر الوظيفية النهائية.',
+        tip: 'اختبر توازن المنتج في مكانه المخصص قبل الاستخدام الدائم.'
+      }
+    ];
   }, [project]);
+
 
   // Step completion progress percentage
   const progressPercent = useMemo(() => {

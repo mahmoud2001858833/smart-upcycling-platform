@@ -1,13 +1,16 @@
+import React, { useState, useMemo } from 'react';
 import { 
   Search, X, Check, Layers, 
   ArrowRight, ShieldCheck, Flame, Droplets
 } from 'lucide-react';
 
+
 import { 
   MATERIAL_CATEGORIES, 
   COMPREHENSIVE_MATERIALS, 
   evaluateMaterialsCompatibility 
-} from '../data/materialsLibrary';
+} from '../data/materialsLibrary.js';
+
 
 export default function MaterialsLibraryModal({ 
   isOpen, 
