@@ -891,6 +891,78 @@ export default function ProjectDedicatedPage({
           })()}
         </div>
 
+        {/* AI SWARM FUTURE SUGGESTIONS & DEVELOPMENT UPGRADES */}
+        <div className="bg-neutral-900 border border-emerald-500/20 rounded-3xl p-6 sm:p-7 space-y-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>اقتراحات التطوير الذكي</span>
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  أفكار وتوصيات فريق الوكلاء للارتقاء بالمشروع (Future Upgrades)
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-400">
+                مقترحات هندسية وتصميمية متقدمة من وكلاء الذكاء الاصطناعي لرفع كفاءة المنتج وإطالة عمره
+              </p>
+            </div>
+
+            <button
+              onClick={onBack}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1"
+            >
+              <span>العودة للمشاريع</span>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Primary Idea for Development */}
+          {project.development && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/30 to-neutral-950 border border-amber-500/30 text-amber-200 text-xs leading-relaxed flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">الفكرة المحورية للتطوير:</span>
+                <span>{project.development}</span>
+              </div>
+            </div>
+          )}
+
+          {/* 3 Concrete Upgrade Avenues */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-850 space-y-2">
+              <div className="flex items-center gap-2 text-cyan-400 font-bold">
+                <Zap className="w-4 h-4" />
+                <span>الترقية التكنولوجية والذكاء (IoT)</span>
+              </div>
+              <p className="text-neutral-400 leading-relaxed">
+                إمكانية دمج مستشعر لمس أو شريط إضاءة LED ميكرو دافئ ببطارية ليثيوم قابلة للشحن عبر منفذ USB-C لرفع القيمة الوظيفية والجمالية.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-850 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                <Shield className="w-4 h-4" />
+                <span>تعزيز المتانة ومقاومة الطقس</span>
+              </div>
+              <p className="text-neutral-400 leading-relaxed">
+                تطبيق طبقة شمع عسل طبيعي أو ورنيش مائي متبخر خالٍ من المركبات العضوية المتطايرة (Zero-VOC) لحماية الخامات لـ 5 سنوات إضافية.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-850 space-y-2">
+              <div className="flex items-center gap-2 text-amber-400 font-bold">
+                <DollarSign className="w-4 h-4" />
+                <span>القيمة السوقية والاستثمارية</span>
+              </div>
+              <p className="text-neutral-400 leading-relaxed">
+                إمكانية تسويق هذا المنتج كقطعة حرفية يدوية مستدامة (Handcrafted Eco-Asset) بعائد ربحي يفوق 70% مقارنة بالبدائل التجارية.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* MATERIALS & TOOLS CHECKLIST */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Materials */}

@@ -6,7 +6,8 @@ import {
   Share2, BookOpen, Target, Shield, CheckCircle,
   Trophy, Calculator, Check, Trash2, Award, Printer,
   CheckCheck, QrCode, Sparkles, MessageSquare,
-  X, Database, LogIn, LogOut, HelpCircle, Layers
+  X, Database, LogIn, LogOut, HelpCircle, Layers,
+  Plus, Wand2
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -19,6 +20,11 @@ import {
 } from './utils/aiProjectEngine.js';
 import { calculateCollectiveOffset } from './utils/lcaCalculator.js';
 import { PRESET_SCENARIOS } from './data/presetScenarios.js';
+import { 
+  INSPIRATION_SUGGESTIONS, 
+  COMPANION_SUGGESTIONS_MAP, 
+  PROJECT_CUSTOMIZATION_SUGGESTIONS 
+} from './data/inspirationSuggestions.js';
 import CarbonCalculatorView from './components/CarbonCalculatorView.jsx';
 import LcaDirectoryBrowser from './components/LcaDirectoryBrowser.jsx';
 import { useAuth } from './context/AuthContext';
@@ -200,6 +206,49 @@ export default function App() {
     setSelectedMaterials(prev =>
       prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
     );
+  };
+
+  // Dynamic Companion Material Suggestions based on active selection
+  const companionSuggestions = useMemo(() => {
+    const list = new Set();
+    const currentText = [...selectedMaterials, materials].join(' ').toLowerCase();
+
+    Object.keys(COMPANION_SUGGESTIONS_MAP).forEach(key => {
+      if (currentText.includes(key.toLowerCase())) {
+        COMPANION_SUGGESTIONS_MAP[key].forEach(sug => {
+          if (!selectedMaterials.includes(sug)) {
+            list.add(sug);
+          }
+        });
+      }
+    });
+    return Array.from(list).slice(0, 5);
+  }, [selectedMaterials, materials]);
+
+  // Handle clicking an Inspiration Suggestion Card
+  const handleApplyInspiration = (sug) => {
+    setSelectedMaterials(sug.materials);
+    setUserLevel(sug.userLevel || 'adult');
+    setProjectType(sug.projectType || 'practical');
+    showToast(`✨ تم تطبيق اقتراح "${sug.title}" بنجاح! جاهز لابتكار المشاريع 🚀`, 'success');
+  };
+
+  // Handle adding a companion suggested material
+  const handleAddCompanionMaterial = (mat) => {
+    if (!selectedMaterials.includes(mat)) {
+      setSelectedMaterials(prev => [...prev, mat]);
+      showToast(`➕ تم إضافة خامة "${mat}" المقترحة ذكياً!`, 'success');
+    }
+  };
+
+  // Handle clicking a Project Customization Suggestion
+  const handleCustomizationSuggestion = (sug, project) => {
+    const target = project || projects[0] || selectedProjectModal;
+    setProjectContextForChat(target);
+    setActiveTab('chat');
+    const prompt = sug.promptTemplate(target);
+    setChatInput(prompt);
+    showToast(`💡 تم تحضير استشارة الخبير الذكي حول الاقتراح!`, 'info');
   };
 
   // Environmental impact calculations
@@ -870,6 +919,42 @@ export default function App() {
                 اختر من قائمة المواد الشائعة أو أدخل أي مواد يدوياً ليقوم الذكاء الاصطناعي بابتكار مشاريع وتوليد 3 صور لكل مشروع:
               </p>
 
+              {/* Quick Inspiration Suggestions Bar (اقتراحات ملهمة جاهزة) */}
+              <div className="inspiration-suggestions-box">
+                <div className="inspiration-header">
+                  <div className="inspiration-title">
+                    <Sparkles size={14} className="text-amber-500" />
+                    <span>💡 اقتراحات ملهمة جاهزة بنقرة واحدة (Quick Ideas):</span>
+                  </div>
+                  <span className="inspiration-subtitle">انقر على أي فكرة لتطبيق خاماتها وإعداداتها فورياً</span>
+                </div>
+                <div className="inspiration-cards-scroll">
+                  {INSPIRATION_SUGGESTIONS.map(sug => (
+                    <div
+                      key={sug.id}
+                      className="inspiration-card-pill"
+                      onClick={() => handleApplyInspiration(sug)}
+                      title={`تطبيق مواد: ${sug.materials.join(' + ')}`}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="inspiration-pill-top">
+                        <span className="inspiration-pill-badge" style={{ color: sug.color, borderColor: `${sug.color}40`, backgroundColor: sug.bgTint }}>
+                          {sug.badge}
+                        </span>
+                      </div>
+                      <h5 className="inspiration-pill-title">{sug.title}</h5>
+                      <p className="inspiration-pill-desc">{sug.description}</p>
+                      <div className="inspiration-pill-mats">
+                        {sug.materials.map((m, mi) => (
+                          <span key={mi} className="mini-mat-tag">{m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Deluxe Materials Library Trigger Banner */}
               <div 
                 className="materials-library-trigger-card" 
@@ -933,6 +1018,30 @@ export default function App() {
                       </span>
                     ))}
                   </div>
+
+                  {/* Dynamic Companion Material Suggestions */}
+                  {companionSuggestions.length > 0 && (
+                    <div className="companion-suggestions-strip">
+                      <div className="companion-strip-label">
+                        <Wand2 size={13} color="#059669" />
+                        <span>خامات مكملة مقترحة ذكياً للدمج مع اختيارك:</span>
+                      </div>
+                      <div className="companion-pills-list">
+                        {companionSuggestions.map(mat => (
+                          <button
+                            type="button"
+                            key={mat}
+                            onClick={() => handleAddCompanionMaterial(mat)}
+                            className="companion-pill-btn"
+                            title={`إضافة ${mat} للمشروع`}
+                          >
+                            <Plus size={12} />
+                            <span>{mat}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1251,47 +1360,60 @@ export default function App() {
                     })}
                   </div>
 
-                  {/* Follow-up Questions Section */}
-                  {followUpQuestions.length > 0 && (
-                    <div style={{ marginTop: '2.5rem', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                        <HelpCircle size={18} color="var(--emerald-primary)" />
-                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800 }}>أسئلة ذكية لتخصيص أدق لمشروعك القادم:</h4>
+                  {/* Smart Customization & AI Suggestions Section */}
+                  <div className="smart-customization-section">
+                    <div className="customization-header">
+                      <div className="customization-title">
+                        <Sparkles size={18} color="var(--emerald-primary)" />
+                        <h4>🔮 اقتراحات ذكية لتطوير وتخصيص المشاريع المولدة:</h4>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {followUpQuestions.map((q, qIdx) => (
-                          <div
-                            key={qIdx}
-                            onClick={() => handleAskFollowUp(q)}
-                            style={{
-                              padding: '0.75rem 1rem',
-                              background: 'var(--bg-surface-soft)',
-                              borderRadius: '8px',
-                              fontSize: '0.86rem',
-                              color: 'var(--text-secondary)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              border: '1px solid transparent',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = 'var(--emerald-primary)';
-                              e.currentTarget.style.background = '#ffffff';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = 'transparent';
-                              e.currentTarget.style.background = 'var(--bg-surface-soft)';
-                            }}
-                          >
-                            <span>{q}</span>
-                            <ArrowLeft size={14} color="var(--emerald-primary)" />
-                          </div>
-                        ))}
-                      </div>
+                      <span className="customization-badge">اختر اقتراحاً لبدء استشارة هندسية فورية وتخصيص المشروع</span>
                     </div>
-                  )}
+
+                    <div className="customization-cards-grid">
+                      {PROJECT_CUSTOMIZATION_SUGGESTIONS.map(sug => (
+                        <div
+                          key={sug.id}
+                          className="customization-card"
+                          onClick={() => handleCustomizationSuggestion(sug, projects[0])}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <div className="customization-card-info">
+                            <h5>{sug.title}</h5>
+                            <p>{sug.subtitle}</p>
+                          </div>
+                          <span className="btn-apply-suggestion">
+                            <span>استشارة حول الاقتراح</span>
+                            <ArrowLeft size={14} />
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Follow-up Questions as Interactive Refinement Chips */}
+                    {followUpQuestions.length > 0 && (
+                      <div className="follow-up-refinement-box">
+                        <span className="refinement-label">
+                          <HelpCircle size={14} color="var(--emerald-primary)" />
+                          <span>أسئلة ومسارات تخصيص إضافية:</span>
+                        </span>
+                        <div className="refinement-chips-wrap">
+                          {followUpQuestions.map((q, qIdx) => (
+                            <button
+                              type="button"
+                              key={qIdx}
+                              onClick={() => handleAskFollowUp(q)}
+                              className="refinement-chip-btn"
+                            >
+                              <span>{q}</span>
+                              <ArrowLeft size={13} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -4999,3 +4999,303 @@ img {
   transform: translateY(0) scale(0.995) !important;
 }
 
+/* ==========================================================================
+   SMART SUGGESTIONS SYSTEM: INSPIRATION CARDS, COMPANIONS & CUSTOMIZATION
+   ========================================================================== */
+
+/* Quick Inspiration Suggestions Container */
+.inspiration-suggestions-box {
+  background: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.inspiration-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.inspiration-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.inspiration-subtitle {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.inspiration-cards-scroll {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scrollbar-width: thin;
+}
+
+.inspiration-card-pill {
+  flex: 0 0 260px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.inspiration-card-pill:hover {
+  transform: translateY(-2px);
+  border-color: #10b981;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.12);
+}
+
+.inspiration-pill-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.inspiration-pill-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+
+.inspiration-pill-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.35rem 0;
+  line-height: 1.35;
+}
+
+.inspiration-pill-desc {
+  font-size: 0.74rem;
+  color: #475569;
+  margin: 0 0 0.65rem 0;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.inspiration-pill-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.mini-mat-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #047857;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.4rem;
+}
+
+/* Companion Material Suggestions Strip */
+.companion-suggestions-strip {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(16, 185, 129, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.companion-strip-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.companion-pills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.companion-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.65rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #047857;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.companion-pill-btn:hover {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+  transform: scale(1.03);
+}
+
+/* Smart Customization & AI Suggestions Section */
+.smart-customization-section {
+  margin-top: 2.5rem;
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.customization-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.customization-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.customization-title h4 {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.customization-badge {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.customization-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.customization-card {
+  background: var(--bg-surface-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.customization-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--emerald-primary);
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(4, 106, 56, 0.1);
+}
+
+.customization-card-info h5 {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 0.3rem 0;
+  line-height: 1.35;
+}
+
+.customization-card-info p {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.btn-apply-suggestion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--emerald-primary);
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.follow-up-refinement-box {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.refinement-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.refinement-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.refinement-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.75rem;
+  background: var(--bg-surface-soft);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.refinement-chip-btn:hover {
+  background: #ffffff;
+  border-color: var(--emerald-primary);
+  color: var(--emerald-primary);
+  transform: translateX(-2px);
+}
+
+
