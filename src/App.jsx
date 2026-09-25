@@ -2,12 +2,11 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Recycle, Lightbulb, Star, Send, ArrowLeft, Camera, Loader2,
-  Clock, AlertTriangle, Leaf, ChevronDown, ChevronUp, Download,
-  Share2, BookOpen, Wrench, Target, Shield, CheckCircle,
+  Clock, Leaf, ChevronDown,
+  Share2, BookOpen, Target, Shield, CheckCircle,
   Trophy, Calculator, Check, Trash2, Award, Printer,
-  CheckCheck, QrCode, Sparkles, MessageSquare, RefreshCw,
-  Maximize2, X, CheckSquare, Square, DollarSign, Database,
-  LogIn, LogOut, HelpCircle
+  CheckCheck, QrCode, Sparkles, MessageSquare,
+  X, Database, LogIn, LogOut, HelpCircle
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -23,6 +22,7 @@ import CarbonCalculatorView from './components/CarbonCalculatorView.jsx';
 import LcaDirectoryBrowser from './components/LcaDirectoryBrowser.jsx';
 import { useAuth } from './context/AuthContext';
 import AuthModal from './components/AuthModal';
+import ProjectDetailModal from './components/ProjectDetailModal.jsx';
 import {
   getSavedProjects,
   saveProjectToCloud,
@@ -36,6 +36,7 @@ export default function App() {
   const { user, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [selectedProjectModal, setSelectedProjectModal] = useState(null);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
 
@@ -76,7 +77,6 @@ export default function App() {
   // Projects & UI states
   const [projects, setProjects] = useState([]);
   const [followUpQuestions, setFollowUpQuestions] = useState([]);
-  const [expandedProject, setExpandedProject] = useState(null);
   const [savedProjects, setSavedProjects] = useState([]);
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -94,7 +94,6 @@ export default function App() {
 
   // V3 Upgraded Interactive States
   const [lightboxImage, setLightboxImage] = useState(null); // { url, title, subtitle }
-  const [interactiveMode, setInteractiveMode] = useState({}); // { [projectIndex]: boolean }
   const [projectContextForChat, setProjectContextForChat] = useState(null);
 
   // Gamification & Environmental Impact
@@ -222,7 +221,10 @@ export default function App() {
   // Switch Gallery View (finished | assembly | inUse)
   const handleSwitchGalleryView = (projectIndex, viewKey) => {
     setProjects(prev => prev.map((p, idx) => {
-      if (idx === projectIndex) {
+      const match = typeof projectIndex === 'number' 
+        ? idx === projectIndex 
+        : (selectedProjectModal && (p.id === selectedProjectModal.id || p.name === selectedProjectModal.name));
+      if (match) {
         return {
           ...p,
           activeGalleryView: viewKey,
@@ -231,22 +233,36 @@ export default function App() {
       }
       return p;
     }));
+
+    if (selectedProjectModal) {
+      setSelectedProjectModal(prev => prev ? ({
+        ...prev,
+        activeGalleryView: viewKey,
+        generatedImage: prev.gallery?.[viewKey] || prev.generatedImage
+      }) : null);
+    }
   };
 
   // Regenerate Specific Gallery View via AI
   const handleRegenerateView = async (project, projectIndex, viewKey) => {
-    setGeneratingImageFor(`${projectIndex}-${viewKey}`);
+    const proj = project || selectedProjectModal;
+    if (!proj) return;
+    const projIdx = typeof projectIndex === 'number' 
+      ? projectIndex 
+      : projects.findIndex(p => p.id === proj.id || p.name === proj.name);
+
+    setGeneratingImageFor(`${projIdx >= 0 ? projIdx : 'modal'}-${viewKey}`);
     try {
       const res = await regenerateSpecificGalleryView({
-        projectName: project.name,
-        projectIdea: project.idea,
-        projectMaterials: project.materials,
+        projectName: proj.name,
+        projectIdea: proj.idea,
+        projectMaterials: proj.materials,
         viewType: viewKey
       });
 
       if (res.success && res.imageUrl) {
         setProjects(prev => prev.map((p, idx) => {
-          if (idx === projectIndex) {
+          if (idx === projIdx || p.id === proj.id || p.name === proj.name) {
             const updatedGallery = {
               ...p.gallery,
               [viewKey]: res.imageUrl
@@ -259,10 +275,25 @@ export default function App() {
           }
           return p;
         }));
+
+        setSelectedProjectModal(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            gallery: {
+              ...prev.gallery,
+              [viewKey]: res.imageUrl
+            },
+            generatedImage: res.imageUrl
+          };
+        });
+
         setEnvironmentalPoints(p => p + 5);
+        showToast('تم توليد مشهد بصري جديد بنجاح! 🎨');
       }
     } catch (err) {
       console.error('Error regenerating gallery view:', err);
+      showToast('تعذر توليد الصورة، يرجى المحاولة لاحقاً', 'error');
     } finally {
       setGeneratingImageFor(null);
     }
@@ -271,7 +302,11 @@ export default function App() {
   // Toggle Step Checkbox in Interactive Mode
   const handleToggleStep = (projectIndex, stepId) => {
     setProjects(prev => prev.map((p, idx) => {
-      if (idx === projectIndex && Array.isArray(p.parsedSteps)) {
+      const match = typeof projectIndex === 'number' 
+        ? idx === projectIndex 
+        : (selectedProjectModal && (p.id === selectedProjectModal.id || p.name === selectedProjectModal.name));
+
+      if (match && Array.isArray(p.parsedSteps)) {
         let gainedPoints = false;
         const updatedSteps = p.parsedSteps.map(st => {
           if (st.id === stepId) {
@@ -289,6 +324,19 @@ export default function App() {
       }
       return p;
     }));
+
+    if (selectedProjectModal && Array.isArray(selectedProjectModal.parsedSteps)) {
+      setSelectedProjectModal(prev => {
+        if (!prev) return null;
+        const updatedSteps = prev.parsedSteps.map(st => {
+          if (st.id === stepId) {
+            return { ...st, completed: !st.completed };
+          }
+          return st;
+        });
+        return { ...prev, parsedSteps: updatedSteps };
+      });
+    }
   };
 
   // Consult AI Expert specifically about this project
@@ -877,436 +925,164 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Project Cards Accordion */}
-                  {projects.map((project, index) => {
-                    const isExpanded = expandedProject === index;
-                    const activeView = project.activeGalleryView || 'finished';
-                    const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
-                    const isStepMode = interactiveMode[index];
-                    const completedStepsCount = project.parsedSteps ? project.parsedSteps.filter(s => s.completed).length : 0;
-                    const totalStepsCount = project.parsedSteps ? project.parsedSteps.length : 3;
-                    const progressPercent = totalStepsCount > 0 ? Math.round((completedStepsCount / totalStepsCount) * 100) : 0;
+                  {/* Modern Responsive Showcase Grid */}
+                  <div className="projects-showcase-grid">
+                    {projects.map((project, index) => {
+                      const activeView = project.activeGalleryView || 'finished';
+                      const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
+                      const isSaved = savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id));
+                      const stepsCount = project.parsedSteps ? project.parsedSteps.length : 0;
+                      const materialsList = typeof project.materials === 'string'
+                        ? project.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean).slice(0, 3)
+                        : (Array.isArray(project.materials) ? project.materials.slice(0, 3) : []);
 
-                    return (
-                      <div key={index} className="advisor-project-card">
-                        {/* Header Bar */}
+                      return (
                         <div
-                          className="project-card-clickable-header"
-                          onClick={() => setExpandedProject(isExpanded ? null : index)}
+                          key={project.id || index}
+                          className="project-showcase-card"
+                          onClick={() => setSelectedProjectModal(project)}
                         >
-                          <div className="project-header-left">
-                            <div className="project-icon-box">
-                              <Lightbulb size={24} />
-                            </div>
-                            <div className="project-title-meta">
-                              <h3>{project.name}</h3>
-                              <div className="project-header-badges">
-                                <span className="badge-difficulty">{project.difficulty}</span>
-                                <span className="badge-time">
-                                  <Clock size={12} />
-                                  {project.time}
-                                </span>
-                                {project.metrics?.feasibilityScore && (
-                                  <span style={{ background: '#ecfdf5', color: 'var(--emerald-primary)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.74rem', fontWeight: 700 }}>
-                                    🎯 سهولة {project.metrics.feasibilityScore}%
-                                  </span>
-                                )}
+                          {/* Image Cover Container */}
+                          <div className="project-card-cover-wrap">
+                            {activeImageUrl ? (
+                              <img
+                                src={activeImageUrl}
+                                alt={project.name}
+                                className="project-card-cover-img"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="project-card-cover-fallback">
+                                <Lightbulb size={36} color="var(--emerald-primary)" />
                               </div>
+                            )}
+
+                            {/* Gradient Overlay & Badges */}
+                            <div className="project-card-badges-overlay">
+                              <span className="badge-difficulty-card">
+                                {project.difficulty || 'متوسط'}
+                              </span>
+                              <span className="badge-time-card">
+                                <Clock size={11} />
+                                <span>{project.time || 'ساعتان'}</span>
+                              </span>
+                              {project.metrics?.feasibilityScore && (
+                                <span className="badge-feasibility-card">
+                                  <Target size={11} />
+                                  <span>{project.metrics.feasibilityScore}% جدوى</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Floating Quick Action Icons */}
+                            <div className="project-card-hover-actions">
+                              <button
+                                type="button"
+                                className={`card-quick-action-btn ${isSaved ? 'saved' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveProject(project);
+                                }}
+                                title={isSaved ? 'المشروع محفوظ' : 'حفظ في المفضلة'}
+                              >
+                                <Star size={15} fill={isSaved ? 'currentColor' : 'none'} />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="card-quick-action-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShareProject(project, index);
+                                }}
+                                title="مشاركة ونسخ"
+                              >
+                                {copiedIndex === index ? <CheckCheck size={15} color="#10b981" /> : <Share2 size={15} />}
+                              </button>
                             </div>
                           </div>
 
-                          <div>
-                            {isExpanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+                          {/* Card Content Details */}
+                          <div className="project-card-main-content">
+                            <div className="project-card-category-strip">
+                              <span className="project-card-eco-pill">
+                                <Leaf size={12} />
+                                <span>تدوير معتمد ISO 14044</span>
+                              </span>
+                              <span className="project-card-points-tag">+30 نقطة 🌱</span>
+                            </div>
+
+                            <h3 className="project-card-headline">{project.name}</h3>
+
+                            <p className="project-card-snippet">
+                              {project.idea}
+                            </p>
+
+                            {/* Materials chips */}
+                            {materialsList.length > 0 && (
+                              <div className="project-card-materials-chips">
+                                {materialsList.map((m, mIdx) => (
+                                  <span key={mIdx} className="material-mini-chip">
+                                    {m}
+                                  </span>
+                                ))}
+                                {stepsCount > 0 && (
+                                  <span className="steps-mini-chip">
+                                    {stepsCount} مراحل
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Mini KPIs Strip */}
+                            {project.metrics && (
+                              <div className="project-card-metrics-strip">
+                                <div className="mini-kpi">
+                                  <span className="kpi-label">الوفر المالي</span>
+                                  <span className="kpi-val">{project.metrics.estimatedSavings || '15-25$'}</span>
+                                </div>
+                                <div className="mini-kpi">
+                                  <span className="kpi-label">العمر الافتراضي</span>
+                                  <span className="kpi-val">{project.metrics.durabilityYears || 'سنتان'}</span>
+                                </div>
+                                <div className="mini-kpi">
+                                  <span className="kpi-label">وفر الكربون</span>
+                                  <span className="kpi-val emerald">{project.metrics.co2SavedKg || '1.8'} كغ</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Primary CTA Button */}
+                            <div className="project-card-cta-row">
+                              <button
+                                type="button"
+                                className="btn-open-project-modal"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProjectModal(project);
+                                }}
+                              >
+                                <span>عرض تفاصيل المشروع الكاملة</span>
+                                <ArrowLeft size={16} />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-quick-consult"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConsultExpertForProject(project);
+                                }}
+                                title="استشارة الخبير الذكي حول هذا المشروع"
+                              >
+                                <MessageSquare size={16} />
+                              </button>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Expanded Content: V3 Full Architecture */}
-                        {isExpanded && (
-                          <div className="project-card-expanded-body">
-                            {/* ============================================================
-                                MULTI-IMAGE AI GALLERY (FINISHED | ASSEMBLY | LIFESTYLE)
-                                ============================================================ */}
-                            <div className="multi-gallery-container">
-                              {/* View Tabs */}
-                              <div className="gallery-nav-tabs">
-                                <button
-                                  type="button"
-                                  className={`gallery-tab-btn ${activeView === 'finished' ? 'active' : ''}`}
-                                  onClick={() => handleSwitchGalleryView(index, 'finished')}
-                                >
-                                  <Sparkles size={14} color="var(--emerald-primary)" />
-                                  <span>1. المنتج النهائي المكتمل</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className={`gallery-tab-btn ${activeView === 'assembly' ? 'active' : ''}`}
-                                  onClick={() => handleSwitchGalleryView(index, 'assembly')}
-                                >
-                                  <Wrench size={14} color="var(--navy-light)" />
-                                  <span>2. مراحل التجميع والقص</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className={`gallery-tab-btn ${activeView === 'inUse' ? 'active' : ''}`}
-                                  onClick={() => handleSwitchGalleryView(index, 'inUse')}
-                                >
-                                  <Leaf size={14} color="#ca8a04" />
-                                  <span>3. الاستخدام الواقعي بالديكور</span>
-                                </button>
-                              </div>
-
-                              {/* Active Image Showcase Frame */}
-                              <div className="gallery-active-frame">
-                                {activeImageUrl ? (
-                                  <img
-                                    src={activeImageUrl}
-                                    alt={`${project.name} - ${activeView}`}
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <div style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Loader2 size={20} className="animate-spin" />
-                                    <span>جاري توليد المشهد بالذكاء الاصطناعي...</span>
-                                  </div>
-                                )}
-
-                                {/* Overlay Tools: Zoom & Fullscreen */}
-                                <div className="gallery-zoom-overlay">
-                                  <button
-                                    type="button"
-                                    className="btn-gallery-tool"
-                                    onClick={() => setLightboxImage({
-                                      url: activeImageUrl,
-                                      title: project.name,
-                                      subtitle: activeView === 'finished' ? 'صورة المنتج النهائي المكتمل' : activeView === 'assembly' ? 'رسم تخطيطي لمراحل التجميع والقص' : 'صورة واقعية للمنتج في البيئة المنزلية'
-                                    })}
-                                    title="تكبير الصورة بالحجم الكامل"
-                                  >
-                                    <Maximize2 size={13} />
-                                    <span>تكبير</span>
-                                  </button>
-
-                                  <a
-                                    href={activeImageUrl}
-                                    download={`${project.name}-${activeView}.jpg`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn-gallery-tool"
-                                    title="تنزيل الصورة بجودة عالية"
-                                  >
-                                    <Download size={13} />
-                                    <span>تنزيل</span>
-                                  </a>
-                                </div>
-                              </div>
-
-                              {/* Gallery Caption Bar */}
-                              <div className="gallery-caption-bar">
-                                <div className="gallery-caption-text">
-                                  <Camera size={15} color="var(--emerald-primary)" />
-                                  <span>
-                                    {activeView === 'finished' && 'المشهد الأول: معاينة المنتج المكتمل بإضاءة ستوديو احترافية فائقة الدقة'}
-                                    {activeView === 'assembly' && 'المشهد الثاني: رسم ومخطط ورشة العمل لطريقة قص وربط المواد وتجميعها'}
-                                    {activeView === 'inUse' && 'المشهد الثالث: لقطة ديكورية واقعية للمنتج وهو مستخدم في المنزل أو الحديقة'}
-                                  </span>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleRegenerateView(project, index, activeView)}
-                                  disabled={generatingImageFor === `${index}-${activeView}`}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: 'var(--emerald-primary)',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem'
-                                  }}
-                                >
-                                  {generatingImageFor === `${index}-${activeView}` ? (
-                                    <Loader2 size={13} className="animate-spin" />
-                                  ) : (
-                                    <RefreshCw size={13} />
-                                  )}
-                                  <span>
-                                    {generatingImageFor === `${index}-${activeView}` ? 'جاري التوليد...' : 'توليد مشهد بديل بالذكاء الاصطناعي'}
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* ============================================================
-                                ENGINEERING METRICS BAR (FEASIBILITY, DURABILITY, SAVINGS)
-                                ============================================================ */}
-                            {project.metrics && (
-                              <div className="metrics-card-grid">
-                                <div className="metric-badge-box">
-                                  <div className="metric-icon-bubble green">
-                                    <Target size={20} />
-                                  </div>
-                                  <div className="metric-info-col">
-                                    <h5>قابلية التنفيذ المنزلي</h5>
-                                    <span>{project.metrics.feasibilityScore}%</span>
-                                  </div>
-                                </div>
-
-                                <div className="metric-badge-box">
-                                  <div className="metric-icon-bubble blue">
-                                    <Clock size={20} />
-                                  </div>
-                                  <div className="metric-info-col">
-                                    <h5>العمر التشغيلي المتوقع</h5>
-                                    <span>{project.metrics.durabilityYears}</span>
-                                  </div>
-                                </div>
-
-                                <div className="metric-badge-box">
-                                  <div className="metric-icon-bubble gold">
-                                    <DollarSign size={20} />
-                                  </div>
-                                  <div className="metric-info-col">
-                                    <h5>الوفر المالي التقديري</h5>
-                                    <span>{project.metrics.estimatedSavings}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Material Bonding & Compatibility Quick Guide */}
-                            {project.metrics?.bondingGuide && (
-                              <div className="bonding-guide-box">
-                                <div className="bonding-guide-title">
-                                  <Shield size={16} />
-                                  <span>مصفوفة التوافق الكيميائي والهندسي للمواد:</span>
-                                </div>
-                                <div className="bonding-grid-cols">
-                                  <div className="bonding-item">
-                                    <strong>🔗 المادة اللاصقة / وسيلة الربط:</strong>
-                                    <span>{project.metrics.bondingGuide.adhesive}</span>
-                                  </div>
-                                  <div className="bonding-item">
-                                    <strong>✂️ تقنية التشكيل والقص:</strong>
-                                    <span>{project.metrics.bondingGuide.cuttingTechnique}</span>
-                                  </div>
-                                  <div className="bonding-item">
-                                    <strong>🛡️ أدوات السلامة الموصى بها:</strong>
-                                    <span>{project.metrics.bondingGuide.safetyGear}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* 1. Idea (الفكرة) */}
-                            <div className="project-field-block">
-                              <h4>
-                                <Target size={16} />
-                                <span>فكرة المشروع:</span>
-                              </h4>
-                              <p>{project.idea}</p>
-                            </div>
-
-                            {/* 2. Materials (المواد المطلوبة) */}
-                            <div className="project-field-block">
-                              <h4>
-                                <BookOpen size={16} />
-                                <span>المواد المطلوبة:</span>
-                              </h4>
-                              <p>{project.materials}</p>
-                            </div>
-
-                            {/* 3. Tools (الأدوات اللازمة) */}
-                            <div className="project-field-block">
-                              <h4>
-                                <Wrench size={16} />
-                                <span>الأدوات اللازمة:</span>
-                              </h4>
-                              <p>{project.tools}</p>
-                            </div>
-
-                            {/* ============================================================
-                                4. DETAILED STEPS WITH INTERACTIVE MODE TOGGLE
-                                ============================================================ */}
-                            <div className="interactive-steps-wrapper">
-                              <div className="interactive-steps-header">
-                                <h4 style={{ fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-                                  <CheckCircle size={18} color="var(--emerald-primary)" />
-                                  <span>خطوات العمل والتنفيذ التفصيلية:</span>
-                                </h4>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setInteractiveMode(prev => ({ ...prev, [index]: !prev[index] }))}
-                                  style={{
-                                    background: isStepMode ? 'var(--emerald-primary)' : '#ffffff',
-                                    color: isStepMode ? '#ffffff' : 'var(--text-secondary)',
-                                    border: '1px solid var(--border-medium)',
-                                    borderRadius: '6px',
-                                    padding: '0.35rem 0.75rem',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem'
-                                  }}
-                                >
-                                  {isStepMode ? <CheckSquare size={14} /> : <Square size={14} />}
-                                  <span>{isStepMode ? 'إلغاء وضع التتبع' : 'تفعيل نمط التتبع التفاعلي (Checklist)'}</span>
-                                </button>
-                              </div>
-
-                              {/* Interactive Progress Bar */}
-                              {isStepMode && (
-                                <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                                    <span>نسبة إنجاز الخطوات: {progressPercent}%</span>
-                                    <span>{completedStepsCount} من أصل {totalStepsCount} مكتملة</span>
-                                  </div>
-                                  <div className="steps-progress-bar-bg">
-                                    <div className="steps-progress-fill" style={{ width: `${progressPercent}%` }} />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Interactive Steps List or Standard Steps */}
-                              {isStepMode && project.parsedSteps ? (
-                                <div>
-                                  {project.parsedSteps.map(step => (
-                                    <div
-                                      key={step.id}
-                                      className={`step-card-item ${step.completed ? 'completed' : ''}`}
-                                    >
-                                      <button
-                                        type="button"
-                                        className={`step-checkbox-btn ${step.completed ? 'checked' : ''}`}
-                                        onClick={() => handleToggleStep(index, step.id)}
-                                      >
-                                        {step.completed && <Check size={16} strokeWidth={3} />}
-                                      </button>
-                                      <div className="step-content-body">
-                                        <h5>{step.title}</h5>
-                                        <p>{step.detail}</p>
-                                        {step.tip && (
-                                          <div className="step-tip-box">
-                                            <Lightbulb size={13} />
-                                            <span>نصيحة تقنية: {step.tip}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="steps-detail-container" style={{ whiteSpace: 'pre-line' }}>
-                                  {project.steps}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* 5. Scientific Principle (المبدأ العلمي والبيئي) */}
-                            {project.principle && (
-                              <div className="project-field-block">
-                                <h4 style={{ color: 'var(--navy-primary)' }}>
-                                  <Sparkles size={16} />
-                                  <span>المبدأ العلمي أو البيئي للمشروع:</span>
-                                </h4>
-                                <p style={{ whiteSpace: 'pre-line' }}>{project.principle}</p>
-                              </div>
-                            )}
-
-                            {/* 6. Safety & Warnings (الأمان والتحذيرات) */}
-                            {project.safety && (
-                              <div className="safety-warning-banner">
-                                <h4 style={{ fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                  <AlertTriangle size={16} />
-                                  <span>الأمان والتحذيرات:</span>
-                                </h4>
-                                <div style={{ whiteSpace: 'pre-line' }}>{project.safety}</div>
-                              </div>
-                            )}
-
-                            {/* 7. Expected Results (النتائج المتوقعة) */}
-                            {project.results && (
-                              <div className="project-field-block">
-                                <h4 style={{ color: 'var(--gold-primary)' }}>
-                                  <Target size={16} />
-                                  <span>النتائج المتوقعة:</span>
-                                </h4>
-                                <p style={{ whiteSpace: 'pre-line' }}>{project.results}</p>
-                              </div>
-                            )}
-
-                            {/* 8. How to Develop (كيف يمكن تطوير المشروع؟) */}
-                            {project.development && (
-                              <div className="project-field-block">
-                                <h4>
-                                  <Lightbulb size={16} />
-                                  <span>كيف يمكن تطوير المشروع؟:</span>
-                                </h4>
-                                <p style={{ whiteSpace: 'pre-line' }}>{project.development}</p>
-                              </div>
-                            )}
-
-                            {/* 9. Sustainability Impact (كيف يخدم الاستدامة البيئية؟) */}
-                            {project.sustainability && (
-                              <div className="sustainability-impact-box">
-                                <h4 style={{ fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                  <Leaf size={16} />
-                                  <span>كيف يخدم الاستدامة البيئية؟:</span>
-                                </h4>
-                                <div style={{ whiteSpace: 'pre-line' }}>{project.sustainability}</div>
-                              </div>
-                            )}
-
-                            {/* Action Buttons: Save | Share | Completed | Consult AI */}
-                            <div className="project-card-footer-actions" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-                              <button
-                                type="button"
-                                className="btn-contextual-chat"
-                                onClick={() => handleConsultExpertForProject(project)}
-                              >
-                                <MessageSquare size={15} />
-                                <span>استشر الخبير حول هذا المشروع</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                className="btn-action-outline"
-                                onClick={() => handleSaveProject(project)}
-                              >
-                                <Star size={15} color="var(--gold-primary)" />
-                                <span>حفظ المشروع</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                className="btn-action-outline"
-                                onClick={() => handleShareProject(project, index)}
-                              >
-                                {copiedIndex === index ? <CheckCheck size={15} color="var(--emerald-primary)" /> : <Share2 size={15} />}
-                                <span>{copiedIndex === index ? 'تم النسخ!' : 'مشاركة ونسخ'}</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                className="btn-action-completed"
-                                onClick={() => handleMarkCompleted(project)}
-                              >
-                                <CheckCircle size={16} />
-                                <span>تأكيد الإنجاز الرسمي (+30 نقطة)</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
 
                   {/* Follow-up Questions Section */}
                   {followUpQuestions.length > 0 && (
@@ -1411,13 +1187,20 @@ export default function App() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
                 {savedProjects.map((proj, sIdx) => (
-                  <div key={proj.id || sIdx} style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                  <div 
+                    key={proj.id || sIdx} 
+                    style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-card)', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                    onClick={() => setSelectedProjectModal(proj)}
+                  >
                     <div style={{ width: '100%', height: '180px', background: '#0f172a', position: 'relative' }}>
                       <img
                         src={proj.gallery?.finished || proj.generatedImage || proj.image_url || '/step1.jpg'}
                         alt={proj.name || proj.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
+                      <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem' }}>
+                        <span className="badge-difficulty-card">{proj.difficulty || 'متوسط'}</span>
+                      </div>
                     </div>
                     <div style={{ padding: '1.25rem' }}>
                       <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
@@ -1429,22 +1212,25 @@ export default function App() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', gap: '0.5rem' }}>
                         <button
                           type="button"
-                          onClick={() => {
-                            setProjects([proj]);
-                            setExpandedProject(0);
-                            setActiveTab('generator');
-                            showToast(`تم فتح تفاصيل مشروع "${proj.name || proj.title}"!`);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProjectModal(proj);
                           }}
-                          style={{ background: 'var(--emerald-light)', border: '1px solid var(--emerald-border)', color: 'var(--emerald-primary)', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                          style={{ background: 'var(--emerald-light)', border: '1px solid var(--emerald-border)', color: 'var(--emerald-primary)', padding: '0.4rem 0.85rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                         >
-                          عرض المشروع والتنفيذ
+                          <span>عرض تفاصيل المشروع الكاملة</span>
+                          <ArrowLeft size={14} />
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteSavedProject(proj.id, sIdx)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSavedProject(proj.id, sIdx);
+                          }}
                           style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                          title="حذف من المحفوظات"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                           <span>حذف</span>
                         </button>
                       </div>
@@ -1671,6 +1457,30 @@ export default function App() {
           <span>{toast.message}</span>
         </div>
       )}
+
+      {/* ============================================================
+          DEDICATED PROJECT DETAIL POP-UP MODAL (صفحة المشروع المنبثقة)
+          ============================================================ */}
+      <ProjectDetailModal
+        project={selectedProjectModal}
+        isOpen={!!selectedProjectModal}
+        onClose={() => setSelectedProjectModal(null)}
+        onSaveProject={handleSaveProject}
+        isSaved={selectedProjectModal ? savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id)) : false}
+        onShareProject={(proj) => handleShareProject(proj, projects.findIndex(p => p.name === proj.name))}
+        isCopied={copiedIndex !== null}
+        onMarkCompleted={handleMarkCompleted}
+        onConsultExpert={handleConsultExpertForProject}
+        onOpenCertificate={(proj) => {
+          setCertificateProject(proj);
+          setActiveTab('certificate');
+        }}
+        onSwitchGalleryView={(viewKey) => handleSwitchGalleryView(null, viewKey)}
+        onRegenerateView={(viewKey) => handleRegenerateView(selectedProjectModal, null, viewKey)}
+        isRegenerating={!!generatingImageFor}
+        onToggleStep={(stepId) => handleToggleStep(null, stepId)}
+        onOpenLightbox={setLightboxImage}
+      />
 
       {/* ============================================================
           SUPABASE AUTHENTICATION MODAL
