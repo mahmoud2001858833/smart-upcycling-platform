@@ -30,6 +30,7 @@ import {
   getUserProfileStats,
   updateUserProfileStats
 } from './utils/supabaseSync.js';
+import { handleImageFallback, generateSvgBlueprint } from './utils/imageCatalog.js';
 import './index.css';
 
 export default function App() {
@@ -943,18 +944,13 @@ export default function App() {
                         >
                           {/* Image Cover Container */}
                           <div className="project-card-cover-wrap">
-                            {activeImageUrl ? (
-                              <img
-                                src={activeImageUrl}
-                                alt={project.name}
-                                className="project-card-cover-img"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="project-card-cover-fallback">
-                                <Lightbulb size={36} color="var(--emerald-primary)" />
-                              </div>
-                            )}
+                            <img
+                              src={activeImageUrl || generateSvgBlueprint(project.name, project.materials, activeView)}
+                              alt={project.name}
+                              className="project-card-cover-img"
+                              loading="lazy"
+                              onError={(e) => handleImageFallback(e, project.name, project.materials, activeView)}
+                            />
 
                             {/* Gradient Overlay & Badges */}
                             <div className="project-card-badges-overlay">
@@ -1193,9 +1189,10 @@ export default function App() {
                   >
                     <div style={{ width: '100%', height: '180px', background: '#0f172a', position: 'relative' }}>
                       <img
-                        src={proj.gallery?.finished || proj.generatedImage || proj.image_url || '/step1.jpg'}
+                        src={proj.gallery?.finished || proj.generatedImage || proj.image_url || generateSvgBlueprint(proj.name || proj.title, proj.materials || '', 'finished')}
                         alt={proj.name || proj.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => handleImageFallback(e, proj.name || proj.title, proj.materials || '', 'finished')}
                       />
                       <div style={{ position: 'absolute', top: '0.6rem', right: '0.6rem' }}>
                         <span className="badge-difficulty-card">{proj.difficulty || 'متوسط'}</span>
@@ -1365,12 +1362,13 @@ export default function App() {
               </div>
 
               {/* Certificate Image Feature if Available */}
-              {certificateProject?.gallery?.finished && (
+              {certificateProject && (
                 <div style={{ maxWidth: '420px', margin: '1rem auto', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-medium)', boxShadow: 'var(--shadow-sm)' }}>
                   <img
-                    src={certificateProject.gallery.finished}
+                    src={certificateProject.gallery?.finished || certificateProject.generatedImage || generateSvgBlueprint(certificateProject.name, certificateProject.materials, 'finished')}
                     alt={certificateProject.name}
                     style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                    onError={(e) => handleImageFallback(e, certificateProject.name, certificateProject.materials, 'finished')}
                   />
                   <div style={{ background: '#f8fafc', padding: '0.4rem', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     التوثيق البصري الرسمي للمنتج المنجز
@@ -1442,7 +1440,11 @@ export default function App() {
                 <X size={18} />
               </button>
             </div>
-            <img src={lightboxImage.url} alt={lightboxImage.title} />
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.title}
+              onError={(e) => handleImageFallback(e, lightboxImage.title, '', 'finished')}
+            />
           </div>
         </div>
       )}

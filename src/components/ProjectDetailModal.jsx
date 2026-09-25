@@ -25,6 +25,7 @@ import {
   Printer,
   Layers
 } from 'lucide-react';
+import { handleImageFallback, generateSvgBlueprint } from '../utils/imageCatalog.js';
 
 export default function ProjectDetailModal({
   project,
@@ -45,6 +46,7 @@ export default function ProjectDetailModal({
 }) {
   // Active inner tab: 'overview' | 'steps' | 'engineering' | 'sustainability' | 'safety'
   const [modalTab, setModalTab] = useState('overview');
+  const [loadedImgUrl, setLoadedImgUrl] = useState('');
 
   // Close on Escape key press
   useEffect(() => {
@@ -63,11 +65,14 @@ export default function ProjectDetailModal({
     };
   }, [isOpen, onClose]);
 
+  // Active gallery image
+  const activeView = project?.activeGalleryView || 'finished';
+  const activeImageUrl = project?.gallery?.[activeView] || project?.generatedImage;
+
   if (!isOpen || !project) return null;
 
-  // Active gallery image
-  const activeView = project.activeGalleryView || 'finished';
-  const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
+  const currentDisplayImage = activeImageUrl || generateSvgBlueprint(project.name, project.materials, activeView);
+  const isImgLoading = loadedImgUrl !== currentDisplayImage;
 
   // Step calculations
   const stepsList = project.parsedSteps || [];
@@ -258,18 +263,36 @@ export default function ProjectDetailModal({
 
                 {/* Main Image Frame */}
                 <div className="modal-gallery-frame">
-                  {activeImageUrl ? (
-                    <img
-                      src={activeImageUrl}
-                      alt={`${project.name} - ${activeView}`}
-                      className="modal-gallery-img"
-                    />
-                  ) : (
-                    <div className="modal-gallery-loader">
-                      <Loader2 size={24} className="spin-animate" />
-                      <span>جاري توليد المشهد البصري بالذكاء الاصطناعي...</span>
+                  {isImgLoading && (
+                    <div className="modal-gallery-skeleton">
+                      <div className="skeleton-shimmer-bar" />
+                      <div className="modal-gallery-loader">
+                        <Loader2 size={24} className="spin-animate" />
+                        <span>جاري تحميل المشهد البصري فائق الدقة...</span>
+                      </div>
                     </div>
                   )}
+
+                  <img
+                    src={currentDisplayImage}
+                    alt={`${project.name} - ${activeView}`}
+                    className={`modal-gallery-img ${isImgLoading ? 'loading' : 'loaded'}`}
+                    onLoad={() => setLoadedImgUrl(currentDisplayImage)}
+                    onError={(e) => {
+                      setLoadedImgUrl(currentDisplayImage);
+                      handleImageFallback(e, project.name, project.materials, activeView);
+                    }}
+                  />
+
+                  {/* High-Tech Angle Tag */}
+                  <div className="modal-gallery-angle-tag">
+                    <Sparkles size={12} color="#34d399" />
+                    <span>
+                      {activeView === 'finished' && 'معاينة المنتج المكتمل (Ultra-HD)'}
+                      {activeView === 'assembly' && 'مخطط التجميع الفني (Assembly)'}
+                      {activeView === 'inUse' && 'الاستخدام الديكوري الواقعي (In-Situ)'}
+                    </span>
+                  </div>
 
                   {/* Floating Frame Tools */}
                   <div className="modal-gallery-tools">
@@ -277,9 +300,9 @@ export default function ProjectDetailModal({
                       type="button"
                       className="btn-gallery-tool"
                       onClick={() => onOpenLightbox({
-                        url: activeImageUrl,
+                        url: currentDisplayImage,
                         title: project.name,
-                        subtitle: activeView === 'finished' ? 'صورة المنتج النهائي المكتمل' : activeView === 'assembly' ? 'رسم تخطيطي لمراحل التجميع والقص' : 'صورة واقعية للمنتج في البيئة المنزلية'
+                        subtitle: activeView === 'finished' ? 'صورة المنتج النهائي المكتمل' : activeView === 'assembly' ? 'رسم ومخطط ورشة العمل لمراحل التجميع والقص' : 'صورة واقعية للمنتج في البيئة المنزلية'
                       })}
                       title="تكبير الصورة بالحجم الكامل"
                     >
@@ -288,7 +311,7 @@ export default function ProjectDetailModal({
                     </button>
 
                     <a
-                      href={activeImageUrl}
+                      href={currentDisplayImage}
                       download={`${project.name}-${activeView}.jpg`}
                       target="_blank"
                       rel="noreferrer"

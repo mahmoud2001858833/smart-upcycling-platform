@@ -33,32 +33,17 @@ export const PROJECT_TYPES = [
   { value: 'group', label: 'جماعي ومدرسي' }
 ];
 
+import {
+  getProjectGallery,
+  getNextAngleImage,
+  generateSvgBlueprint
+} from './imageCatalog.js';
+
 /**
- * Generate 3 distinct image prompt URLs for each project
+ * Generate 3 distinct verified HD images for each project (Finished, Assembly, InUse)
  */
-export function buildMultiImageGallery(projectName, projectIdea, projectMaterials) {
-  const matsClean = projectMaterials ? projectMaterials.substring(0, 80) : 'recycled materials';
-
-  // 1. Finished Product Showcase View
-  const finishedPrompt = encodeURIComponent(
-    `Stunning completed upcycled craft: ${projectName}, beautifully crafted from ${matsClean}. Professional product photography, clean white and neutral studio backdrop, soft elegant lighting, ultra detailed, 8k resolution, no watermark, no text`
-  );
-
-  // 2. Assembly & Crafting Process View
-  const assemblyPrompt = encodeURIComponent(
-    `Step-by-step workshop assembly crafting view of ${projectName}. Showing hands carefully joining ${matsClean}, measuring tape, workshop wooden table, craft tools, clear technical process, crisp details, 8k resolution, no watermark, no text`
-  );
-
-  // 3. Realistic In-Context Lifestyle / Decor View
-  const inUsePrompt = encodeURIComponent(
-    `Realistic cozy interior home decor setting showing ${projectName} in daily active use. Placed on an elegant modern shelf or balcony garden, warm atmospheric lighting, aesthetic eco-friendly lifestyle, architectural digest style photography, 8k, no text`
-  );
-
-  return {
-    finished: `https://image.pollinations.ai/prompt/${finishedPrompt}?width=900&height=560&nologo=true`,
-    assembly: `https://image.pollinations.ai/prompt/${assemblyPrompt}?width=900&height=560&nologo=true`,
-    inUse: `https://image.pollinations.ai/prompt/${inUsePrompt}?width=900&height=560&nologo=true`
-  };
+export function buildMultiImageGallery(projectName, projectIdea, projectMaterials, index = 0) {
+  return getProjectGallery(projectName, projectMaterials, index);
 }
 
 /**
@@ -214,7 +199,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
 
     // Enrich each project with 3-image gallery, parsed interactive steps, and engineering metrics
     const enrichedProjects = data.projects.map((proj, idx) => {
-      const gallery = buildMultiImageGallery(proj.name, proj.idea, proj.materials || materials);
+      const gallery = buildMultiImageGallery(proj.name, proj.idea, proj.materials || materials, idx);
       const metrics = deriveEngineeringMetrics(proj, materials || '');
       const parsedSteps = parseStepsToStructuredList(proj.steps);
 
@@ -245,29 +230,21 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
 }
 
 /**
- * Regenerate a specific image view (finished / assembly / inUse) via AI
+ * Regenerate a specific image view (finished / assembly / inUse) via AI / Curated Multi-Angle Engine
  */
-export async function regenerateSpecificGalleryView({ projectName, projectIdea, projectMaterials, viewType = 'finished' }) {
+export async function regenerateSpecificGalleryView({ projectName, projectIdea: _projectIdea, projectMaterials, viewType = 'finished', currentUrl = '' }) {
   try {
-    const viewKeywords = {
-      finished: 'Finished completed aesthetic craft showcase',
-      assembly: 'Technical workshop assembling process and hand crafting tools',
-      inUse: 'Cozy real home interior decor placement in daily use'
-    };
-
-    const promptText = `High quality professional photo of ${projectName}, made from ${projectMaterials}. View type: ${viewKeywords[viewType] || viewKeywords.finished}. Ultra realistic lighting, clean detailed composition, 8k resolution, no watermark, no text`;
-
-    // Direct generative image query with unique seed
-    const seed = Math.floor(Math.random() * 100000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptText)}?width=900&height=560&seed=${seed}&nologo=true`;
-
+    const nextUrl = getNextAngleImage(projectMaterials, projectName, viewType, currentUrl);
     return {
       success: true,
-      imageUrl
+      imageUrl: nextUrl
     };
   } catch (err) {
     console.error('Error generating specific gallery view:', err);
-    return { success: false, error: err.message };
+    return {
+      success: true,
+      imageUrl: generateSvgBlueprint(projectName, projectMaterials, viewType)
+    };
   }
 }
 
@@ -297,15 +274,13 @@ export async function generateProjectImageAi({ projectName, projectIdea, project
       }
     }
   } catch (err) {
-    console.warn('Supabase generate-project-image failed, falling back to dynamic image synthesis:', err);
+    console.warn('Supabase generate-project-image failed, falling back to curated image catalog:', err);
   }
 
-  const prompt = encodeURIComponent(
-    `Realistic finished upcycling craft: ${projectName}. Crafted from ${projectMaterials}. Clean studio shot, aesthetic composition, photorealistic, no text, 4k`
-  );
+  const gallery = getProjectGallery(projectName, projectMaterials, 0);
   return {
     success: true,
-    imageUrl: `https://image.pollinations.ai/prompt/${prompt}?width=900&height=560&nologo=true`
+    imageUrl: gallery.finished
   };
 }
 
@@ -375,7 +350,7 @@ export async function sendChatMessageToAi({ question, conversationHistory = [], 
  * Procedural Fallback Engine V3
  * Strictly generates projects using the user's EXACT entered materials
  */
-function generateTailoredFallbackProjects(materialsStr, userLevel, projectType) {
+function generateTailoredFallbackProjects(materialsStr, userLevel, _projectType) {
   const mats = materialsStr
     ? materialsStr.split(/[،,\n+]+/).map(m => m.trim()).filter(Boolean)
     : ['خشب', 'زجاج', 'علب ألمنيوم'];
@@ -462,7 +437,7 @@ function generateTailoredFallbackProjects(materialsStr, userLevel, projectType) 
   ];
 
   const enriched = rawProjects.map((p, idx) => {
-    const gallery = buildMultiImageGallery(p.name, p.idea, p.materials);
+    const gallery = buildMultiImageGallery(p.name, p.idea, p.materials, idx);
     const metrics = deriveEngineeringMetrics(p, materialsStr || '');
     const parsedSteps = parseStepsToStructuredList(p.steps);
     return {
