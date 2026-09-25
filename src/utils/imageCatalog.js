@@ -335,3 +335,197 @@ export function handleImageFallback(event, projectName = 'مشروع تدوير'
     img.src = generateSvgBlueprint(projectName, materialsStr, viewType);
   }
 }
+
+/**
+ * Step Phase Visual Collections
+ */
+export const STEP_PHASE_COLLECTIONS = {
+  prep: [
+    'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
+    '/step1.jpg'
+  ],
+  assembly: [
+    'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=800&auto=format&fit=crop&q=80',
+    '/step2.jpg',
+    '/step3.jpg'
+  ],
+  finish: [
+    'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1532372576444-dda954194ad0?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format&fit=crop&q=80',
+    '/step4.jpg',
+    '/step5.jpg'
+  ]
+};
+
+/**
+ * Detect execution phase of a step
+ */
+export function detectStepPhase(stepNumber = 1, stepTitle = '') {
+  const text = (stepTitle || '').toLowerCase();
+  if (text.includes('فرز') || text.includes('تنظيف') || text.includes('تحضير') || text.includes('قياس') || text.includes('prep') || text.includes('sort')) {
+    return 'prep';
+  }
+  if (text.includes('قص') || text.includes('تركيب') || text.includes('تجميع') || text.includes('تثبيت') || text.includes('هندسة') || text.includes('cut') || text.includes('assembly')) {
+    return 'assembly';
+  }
+  if (text.includes('تشطيب') || text.includes('طلاء') || text.includes('دهان') || text.includes('فحص') || text.includes('اختبار') || text.includes('لمسات') || text.includes('finish')) {
+    return 'finish';
+  }
+
+  // Fallback by step number
+  if (stepNumber === 1) return 'prep';
+  if (stepNumber === 2) return 'assembly';
+  return 'finish';
+}
+
+/**
+ * Generate Procedural Step SVG Schematic
+ */
+export function generateStepSvgDiagram(stepNumber = 1, stepTitle = 'مرحلة تنفيذية', stepDetail = '', _materialCategory = 'general') {
+  const safeTitle = (stepTitle || `الخطوة ${stepNumber}`).replace(/["<>]/g, '');
+  const safeDetail = (stepDetail || 'اتباع إرشادات التركيب بدقة').substring(0, 60).replace(/["<>]/g, '');
+
+  const phaseColors = {
+    1: { primary: '#10b981', secondary: '#059669', nameAr: 'المرحلة 1: الفرز والتحضير' },
+    2: { primary: '#38bdf8', secondary: '#0284c7', nameAr: 'المرحلة 2: القص والتجميع' },
+    3: { primary: '#f59e0b', secondary: '#d97706', nameAr: 'المرحلة 3: التشطيب النهائي' }
+  };
+
+  const col = phaseColors[stepNumber] || phaseColors[2];
+
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480">
+  <defs>
+    <linearGradient id="stepBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090e17" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <pattern id="stepGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1e293b" stroke-width="0.8" opacity="0.6"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="480" fill="url(#stepBg)" />
+  <rect width="800" height="480" fill="url(#stepGrid)" />
+
+  <rect x="20" y="20" width="760" height="440" fill="none" stroke="#334155" stroke-width="1.5" rx="8" />
+  
+  <!-- Step Badge Header -->
+  <g transform="translate(40, 45)">
+    <rect x="0" y="0" width="720" height="40" fill="#132338" rx="6" stroke="#1e3a5f" stroke-width="1" />
+    <circle cx="20" cy="20" r="12" fill="${col.primary}" />
+    <text x="20" y="25" fill="#ffffff" font-family="system-ui, sans-serif" font-size="12" font-weight="900" text-anchor="middle">${stepNumber}</text>
+    <text x="45" y="25" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="13" font-weight="800">${col.nameAr}</text>
+    <text x="700" y="25" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="end">ISO 14044 STEP INSTRUCTION</text>
+  </g>
+
+  <!-- Central Technical Graphic -->
+  <g transform="translate(400, 230)">
+    <circle cx="0" cy="0" r="100" fill="none" stroke="#1e293b" stroke-width="2" stroke-dasharray="4 4" />
+    <circle cx="0" cy="0" r="60" fill="#0f172a" stroke="${col.primary}" stroke-width="2" />
+    
+    <!-- Graphic Glyphs based on phase -->
+    ${stepNumber === 1 ? `
+      <!-- Measuring / Sorting Glyph -->
+      <path d="M -25 -25 L 25 25" stroke="${col.primary}" stroke-width="3" stroke-linecap="round"/>
+      <path d="M -15 -35 L 35 15" stroke="${col.primary}" stroke-width="2" stroke-dasharray="2 3"/>
+      <circle cx="-25" cy="-25" r="5" fill="#38bdf8"/>
+      <circle cx="25" cy="25" r="5" fill="#10b981"/>
+    ` : stepNumber === 2 ? `
+      <!-- Cutting / Assembly Glyph -->
+      <rect x="-25" y="-25" width="50" height="50" fill="none" stroke="${col.primary}" stroke-width="2.5" rx="4"/>
+      <line x1="-35" y1="0" x2="35" y2="0" stroke="#38bdf8" stroke-width="2" />
+      <line x1="0" y1="-35" x2="0" y2="35" stroke="#38bdf8" stroke-width="2" />
+    ` : `
+      <!-- Detailing / Lightbulb Glyph -->
+      <circle cx="0" cy="-5" r="20" fill="none" stroke="${col.primary}" stroke-width="2.5"/>
+      <path d="M -10 15 L 10 15 M -6 20 L 6 20" stroke="${col.primary}" stroke-width="2.5"/>
+      <line x1="0" y1="-30" x2="0" y2="-38" stroke="${col.primary}" stroke-width="2"/>
+      <line x1="-25" y1="-25" x2="-32" y2="-32" stroke="${col.primary}" stroke-width="2"/>
+      <line x1="25" y1="-25" x2="32" y2="-32" stroke="${col.primary}" stroke-width="2"/>
+    `}
+  </g>
+
+  <!-- Step Details Footer Card -->
+  <g transform="translate(100, 350)">
+    <rect x="0" y="0" width="600" height="75" fill="#0f172a" rx="8" stroke="#334155" stroke-width="1.2" />
+    <text x="300" y="30" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="15" font-weight="800" text-anchor="middle">${safeTitle}</text>
+    <text x="300" y="55" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">${safeDetail}</text>
+  </g>
+</svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Get image for a specific step
+ */
+export function getStepImage(stepIndex = 1, stepTitle = '', stepDetail = '', materialsStr = '', projectName = '', seedIndex = 0) {
+  const phase = detectStepPhase(stepIndex, stepTitle);
+  const phaseList = STEP_PHASE_COLLECTIONS[phase] || STEP_PHASE_COLLECTIONS.prep;
+
+  const matCategory = detectMaterialCategory(materialsStr, projectName);
+  const catGallery = CURATED_MATERIAL_GALLERY[matCategory];
+
+  // If specific material gallery has matching view
+  if (catGallery) {
+    if (phase === 'prep' && catGallery.assembly?.[0]) {
+      return catGallery.assembly[seedIndex % catGallery.assembly.length];
+    }
+    if (phase === 'assembly' && catGallery.assembly?.[1]) {
+      return catGallery.assembly[1];
+    }
+    if (phase === 'finish' && catGallery.finished?.[0]) {
+      return catGallery.finished[0];
+    }
+  }
+
+  const chosen = phaseList[seedIndex % phaseList.length];
+  return chosen || generateStepSvgDiagram(stepIndex, stepTitle, stepDetail, matCategory);
+}
+
+/**
+ * Get next step image for cycling / regenerating
+ */
+export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '', projectName = '', currentUrl = '') {
+  const phase = detectStepPhase(stepIndex, stepTitle);
+  const phaseList = STEP_PHASE_COLLECTIONS[phase] || STEP_PHASE_COLLECTIONS.prep;
+
+  const matCategory = detectMaterialCategory(materialsStr, projectName);
+  const catGallery = CURATED_MATERIAL_GALLERY[matCategory];
+
+  const pool = [...phaseList];
+  if (catGallery?.assembly) pool.push(...catGallery.assembly);
+  if (catGallery?.finished) pool.push(...catGallery.finished);
+
+  const currentIdx = pool.indexOf(currentUrl);
+  const nextIdx = (currentIdx + 1) % pool.length;
+
+  return pool[nextIdx] || generateStepSvgDiagram(stepIndex, stepTitle, '', matCategory);
+}
+
+/**
+ * Step Image error fallback handler
+ */
+export function handleStepImageFallback(event, stepNumber = 1, stepTitle = '', _materialsStr = '') {
+  if (!event || !event.target) return;
+  const img = event.target;
+  if (img.dataset.hasFailedFallback) {
+    img.src = generateStepSvgDiagram(stepNumber, stepTitle, '', 'general');
+    return;
+  }
+  img.dataset.hasFailedFallback = 'true';
+  const localFallbacks = ['/step1.jpg', '/step2.jpg', '/step3.jpg', '/step4.jpg', '/step5.jpg'];
+  const localFallback = localFallbacks[(stepNumber - 1) % localFallbacks.length];
+  if (img.src !== localFallback) {
+    img.src = localFallback;
+  } else {
+    img.src = generateStepSvgDiagram(stepNumber, stepTitle, '', 'general');
+  }
+}
+

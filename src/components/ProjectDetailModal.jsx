@@ -25,7 +25,11 @@ import {
   Printer,
   Layers
 } from 'lucide-react';
-import { handleImageFallback, generateSvgBlueprint } from '../utils/imageCatalog.js';
+import {
+  handleImageFallback,
+  generateSvgBlueprint,
+  handleStepImageFallback
+} from '../utils/imageCatalog.js';
 
 export default function ProjectDetailModal({
   project,
@@ -42,7 +46,9 @@ export default function ProjectDetailModal({
   onRegenerateView,
   isRegenerating,
   onToggleStep,
-  onOpenLightbox
+  onOpenLightbox,
+  onRegenerateStepImage,
+  isRegeneratingStepId
 }) {
   // Active inner tab: 'overview' | 'steps' | 'engineering' | 'sustainability' | 'safety'
   const [modalTab, setModalTab] = useState('overview');
@@ -494,6 +500,54 @@ export default function ProjectDetailModal({
                               <strong>نصيحة الخبير التقنية:</strong> {step.tip}
                             </div>
                           </div>
+                        )}
+                      </div>
+
+                      {/* Dedicated Step Visual Media */}
+                      <div className="step-interactive-media">
+                        <div
+                          className="step-img-frame"
+                          onClick={() => onOpenLightbox({
+                            url: step.image || generateSvgBlueprint(step.title, project.materials, 'assembly'),
+                            title: `${project.name} - الخطوة ${step.id || idx + 1}: ${step.title}`,
+                            subtitle: step.detail
+                          })}
+                          title="انقر لتكبير رسم وتفاصيل هذه الخطوة"
+                        >
+                          <img
+                            src={step.image || generateSvgBlueprint(step.title, project.materials, 'assembly')}
+                            alt={step.title}
+                            className="step-card-img"
+                            loading="lazy"
+                            onError={(e) => handleStepImageFallback(e, step.id || idx + 1, step.title, project.materials)}
+                          />
+                          <div className="step-img-tag">
+                            <Sparkles size={11} color="#34d399" />
+                            <span>رسم الخطوة {idx + 1}</span>
+                          </div>
+                          <div className="step-img-zoom-btn">
+                            <Maximize2 size={12} />
+                          </div>
+                        </div>
+
+                        {onRegenerateStepImage && (
+                          <button
+                            type="button"
+                            className="btn-step-regenerate"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRegenerateStepImage(project, step.id || idx + 1);
+                            }}
+                            disabled={isRegeneratingStepId === (step.id || idx + 1)}
+                            title="توليد صورة بديلة لهذه الخطوة بالذكاء الاصطناعي"
+                          >
+                            {isRegeneratingStepId === (step.id || idx + 1) ? (
+                              <Loader2 size={12} className="spin-animate" />
+                            ) : (
+                              <RefreshCw size={12} />
+                            )}
+                            <span>{isRegeneratingStepId === (step.id || idx + 1) ? 'جاري التوليد...' : 'صورة بديلة'}</span>
+                          </button>
                         )}
                       </div>
                     </div>

@@ -14,6 +14,7 @@ import {
   PROJECT_TYPES,
   fetchAiProjects,
   regenerateSpecificGalleryView,
+  regenerateStepImage,
   sendChatMessageToAi
 } from './utils/aiProjectEngine.js';
 import { calculateCollectiveOffset } from './utils/lcaCalculator.js';
@@ -80,6 +81,7 @@ export default function App() {
   const [followUpQuestions, setFollowUpQuestions] = useState([]);
   const [savedProjects, setSavedProjects] = useState([]);
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
+  const [regeneratingStepId, setRegeneratingStepId] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   // LCA Calculator State
@@ -206,7 +208,15 @@ export default function App() {
         setFollowUpQuestions(res.followUpQuestions || []);
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
-        showToast('تم توليد المشاريع بنجاح! انقر على أي مشروع لعرض تفاصيله الكاملة ✨');
+
+        // Auto-save all generated projects to Saved Projects list immediately
+        for (const proj of res.projects) {
+          await saveProjectToCloud(user?.id, proj);
+        }
+        const updatedSaved = await getSavedProjects(user?.id);
+        setSavedProjects(updatedSaved);
+
+        showToast(`✨ تم ابتكار ${res.projects.length} مشاريع وحفظها تلقائياً في قائمة المحفوظات!`);
       } else {
         showToast('تعذر توليد المشاريع، يرجى المحاولة مجدداً', 'error');
       }
@@ -340,6 +350,51 @@ export default function App() {
     }
   };
 
+  // Regenerate Step-specific image via AI
+  const handleRegenerateStepImage = async (project, stepId) => {
+    const targetProject = project || selectedProjectModal;
+    if (!targetProject) return;
+
+    setRegeneratingStepId(stepId);
+    try {
+      const currentStep = targetProject.parsedSteps?.find(s => s.id === stepId);
+      const res = await regenerateStepImage({
+        projectName: targetProject.name,
+        stepNumber: stepId,
+        stepTitle: currentStep?.title || '',
+        projectMaterials: targetProject.materials,
+        currentUrl: currentStep?.image || ''
+      });
+
+      if (res.success && res.imageUrl) {
+        const updatedSteps = (targetProject.parsedSteps || []).map(s => {
+          if (s.id === stepId) {
+            return { ...s, image: res.imageUrl };
+          }
+          return s;
+        });
+
+        // Update in projects list
+        setProjects(prev => prev.map(p => {
+          if (p.id === targetProject.id || p.name === targetProject.name) {
+            return { ...p, parsedSteps: updatedSteps };
+          }
+          return p;
+        }));
+
+        // Update in selected modal
+        setSelectedProjectModal(prev => prev ? ({ ...prev, parsedSteps: updatedSteps }) : null);
+
+        showToast(`تم تحديث وتوليد صورة جديدة للمرحلة ${stepId} بنجاح! 🎨`);
+      }
+    } catch (err) {
+      console.error('Error regenerating step image:', err);
+      showToast('تعذر تجديد صورة الخطوة، يرجى المحاولة لاحقاً', 'error');
+    } finally {
+      setRegeneratingStepId(null);
+    }
+  };
+
   // Consult AI Expert specifically about this project
   const handleConsultExpertForProject = (project) => {
     setProjectContextForChat(project);
@@ -462,7 +517,15 @@ export default function App() {
           setFollowUpQuestions(res.followUpQuestions || []);
           setCertificateProject(res.projects[0]);
           setEnvironmentalPoints(p => p + 20);
-          showToast('تم فحص وتحليل الصورة واستخراج المشاريع بنجاح! 📸');
+
+          // Auto-save all generated projects to Saved Projects list immediately
+          for (const proj of res.projects) {
+            await saveProjectToCloud(user?.id, proj);
+          }
+          const updatedSaved = await getSavedProjects(user?.id);
+          setSavedProjects(updatedSaved);
+
+          showToast(`📸 تم فحص صورتك وابتكار ${res.projects.length} مشاريع وحفظها تلقائياً بالمحفوظات!`);
         }
       } catch (err) {
         console.error('Error analyzing uploaded image:', err);
@@ -1481,6 +1544,8 @@ export default function App() {
         isRegenerating={!!generatingImageFor}
         onToggleStep={(stepId) => handleToggleStep(null, stepId)}
         onOpenLightbox={setLightboxImage}
+        onRegenerateStepImage={handleRegenerateStepImage}
+        isRegeneratingStepId={regeneratingStepId}
       />
 
       {/* ============================================================

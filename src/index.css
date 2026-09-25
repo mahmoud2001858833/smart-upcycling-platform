@@ -3958,6 +3958,122 @@ img {
   line-height: 1.5;
 }
 
+/* Dedicated Step Visual Media */
+.step-interactive-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.step-img-frame {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  background: #0f172a;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.step-img-frame:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  border-color: var(--emerald-primary);
+}
+
+.step-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.step-img-frame:hover .step-card-img {
+  transform: scale(1.05);
+}
+
+.step-img-tag {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.step-img-zoom-btn {
+  position: absolute;
+  bottom: 0.4rem;
+  left: 0.4rem;
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.step-img-frame:hover .step-img-zoom-btn {
+  opacity: 1;
+}
+
+.btn-step-regenerate {
+  background: #ffffff;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--r-sm);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.btn-step-regenerate:hover:not(:disabled) {
+  border-color: var(--emerald-primary);
+  color: var(--emerald-primary);
+  background: var(--emerald-light);
+}
+
+.btn-step-regenerate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .step-interactive-card {
+    flex-direction: column;
+  }
+  .step-interactive-media {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .step-img-frame {
+    height: 180px;
+  }
+}
+
 .steps-plain-text-box {
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);

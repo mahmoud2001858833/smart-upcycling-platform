@@ -36,7 +36,9 @@ export const PROJECT_TYPES = [
 import {
   getProjectGallery,
   getNextAngleImage,
-  generateSvgBlueprint
+  generateSvgBlueprint,
+  getStepImage,
+  getNextStepImage
 } from './imageCatalog.js';
 
 /**
@@ -47,9 +49,9 @@ export function buildMultiImageGallery(projectName, projectIdea, projectMaterial
 }
 
 /**
- * Parse steps text into interactive step objects with checkboxes and tips
+ * Parse steps text into interactive step objects with AI images, checkboxes, and tips
  */
-export function parseStepsToStructuredList(stepsRaw) {
+export function parseStepsToStructuredList(stepsRaw, projectName = 'مشروع إعادة تدوير', projectMaterials = '') {
   if (!stepsRaw) return [];
 
   // Match lines like "الخطوة 1: ..." or "- الخطوة 1: ..." or numbered steps
@@ -78,23 +80,28 @@ export function parseStepsToStructuredList(stepsRaw) {
         detail = lines.slice(1).join('\n') || lines[0] || block;
       }
 
+      const stepNum = idx + 1;
+      const stepImg = getStepImage(stepNum, title, detail, projectMaterials, projectName, idx);
+
       return {
-        id: idx + 1,
-        title: title || `الخطوة ${idx + 1}`,
+        id: stepNum,
+        title: title || `الخطوة ${stepNum}`,
         detail: detail || 'اتباع تعليمات التركيب بدقة وتثبيت المكونات.',
         tip: tip || 'تأكد من ارتداء قفازات واقية وفحص ثبات الأجزاء.',
+        image: stepImg,
         completed: false
       };
     });
   }
 
-  // Fallback default 3 steps
+  // Fallback default 3 steps with tailored AI step images
   return [
     {
       id: 1,
       title: 'الفرز والتحضير الأولي للقطع',
       detail: 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف.',
       tip: 'استخدم ورق صنفرة خفيف لإزالة أي نتوءات خشنة أو حادة.',
+      image: getStepImage(1, 'الفرز والتحضير الأولي للقطع', 'تنظيف المواد', projectMaterials, projectName, 0),
       completed: false
     },
     {
@@ -102,6 +109,7 @@ export function parseStepsToStructuredList(stepsRaw) {
       title: 'الهندسة والتجميع الهيكلي',
       detail: 'ربط القطع الأساسية وفق القياسات المحددة واستخدام وسيلة التثبيت المناسبة.',
       tip: 'اترك المادة اللاصقة تجف بالكامل قبل تطبيق أي وزن.',
+      image: getStepImage(2, 'الهندسة والتجميع الهيكلي', 'ربط القطع الأساسية', projectMaterials, projectName, 1),
       completed: false
     },
     {
@@ -109,6 +117,7 @@ export function parseStepsToStructuredList(stepsRaw) {
       title: 'التشطيب واللمسات الجمالية',
       detail: 'إضافة طبقة الحماية أو الطلاء البيئي وتركيب العناصر الوظيفية النهائية.',
       tip: 'اختبر توازن المنتج في مكانه المخصص قبل الاستخدام الدائم.',
+      image: getStepImage(3, 'التشطيب واللمسات الجمالية', 'إضافة طبقة الحماية والطلاء', projectMaterials, projectName, 2),
       completed: false
     }
   ];
@@ -201,7 +210,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
     const enrichedProjects = data.projects.map((proj, idx) => {
       const gallery = buildMultiImageGallery(proj.name, proj.idea, proj.materials || materials, idx);
       const metrics = deriveEngineeringMetrics(proj, materials || '');
-      const parsedSteps = parseStepsToStructuredList(proj.steps);
+      const parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, proj.materials || materials);
 
       return {
         ...proj,
@@ -244,6 +253,25 @@ export async function regenerateSpecificGalleryView({ projectName, projectIdea: 
     return {
       success: true,
       imageUrl: generateSvgBlueprint(projectName, projectMaterials, viewType)
+    };
+  }
+}
+
+/**
+ * Regenerate an AI illustration for a specific step
+ */
+export async function regenerateStepImage({ projectName, stepNumber, stepTitle, projectMaterials, currentUrl = '' }) {
+  try {
+    const nextUrl = getNextStepImage(stepNumber, stepTitle, projectMaterials, projectName, currentUrl);
+    return {
+      success: true,
+      imageUrl: nextUrl
+    };
+  } catch (err) {
+    console.error('Error regenerating step image:', err);
+    return {
+      success: false,
+      error: err.message
     };
   }
 }
@@ -439,7 +467,7 @@ function generateTailoredFallbackProjects(materialsStr, userLevel, _projectType)
   const enriched = rawProjects.map((p, idx) => {
     const gallery = buildMultiImageGallery(p.name, p.idea, p.materials, idx);
     const metrics = deriveEngineeringMetrics(p, materialsStr || '');
-    const parsedSteps = parseStepsToStructuredList(p.steps);
+    const parsedSteps = parseStepsToStructuredList(p.steps, p.name, p.materials);
     return {
       ...p,
       id: `proj-smart-${Date.now()}-${idx}`,
