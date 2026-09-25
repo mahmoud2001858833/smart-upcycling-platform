@@ -314,14 +314,26 @@ function analyzeVisualInfographics(steps, _projectTitle) {
 export function orchestrateProjectSwarm(project, selectedMaterials = []) {
   if (!project) return null;
 
+  // Normalize selected materials or project.materials into an array of items
+  let rawList = [];
+  if (Array.isArray(selectedMaterials) && selectedMaterials.length > 0) {
+    rawList = selectedMaterials;
+  } else if (typeof selectedMaterials === 'string' && selectedMaterials.trim()) {
+    rawList = selectedMaterials.split(/[،,\n++]+/).map(s => s.trim()).filter(Boolean);
+  } else if (Array.isArray(project.materials)) {
+    rawList = project.materials;
+  } else if (typeof project.materials === 'string' && project.materials.trim()) {
+    rawList = project.materials.split(/[،,\n++]+/).map(s => s.trim()).filter(Boolean);
+  }
+
   // Resolve material objects from names or objects
-  const resolvedMaterials = (selectedMaterials.length > 0 ? selectedMaterials : (project.materials || [])).map(item => {
-    if (typeof item === 'object' && item.name) return item;
+  const resolvedMaterials = rawList.map(item => {
+    if (typeof item === 'object' && item && item.name) return item;
     const nameStr = typeof item === 'string' ? item : '';
     const found = COMPREHENSIVE_MATERIALS.find(m => m.name.toLowerCase() === nameStr.toLowerCase());
     return found || {
-      id: nameStr,
-      name: nameStr,
+      id: nameStr || 'general-material',
+      name: nameStr || 'خامة مستدامة',
       category: 'general',
       defaultWeightKg: 1,
       carbonIntensityKgCO2ePerKg: 1.5,
@@ -329,6 +341,7 @@ export function orchestrateProjectSwarm(project, selectedMaterials = []) {
       energyFootprintMJPerKg: 40
     };
   });
+
 
   const co2Val = project.co2SavedKg || project.lcaMetrics?.carbonSavedKg || 6.4;
 
@@ -356,6 +369,7 @@ export function orchestrateProjectSwarm(project, selectedMaterials = []) {
   return {
     ...project,
     steps: enrichedSteps,
+    swarmAgents: SWARM_AGENTS,
     swarmAnalysis: {
       generatedAt: new Date().toISOString(),
       materialsSpecialist: materialsAnalysis,

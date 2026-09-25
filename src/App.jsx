@@ -6,7 +6,7 @@ import {
   Share2, BookOpen, Target, Shield, CheckCircle,
   Trophy, Calculator, Check, Trash2, Award, Printer,
   CheckCheck, QrCode, Sparkles, MessageSquare,
-  X, Database, LogIn, LogOut, HelpCircle
+  X, Database, LogIn, LogOut, HelpCircle, Layers
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -241,12 +241,16 @@ export default function App() {
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
 
-        // Auto-save all generated projects to Saved Projects list immediately
-        for (const proj of res.projects) {
-          await saveProjectToCloud(user?.id, proj);
+        // Auto-save all generated projects to Saved Projects list safely
+        try {
+          for (const proj of res.projects) {
+            await saveProjectToCloud(user?.id, proj);
+          }
+          const updatedSaved = await getSavedProjects(user?.id);
+          setSavedProjects(updatedSaved);
+        } catch (saveErr) {
+          console.warn('Auto-save warning:', saveErr);
         }
-        const updatedSaved = await getSavedProjects(user?.id);
-        setSavedProjects(updatedSaved);
 
         showToast(`✨ تم ابتكار ${res.projects.length} مشاريع وحفظها تلقائياً في قائمة المحفوظات!`);
       } else {
@@ -866,38 +870,78 @@ export default function App() {
                 اختر من قائمة المواد الشائعة أو أدخل أي مواد يدوياً ليقوم الذكاء الاصطناعي بابتكار مشاريع وتوليد 3 صور لكل مشروع:
               </p>
 
-              {/* Common Materials Chips & Expanded Library Trigger */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                    المواد الشائعة (انقر للاختيار أو تصفح المكتبة الموسعة):
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsMaterialsLibraryOpen(true)}
-                    className="library-open-btn"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      padding: '0.4rem 0.9rem',
-                      borderRadius: '0.75rem',
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      border: '1px solid rgba(16, 185, 129, 0.4)',
-                      color: '#059669',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
-                    }}
-                  >
-                    <Sparkles size={14} />
-                    <span>📚 فتح مكتبة المواد الموسعة (61+ مادة مع فحص التوافق)</span>
-                  </button>
+              {/* Deluxe Materials Library Trigger Banner */}
+              <div 
+                className="materials-library-trigger-card" 
+                onClick={() => setIsMaterialsLibraryOpen(true)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="trigger-card-content">
+                  <div className="trigger-badge">
+                    <Sparkles size={13} />
+                    <span>المكتبة الذكية الموسعة (V3)</span>
+                  </div>
+                  <h4 className="trigger-title">
+                    📚 تصفح مكتبة الخامات والمواد (61+ مادة مع صور وفحص توافق)
+                  </h4>
+                  <p className="trigger-desc">
+                    اختر خاماتك مع صور مصغرة واقعية لكل مادة، فحص فوري للتوافق الكيميائي والميكانيكي، وحساب دقيق للبصمة الكربونية والمائية.
+                  </p>
                 </div>
-                <div className="material-chips-wrapper">
+                <div className="trigger-card-action">
+                  <span className="btn-explore-library">
+                    <span>فتح المكتبة</span>
+                    <Layers size={16} />
+                  </span>
+                </div>
+              </div>
 
+              {/* Active Selected Materials Pill Bar */}
+              {selectedMaterials.length > 0 && (
+                <div className="selected-materials-bar">
+                  <div className="selected-materials-header">
+                    <div className="selected-materials-title">
+                      <Leaf size={15} color="#059669" />
+                      <span>المواد المحددة حالياً لمشروعك ({selectedMaterials.length}):</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMaterials([])}
+                      className="btn-clear-selected-materials"
+                      title="مسح جميع المواد المحددة"
+                    >
+                      مسح الكل
+                    </button>
+                  </div>
+                  <div className="selected-materials-pills-list">
+                    {selectedMaterials.map((mat) => (
+                      <span key={mat} className="selected-material-pill">
+                        <span className="pill-dot" />
+                        <span className="pill-name">{mat}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMaterials(prev => prev.filter(m => m !== mat));
+                          }}
+                          className="pill-remove-btn"
+                          title={`إزالة ${mat}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Common Materials Quick Chips */}
+              <div style={{ marginTop: '1rem', marginBottom: '1.25rem' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
+                  اختيار سريع من المواد الشائعة:
+                </label>
+                <div className="material-chips-wrapper">
                   {COMMON_MATERIALS.map(mat => {
                     const isSelected = selectedMaterials.includes(mat);
                     return (
@@ -1012,12 +1056,12 @@ export default function App() {
                 {isLoading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>{loadingStep || 'جاري التحليل وتوليد معرض الصور بالذكاء الاصطناعي...'}</span>
+                    <span>{loadingStep || 'جاري التحليل وتوليد المشاريع عبر 6 وكلاء ذكاء اصطناعي...'}</span>
                   </>
                 ) : (
                   <>
-                    <Lightbulb size={18} />
-                    <span>🚀 ابتكر مشاريع ومعرض صور ثلاثي بالذكاء الاصطناعي</span>
+                    <Sparkles size={18} className="text-amber-300" />
+                    <span>🚀 ابتكار مشاريع ومعرض صور ثلاثي عبر طاقم الـ 6 وكلاء أذكياء</span>
                   </>
                 )}
               </button>
@@ -1168,6 +1212,13 @@ export default function App() {
                               </div>
                             )}
 
+                            {/* 6 AI Agents Validation Strip */}
+                            <div className="project-card-swarm-badge">
+                              <span className="swarm-badge-pill">
+                                🤖 تدقيق ومصادقة 6 وكلاء أذكياء (المواد • الهندسة • الأثر • السلامة)
+                              </span>
+                            </div>
+
                             {/* Primary CTA Button */}
                             <div className="project-card-cta-row">
                               <button
@@ -1178,7 +1229,7 @@ export default function App() {
                                   setSelectedProjectModal(project);
                                 }}
                               >
-                                <span>عرض تفاصيل المشروع الكاملة</span>
+                                <span>عرض صفحة المشروع المستقلة</span>
                                 <ArrowLeft size={16} />
                               </button>
 

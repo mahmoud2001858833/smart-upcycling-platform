@@ -4752,3 +4752,248 @@ img {
     color: #000000 !important;
   }
 }
+
+/* ==========================================================================
+   V3 LUXURY PLATFORM DESIGN: MATERIALS LIBRARY BANNER & SELECTED PILLS BAR
+   ========================================================================== */
+
+/* Materials Library Deluxe Trigger Card */
+.materials-library-trigger-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.15rem 1.4rem;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.08) 0%, rgba(16, 185, 129, 0.05) 50%, rgba(20, 184, 166, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 1.25rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px -2px rgba(16, 185, 129, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.materials-library-trigger-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #10b981, #14b8a6);
+  border-radius: 4px 0 0 4px;
+}
+
+.materials-library-trigger-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.6);
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.12) 0%, rgba(16, 185, 129, 0.08) 50%, rgba(20, 184, 166, 0.12) 100%);
+  box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.18), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+}
+
+.trigger-card-content {
+  flex: 1;
+}
+
+.trigger-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #059669;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.trigger-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #064e3b;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.35;
+}
+
+.trigger-desc {
+  font-size: 0.78rem;
+  color: #4b5563;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.trigger-card-action {
+  flex-shrink: 0;
+}
+
+.btn-explore-library {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  transition: all 0.2s ease;
+}
+
+.materials-library-trigger-card:hover .btn-explore-library {
+  background: linear-gradient(135deg, #047857 0%, #0f766e 100%);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.35);
+  transform: scale(1.02);
+}
+
+/* Selected Materials Active Bar */
+.selected-materials-bar {
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.15rem;
+  background: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.selected-materials-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.selected-materials-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.btn-clear-selected-materials {
+  background: none;
+  border: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.35rem;
+  transition: background 0.15s ease;
+}
+
+.btn-clear-selected-materials:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.selected-materials-pills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.selected-material-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 184, 166, 0.12) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #065f46;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+}
+
+.selected-material-pill:hover {
+  border-color: #059669;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(20, 184, 166, 0.18) 100%);
+}
+
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.pill-name {
+  line-height: 1;
+}
+
+.pill-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  margin-right: -0.15rem;
+}
+
+.pill-remove-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Swarm 6-Agent Badge on Project Cards */
+.project-card-swarm-badge {
+  margin: 0.65rem 0 0.85rem 0;
+}
+
+.swarm-badge-pill {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.65rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Enhanced CTA Button */
+.cta-analyze-btn {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 50%, #0891b2 100%) !important;
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3) !important;
+  font-size: 0.98rem !important;
+  padding: 0.95rem 1.75rem !important;
+  border: none !important;
+  border-radius: 1rem !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.65rem !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  width: 100% !important;
+  margin-top: 1.25rem !important;
+}
+
+.cta-analyze-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.008) !important;
+  box-shadow: 0 10px 28px rgba(5, 150, 105, 0.4) !important;
+  background: linear-gradient(135deg, #047857 0%, #0f766e 50%, #0e7490 100%) !important;
+}
+
+.cta-analyze-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.995) !important;
+}
+

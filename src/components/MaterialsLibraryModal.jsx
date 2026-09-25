@@ -1,16 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, X, Check, Layers, 
-  ArrowRight, ShieldCheck, Flame, Droplets
+  ArrowRight, ShieldCheck, Flame, Droplets, Sparkles
 } from 'lucide-react';
-
 
 import { 
   MATERIAL_CATEGORIES, 
   COMPREHENSIVE_MATERIALS, 
-  evaluateMaterialsCompatibility 
+  evaluateMaterialsCompatibility,
+  getMaterialThumbnail
 } from '../data/materialsLibrary.js';
-
 
 export default function MaterialsLibraryModal({ 
   isOpen, 
@@ -21,6 +20,18 @@ export default function MaterialsLibraryModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   
   // Track selected material names/ids
   const [selectedItemIds, setSelectedItemIds] = useState(() => {
@@ -107,8 +118,12 @@ export default function MaterialsLibraryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div 
+
         className="bg-neutral-900 border border-emerald-500/30 rounded-3xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl shadow-emerald-950/50 overflow-hidden relative"
         dir="rtl"
       >
@@ -125,8 +140,9 @@ export default function MaterialsLibraryModal({
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide flex items-center gap-2">
                 مكتبة المواد الموسعة للاستدامة والتصنيع الذكي
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                  {COMPREHENSIVE_MATERIALS.length} مادة معتمدة
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold inline-flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{COMPREHENSIVE_MATERIALS.length} مادة معتمدة</span>
                 </span>
               </h2>
             </div>
@@ -263,84 +279,96 @@ export default function MaterialsLibraryModal({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
               {filteredMaterials.map(mat => {
                 const isSelected = selectedItemIds.has(mat.id);
+                const thumb = getMaterialThumbnail(mat);
+
                 return (
                   <div
                     key={mat.id}
                     onClick={() => toggleMaterial(mat.id)}
-                    className={`cursor-pointer rounded-2xl p-3.5 border transition-all duration-200 relative group flex flex-col justify-between ${
+                    className={`cursor-pointer rounded-2xl border transition-all duration-200 relative group flex flex-col justify-between overflow-hidden ${
                       isSelected
-                        ? 'bg-emerald-950/30 border-emerald-500/80 shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-500/50'
-                        : 'bg-neutral-900/80 hover:bg-neutral-850 border-neutral-800/80 hover:border-neutral-700'
+                        ? 'bg-emerald-950/40 border-emerald-500 shadow-xl shadow-emerald-950/50 ring-2 ring-emerald-500/60 scale-[1.01]'
+                        : 'bg-neutral-900/90 hover:bg-neutral-850 border-neutral-800 hover:border-neutral-700 hover:shadow-lg'
                     }`}
                   >
-                    {/* Top Row: Icon, Title & Checkbox */}
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl p-1.5 rounded-xl bg-neutral-800/80 group-hover:scale-110 transition-transform">
-                            {mat.icon}
-                          </span>
-                          <div>
-                            <h4 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
-                              {mat.name}
-                            </h4>
-                            <span className="text-[10px] text-neutral-400">
-                              {mat.unit}
-                            </span>
+                    {/* Material Thumbnail Image Banner */}
+                    <div className="relative h-28 w-full overflow-hidden bg-neutral-950">
+                      <img
+                        src={thumb}
+                        alt={mat.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1532372576444-dda954194ad0?w=400&auto=format&fit=crop&q=80';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-black/40 pointer-events-none" />
+
+                      {/* Category Pill Tag */}
+                      <span className="absolute top-2.5 right-2.5 text-[10px] px-2 py-0.5 rounded-full font-bold bg-black/75 backdrop-blur-md text-emerald-300 border border-emerald-500/30">
+                        {mat.category}
+                      </span>
+
+                      {/* Selection checkbox indicator */}
+                      <div className={`absolute top-2.5 left-2.5 w-6 h-6 rounded-lg flex items-center justify-center border transition-all ${
+                        isSelected 
+                          ? 'bg-emerald-500 border-emerald-400 text-black shadow-md shadow-emerald-500/40 scale-105' 
+                          : 'border-neutral-500/70 bg-black/60 group-hover:border-white'
+                      }`}>
+                        {isSelected && <Check className="w-4 h-4 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Card Content Body */}
+                    <div className="p-3.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-1 mb-1">
+                          {mat.name}
+                        </h4>
+
+                        {/* Quick Specs / Footprints */}
+                        <div className="grid grid-cols-2 gap-1.5 my-2 text-[10px] bg-neutral-950/60 p-2 rounded-xl border border-neutral-800/60">
+                          <div className="flex items-center gap-1 text-emerald-400" title="البصمة الكربونية للكيلوجرام">
+                            <Flame className="w-3 h-3 flex-shrink-0" />
+                            <span>{mat.carbonIntensityKgCO2ePerKg} كجم CO₂</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-cyan-400" title="البصمة المائية للكيلوجرام">
+                            <Droplets className="w-3 h-3 flex-shrink-0" />
+                            <span>{mat.waterFootprintLPerKg} لتر ماء</span>
                           </div>
                         </div>
 
-                        {/* Checkbox indicator */}
-                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
-                          isSelected 
-                            ? 'bg-emerald-500 border-emerald-400 text-black' 
-                            : 'border-neutral-700 bg-neutral-800/50 group-hover:border-neutral-500'
+                        {/* Tips / Safety Note */}
+                        <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed">
+                          {mat.tips || mat.commonUses}
+                        </p>
+                      </div>
+
+                      {/* Bottom Metadata Badges */}
+                      <div className="mt-3 pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[10px]">
+                        <span className={`px-2 py-0.5 rounded-full font-medium ${
+                          mat.difficulty === 'سهل' || mat.difficulty === 'سهل جداً'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25'
+                            : mat.difficulty === 'متوسط'
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
+                            : 'bg-purple-500/15 text-purple-300 border border-purple-500/25'
                         }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
+                          {mat.difficulty}
+                        </span>
+
+                        <span className="text-neutral-400 font-mono text-[10px]">
+                          قابلية: {mat.recyclabilityScore}%
+                        </span>
                       </div>
-
-                      {/* Quick Specs / Footprints */}
-                      <div className="grid grid-cols-2 gap-1.5 my-2.5 text-[10px] bg-neutral-950/40 p-2 rounded-xl border border-neutral-800/50">
-                        <div className="flex items-center gap-1 text-emerald-400/90" title="البصمة الكربونية للكيلوجرام">
-                          <Flame className="w-3 h-3 flex-shrink-0" />
-                          <span>{mat.carbonIntensityKgCO2ePerKg} كجم CO₂</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-cyan-400/90" title="البصمة المائية للكيلوجرام">
-                          <Droplets className="w-3 h-3 flex-shrink-0" />
-                          <span>{mat.waterFootprintLPerKg} لتر ماء</span>
-                        </div>
-                      </div>
-
-                      {/* Tips / Safety Note */}
-                      <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed">
-                        {mat.tips}
-                      </p>
-                    </div>
-
-                    {/* Bottom Metadata Badges */}
-                    <div className="mt-3 pt-2.5 border-t border-neutral-800/60 flex items-center justify-between text-[10px]">
-                      <span className={`px-2 py-0.5 rounded-full font-medium ${
-                        mat.difficulty === 'سهل' 
-                          ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                          : mat.difficulty === 'متوسط'
-                          ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
-                          : 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
-                      }`}>
-                        {mat.difficulty}
-                      </span>
-
-                      <span className="text-neutral-400 font-mono">
-                        قابلية: {mat.recyclabilityScore}%
-                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
+
           )}
         </div>
 

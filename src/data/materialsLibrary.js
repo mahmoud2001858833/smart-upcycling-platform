@@ -15,7 +15,53 @@ export const MATERIAL_CATEGORIES = [
   { id: 'organic', label: 'المخلفات الطبيعية', icon: 'Leaf', color: '#84cc16' }
 ];
 
+export const MATERIAL_CATEGORY_THUMBNAILS = {
+  plastic: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&auto=format&fit=crop&q=80',
+  wood: 'https://images.unsplash.com/photo-1532372576444-dda954194ad0?w=400&auto=format&fit=crop&q=80',
+  metal: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=400&auto=format&fit=crop&q=80',
+  paper: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&auto=format&fit=crop&q=80',
+  textile: 'https://images.unsplash.com/photo-1542272604-780c96856592?w=400&auto=format&fit=crop&q=80',
+  glass: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=400&auto=format&fit=crop&q=80',
+  electronic: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80',
+  organic: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=80',
+  general: 'https://images.unsplash.com/photo-1532372576444-dda954194ad0?w=400&auto=format&fit=crop&q=80'
+};
+
+const SPECIFIC_MATERIAL_THUMBNAILS = {
+  'mat-p1': 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&auto=format&fit=crop&q=80',
+  'mat-p2': 'https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=400&auto=format&fit=crop&q=80',
+  'mat-p3': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&auto=format&fit=crop&q=80',
+  'mat-p4': 'https://images.unsplash.com/photo-1597484661643-2f5fef640dd1?w=400&auto=format&fit=crop&q=80',
+  'mat-p5': 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f9?w=400&auto=format&fit=crop&q=80',
+  'mat-w1': 'https://images.unsplash.com/photo-1532372576444-dda954194ad0?w=400&auto=format&fit=crop&q=80',
+  'mat-w2': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&auto=format&fit=crop&q=80',
+  'mat-w3': 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=400&auto=format&fit=crop&q=80',
+  'mat-m1': 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=400&auto=format&fit=crop&q=80',
+  'mat-m2': 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=400&auto=format&fit=crop&q=80',
+  'mat-m3': 'https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?w=400&auto=format&fit=crop&q=80',
+  'mat-pa1': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&auto=format&fit=crop&q=80',
+  'mat-pa2': 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=400&auto=format&fit=crop&q=80',
+  'mat-t1': 'https://images.unsplash.com/photo-1542272604-780c96856592?w=400&auto=format&fit=crop&q=80',
+  'mat-t2': 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&auto=format&fit=crop&q=80',
+  'mat-g1': 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=400&auto=format&fit=crop&q=80',
+  'mat-g2': 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=400&auto=format&fit=crop&q=80',
+  'mat-g3': 'https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=400&auto=format&fit=crop&q=80',
+  'mat-e1': 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&auto=format&fit=crop&q=80',
+  'mat-e2': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&auto=format&fit=crop&q=80',
+  'mat-e3': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80',
+  'mat-o1': 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=80',
+  'mat-o2': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&auto=format&fit=crop&q=80'
+};
+
+export function getMaterialThumbnail(material) {
+  if (!material) return MATERIAL_CATEGORY_THUMBNAILS.general;
+  if (material.thumbnail) return material.thumbnail;
+  if (SPECIFIC_MATERIAL_THUMBNAILS[material.id]) return SPECIFIC_MATERIAL_THUMBNAILS[material.id];
+  return MATERIAL_CATEGORY_THUMBNAILS[material.category] || MATERIAL_CATEGORY_THUMBNAILS.general;
+}
+
 export const COMPREHENSIVE_MATERIALS = [
+
   // 1. Plastic (البلاستيك)
   {
     id: 'mat-p1',
@@ -598,16 +644,29 @@ export const COMPREHENSIVE_MATERIALS = [
  * Evaluate Material Compatibility & Chemical Synergy
  */
 export function evaluateMaterialsCompatibility(selectedMaterials = []) {
-  if (selectedMaterials.length <= 1) {
+  // Normalize input into an array of strings
+  let list = [];
+  if (Array.isArray(selectedMaterials)) {
+    list = selectedMaterials;
+  } else if (typeof selectedMaterials === 'string' && selectedMaterials.trim()) {
+    list = selectedMaterials.split(/[،,\n+]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  if (list.length <= 1) {
     return {
       score: 100,
-      level: 'ممتاز',
+      level: 'جاهز للاختيار',
+      rating: 'جاهز للاختيار',
+      status: 'optimal',
+      notes: 'اختر مادة ثانية لفحص مدى التوافق الكيميائي والميكانيكي للربط',
       bondingMethod: 'جاهز للاختيار',
+      bondingRecommendations: ['اختر مواد متعددة لتحليل وسيلة الربط الفضلى'],
       hazardWarnings: []
     };
   }
 
-  const selectedText = selectedMaterials.join(' ').toLowerCase();
+  const selectedText = list.map(m => typeof m === 'object' ? (m.name || m.category || m.id || '') : String(m)).join(' ').toLowerCase();
+
 
   const warnings = [];
   let score = 92;
