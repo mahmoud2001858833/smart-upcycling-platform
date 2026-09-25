@@ -68,6 +68,7 @@ export default function ProjectIdeator({
             >
               <div className="project-card-header">
                 <span className={`track-badge ${trackClass}`}>
+                  <TrackIcon size={14} style={{ display: 'inline', marginLeft: 4 }} />
                   {proj.trackLabel}
                 </span>
                 {isSelected && (

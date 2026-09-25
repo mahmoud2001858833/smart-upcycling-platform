@@ -5,12 +5,8 @@ import {
   CheckCheck, 
   ArrowRight, 
   ArrowLeft, 
-  Wrench, 
-  Image as ImageIcon, 
-  Sparkles, 
-  ShieldCheck,
-  Compass,
-  FileCode2
+  Wrench,
+  Sparkles
 } from 'lucide-react';
 
 export default function StepGuideVisualizer({ project, onBackToProjects }) {

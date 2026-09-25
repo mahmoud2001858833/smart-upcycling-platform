@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Recycle, 
   Sun, 
@@ -8,8 +8,12 @@ import {
   Calculator, 
   Database,
   Award,
-  Sparkles
+  Sparkles,
+  LogIn,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 
 export default function Header({ 
   activeTab, 
@@ -19,6 +23,9 @@ export default function Header({
   totalOffsetKg,
   onOpenCertificate 
 }) {
+  const { user, signOut } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   return (
     <header className="header-wrapper">
       <div className="header-container">
@@ -97,8 +104,48 @@ export default function Header({
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
+          {/* User Auth Section */}
+          <div className="auth-header-actions">
+            {user ? (
+              <div className="user-profile-pill">
+                <div className="user-avatar-circle" title={user.email}>
+                  {user.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="user-info-text">
+                  <span className="user-name-display" title={user.email}>
+                    {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                  </span>
+                  <span className="user-role-badge">عضو المنظومة</span>
+                </div>
+                <button 
+                  className="btn-logout-icon" 
+                  onClick={signOut} 
+                  title="تسجيل الخروج"
+                  aria-label="تسجيل الخروج"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                className="btn-auth-login" 
+                onClick={() => setIsAuthModalOpen(true)}
+                title="تسجيل الدخول أو إنشاء حساب"
+              >
+                <LogIn size={15} />
+                <span>تسجيل الدخول</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </header>
   );
 }
+

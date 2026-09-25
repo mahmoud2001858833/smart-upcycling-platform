@@ -3,12 +3,8 @@ import {
   Database, 
   Search, 
   Download, 
-  Filter, 
-  ExternalLink, 
   Check, 
-  FileJson,
-  Layers,
-  Sparkles
+  FileJson
 } from 'lucide-react';
 import lcaData from '../data/lcaDatabase.json';
 

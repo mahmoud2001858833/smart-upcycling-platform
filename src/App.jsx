@@ -1,28 +1,64 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import {
   Recycle, Lightbulb, Star, Send, ArrowLeft, Camera, Loader2,
   Clock, AlertTriangle, Leaf, ChevronDown, ChevronUp, Download,
-  Share2, BookOpen, Wrench, Target, Shield, Image, CheckCircle,
-  Trophy, Calculator, Plus, Check, Trash2, Award, Printer, Copy,
-  CheckCheck, QrCode, Sparkles, MessageSquare, ExternalLink, RefreshCw,
-  Maximize2, X, CheckSquare, Square, DollarSign, Layers, Activity
+  Share2, BookOpen, Wrench, Target, Shield, CheckCircle,
+  Trophy, Calculator, Check, Trash2, Award, Printer,
+  CheckCheck, QrCode, Sparkles, MessageSquare, RefreshCw,
+  Maximize2, X, CheckSquare, Square, DollarSign, Database,
+  LogIn, LogOut, HelpCircle
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
   USER_LEVELS,
   PROJECT_TYPES,
   fetchAiProjects,
-  generateProjectImageAi,
   regenerateSpecificGalleryView,
   sendChatMessageToAi
 } from './utils/aiProjectEngine.js';
+import { calculateCollectiveOffset } from './utils/lcaCalculator.js';
+import { PRESET_SCENARIOS } from './data/presetScenarios.js';
+import CarbonCalculatorView from './components/CarbonCalculatorView.jsx';
+import LcaDirectoryBrowser from './components/LcaDirectoryBrowser.jsx';
+import { useAuth } from './context/AuthContext';
+import AuthModal from './components/AuthModal';
+import {
+  getSavedProjects,
+  saveProjectToCloud,
+  deleteProjectFromCloud,
+  getUserProfileStats,
+  updateUserProfileStats
+} from './utils/supabaseSync.js';
 import './index.css';
 
 export default function App() {
+  const { user, signOut } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const userDropdownRef = useRef(null);
 
-  // Main navigation tab: 'generator' | 'saved' | 'chat' | 'certificate'
+  // Handle click outside for user profile menu
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    }
+    if (isUserDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserDropdownOpen]);
+
+  // Main navigation tab: 'generator' | 'calculator' | 'directory' | 'saved' | 'chat' | 'certificate'
   const [activeTab, setActiveTab] = useState('generator');
+
+  // Toast feedback state
+  const [toast, setToast] = useState(null);
 
   // Input states
   const [materials, setMaterials] = useState('');
@@ -35,7 +71,7 @@ export default function App() {
   const [projectType, setProjectType] = useState('practical');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
-  const [imageUploaded, setImageUploaded] = useState(false);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
 
   // Projects & UI states
   const [projects, setProjects] = useState([]);
@@ -45,6 +81,17 @@ export default function App() {
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
+  // LCA Calculator State
+  const [currentPresetId, setCurrentPresetId] = useState(PRESET_SCENARIOS[0].id);
+  const [calculatorMaterials, setCalculatorMaterials] = useState(() => PRESET_SCENARIOS[0].materials);
+  const lcaResults = useMemo(() => calculateCollectiveOffset(calculatorMaterials), [calculatorMaterials]);
+
+  const handleSelectPresetScenario = (scenario) => {
+    setCurrentPresetId(scenario.id);
+    setCalculatorMaterials(scenario.materials);
+    showToast(`تم تطبيق حسابات سيناريو "${scenario.title}"! 📊`);
+  };
+
   // V3 Upgraded Interactive States
   const [lightboxImage, setLightboxImage] = useState(null); // { url, title, subtitle }
   const [interactiveMode, setInteractiveMode] = useState({}); // { [projectIndex]: boolean }
@@ -53,6 +100,46 @@ export default function App() {
   // Gamification & Environmental Impact
   const [completedProjects, setCompletedProjects] = useState(1);
   const [environmentalPoints, setEnvironmentalPoints] = useState(40);
+
+  // Toast notification helper
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // Celebration Confetti helper
+  const triggerCelebration = () => {
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch {
+      // safe fallback
+    }
+  };
+
+  // Sync projects and stats with Supabase cloud
+  useEffect(() => {
+    let isMounted = true;
+    async function syncData() {
+      if (user?.id) {
+        const cloudProjects = await getSavedProjects(user.id);
+        if (isMounted) setSavedProjects(cloudProjects);
+        const stats = await getUserProfileStats(user.id);
+        if (isMounted) {
+          setEnvironmentalPoints(stats.points);
+          setCompletedProjects(stats.completed);
+        }
+      } else {
+        const localProjects = await getSavedProjects(null);
+        if (isMounted) setSavedProjects(localProjects);
+      }
+    }
+    syncData();
+    return () => { isMounted = false; };
+  }, [user]);
 
   // Chat with Expert State
   const [chatMessages, setChatMessages] = useState([
@@ -67,8 +154,8 @@ export default function App() {
   // Selected Project for Official Certificate
   const [certificateProject, setCertificateProject] = useState(null);
 
-  // Certificate metadata
-  const certId = useMemo(() => `SA-LCA-2026-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, []);
+  // Certificate metadata - fixed state prevents React purity warnings
+  const [certId] = useState(() => `SA-LCA-2026-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
   const currentDate = useMemo(() => new Date().toLocaleDateString('ar-SA', {
     year: 'numeric',
     month: 'long',
@@ -82,12 +169,13 @@ export default function App() {
     );
   };
 
-  // Environmental impact calculations (0.7 kg waste reduced, 1.5 kg CO2 saved per project)
+  // Environmental impact calculations
   const impact = useMemo(() => {
-    const wasteReduced = completedProjects * 0.7;
-    const co2Saved = completedProjects * 1.5;
+    const wasteReduced = completedProjects * 0.75;
+    const co2Saved = completedProjects * 1.65;
     return { wasteReduced, co2Saved };
   }, [completedProjects]);
+
 
   // Generate Projects with Live AI Engine
   const handleGenerateProjects = async () => {
@@ -211,22 +299,38 @@ export default function App() {
     setChatInput(introQuery);
   };
 
-  // Save Project
-  const handleSaveProject = (project) => {
-    if (!savedProjects.some(p => p.name === project.name)) {
-      setSavedProjects(prev => [...prev, project]);
-      alert(`تم حفظ مشروع "${project.name}" في قائمة مشاريعك المفضلة! ⭐`);
-    } else {
-      alert('هذا المشروع محفوظ لديك بالفعل!');
+  // Save Project with Supabase Cloud Sync
+  const handleSaveProject = async (project) => {
+    if (savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id))) {
+      showToast('هذا المشروع محفوظ لديك بالفعل!', 'info');
+      return;
     }
+    const res = await saveProjectToCloud(user?.id, project);
+    setSavedProjects(prev => [res.savedProject, ...prev]);
+    showToast(`تم حفظ مشروع "${project.name}" في قائمتك المفضلة! ⭐`);
   };
 
-  // Mark Completed
+  // Delete Project from Cloud & Local
+  const handleDeleteSavedProject = async (projectId, projectIdx) => {
+    await deleteProjectFromCloud(user?.id, projectId);
+    setSavedProjects(prev => prev.filter((p, i) => (projectId ? p.id !== projectId : i !== projectIdx)));
+    showToast('تم إزالة المشروع من المحفوظات.', 'info');
+  };
+
+  // Mark Completed with Confetti & Gamification
   const handleMarkCompleted = (project) => {
-    setCompletedProjects(p => p + 1);
-    setEnvironmentalPoints(p => p + 30);
+    const newCompleted = completedProjects + 1;
+    const newPoints = environmentalPoints + 30;
+    setCompletedProjects(newCompleted);
+    setEnvironmentalPoints(newPoints);
     setCertificateProject(project);
-    alert(`تهانينا! 🎉 تم احتساب إنجاز مشروع "${project.name}" وحصلت على +30 نقطة بيئية. يمكنك الآن استخراج شهادة الاعتماد الرسمية.`);
+    triggerCelebration();
+    showToast(`تهانينا! 🎉 أنجزت مشروع "${project.name}" ونلت +30 نقطة بيئية!`);
+    updateUserProfileStats(user?.id, {
+      points: newPoints,
+      completed: newCompleted,
+      co2Saved: newCompleted * 1.65
+    });
   };
 
   // Share / Copy Project
@@ -234,7 +338,8 @@ export default function App() {
     const shareText = `مشروع إعادة تدوير ذكي: ${project.name}\nالفكرة: ${project.idea}\nالمواد: ${project.materials}\nالأدوات: ${project.tools}\nالخطوات: ${project.steps}`;
     navigator.clipboard.writeText(shareText).then(() => {
       setCopiedIndex(idx);
-      setTimeout(() => setCopiedIndex(null), 2000);
+      showToast('تم نسخ تفاصيل المشروع إلى الحافظة بنجاح! 📋');
+      setTimeout(() => setCopiedIndex(null), 2500);
     });
   };
 
@@ -290,13 +395,13 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImageUploaded(true);
     setIsLoading(true);
     setLoadingStep('جاري قراءة وتحليل الصورة بالذكاء الاصطناعي...');
 
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result;
+      setUploadedImagePreview(base64);
       try {
         const res = await fetchAiProjects({
           imageBase64: base64,
@@ -309,18 +414,19 @@ export default function App() {
           setExpandedProject(0);
           setCertificateProject(res.projects[0]);
           setEnvironmentalPoints(p => p + 20);
+          showToast('تم فحص وتحليل الصورة واستخراج المشاريع بنجاح! 📸');
         }
       } catch (err) {
         console.error('Error analyzing uploaded image:', err);
-        alert('حدث خطأ أثناء تحليل الصورة');
+        showToast('تعذر استكمال فحص الصورة، تم استخدام المولد المطور.', 'info');
       } finally {
         setIsLoading(false);
-        setImageUploaded(false);
         setLoadingStep('');
       }
     };
     reader.readAsDataURL(file);
   };
+
 
   return (
     <div className="app-container">
@@ -370,6 +476,134 @@ export default function App() {
                 <span>وفرت: {impact.co2Saved.toFixed(1)} كغ CO₂</span>
               </span>
             )}
+
+            {/* Supabase Authentication Section */}
+            <div className="auth-header-actions" ref={userDropdownRef}>
+              {user ? (
+                <div className="user-profile-menu-container">
+                  <button 
+                    type="button"
+                    className={`user-profile-pill ${isUserDropdownOpen ? 'active' : ''}`}
+                    onClick={() => setIsUserDropdownOpen(prev => !prev)}
+                    aria-expanded={isUserDropdownOpen}
+                    aria-haspopup="true"
+                    title="ملفي الشخصي وإحصائيات الاستدامة"
+                  >
+                    <div className="user-avatar-circle">
+                      {user.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                      <span className="user-online-dot"></span>
+                    </div>
+                    <div className="user-info-text">
+                      <span className="user-name-display">
+                        {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                      </span>
+                      <span className="user-role-badge">
+                        {user.user_metadata?.is_guest ? 'حساب تجريبي' : 'عضو معتمد'}
+                      </span>
+                    </div>
+                    <ChevronDown size={14} className={`user-dropdown-arrow ${isUserDropdownOpen ? 'rotated' : ''}`} />
+                  </button>
+
+                  {/* Elegant Floating Dropdown */}
+                  {isUserDropdownOpen && (
+                    <div className="user-dropdown-menu">
+                      <div className="user-dropdown-header">
+                        <div className="user-dropdown-avatar-lg">
+                          {user.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div className="user-dropdown-meta">
+                          <h4 className="user-dropdown-fullname">
+                            {user.user_metadata?.full_name || 'خبير الاستدامة'}
+                          </h4>
+                          <span className="user-dropdown-email" dir="ltr">{user.email}</span>
+                          <span className={`user-dropdown-status-tag ${user.user_metadata?.is_guest ? 'guest' : 'verified'}`}>
+                            {user.user_metadata?.is_guest ? '🧪 وضع الضيف التجريبي' : '🛡️ حساب موثق بسحابة Supabase'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="user-dropdown-stats-grid">
+                        <div className="user-dropdown-stat-card">
+                          <span className="stat-label">نقاط الأثر</span>
+                          <strong className="stat-val">{environmentalPoints} 🌱</strong>
+                        </div>
+                        <div className="user-dropdown-stat-card">
+                          <span className="stat-label">المشاريع</span>
+                          <strong className="stat-val">{completedProjects} 🎯</strong>
+                        </div>
+                        <div className="user-dropdown-stat-card">
+                          <span className="stat-label">المحفوظات</span>
+                          <strong className="stat-val">{savedProjects.length} 💾</strong>
+                        </div>
+                      </div>
+
+                      <div className="user-dropdown-links">
+                        <button
+                          type="button"
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setActiveTab('saved');
+                            setIsUserDropdownOpen(false);
+                          }}
+                        >
+                          <Star size={16} />
+                          <span>المشاريع المحفوظة سحابياً</span>
+                          <span className="dropdown-counter">{savedProjects.length}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setActiveTab('calculator');
+                            setIsUserDropdownOpen(false);
+                          }}
+                        >
+                          <Calculator size={16} />
+                          <span>حاسبة أثر الكربون (LCA)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setActiveTab('certificate');
+                            setIsUserDropdownOpen(false);
+                          }}
+                        >
+                          <Award size={16} />
+                          <span>الشهادة البيئية المعتمدة</span>
+                        </button>
+                      </div>
+
+                      <div className="user-dropdown-footer">
+                        <button
+                          type="button"
+                          className="user-dropdown-logout-btn"
+                          onClick={async () => {
+                            setIsUserDropdownOpen(false);
+                            await signOut();
+                            showToast('تم تسجيل الخروج بنجاح. نتمنى لك يوماً مستداماً! 👋', 'info');
+                          }}
+                        >
+                          <LogOut size={16} />
+                          <span>تسجيل الخروج من الحساب</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button 
+                  className="btn-auth-login" 
+                  onClick={() => setIsAuthModalOpen(true)}
+                  title="تسجيل الدخول أو إنشاء حساب"
+                >
+                  <LogIn size={15} />
+                  <span>تسجيل الدخول</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -380,20 +614,38 @@ export default function App() {
       <main className="official-main-content">
         {/* Navigation Tabs Header */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-          <div className="official-nav-tabs" style={{ maxWidth: '680px', width: '100%', justifyContent: 'center' }}>
+          <div className="official-nav-tabs" style={{ maxWidth: '920px', width: '100%', justifyContent: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
             <button
               className={`official-nav-btn ${activeTab === 'generator' ? 'active' : ''}`}
               onClick={() => setActiveTab('generator')}
-              style={{ flex: 1, justifyContent: 'center' }}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
             >
               <Lightbulb size={16} />
-              <span>إنشاء المشاريع</span>
+              <span>مولد المشاريع</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'calculator' ? 'active' : ''}`}
+              onClick={() => setActiveTab('calculator')}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
+            >
+              <Calculator size={16} />
+              <span>حاسبة الأثر (LCA)</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'directory' ? 'active' : ''}`}
+              onClick={() => setActiveTab('directory')}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
+            >
+              <Database size={16} />
+              <span>دليل الـ 150 مصدراً</span>
             </button>
 
             <button
               className={`official-nav-btn ${activeTab === 'saved' ? 'active' : ''}`}
               onClick={() => setActiveTab('saved')}
-              style={{ flex: 1, justifyContent: 'center' }}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
             >
               <Star size={16} />
               <span>المحفوظة ({savedProjects.length})</span>
@@ -402,7 +654,7 @@ export default function App() {
             <button
               className={`official-nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
               onClick={() => setActiveTab('chat')}
-              style={{ flex: 1, justifyContent: 'center' }}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
             >
               <Send size={16} />
               <span>اسأل الخبير {projectContextForChat ? '🎯' : ''}</span>
@@ -411,7 +663,7 @@ export default function App() {
             <button
               className={`official-nav-btn ${activeTab === 'certificate' ? 'active' : ''}`}
               onClick={() => setActiveTab('certificate')}
-              style={{ flex: 1, justifyContent: 'center' }}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
             >
               <Award size={16} />
               <span>الشهادة المعتمدة</span>
@@ -555,6 +807,31 @@ export default function App() {
                 <Camera size={18} />
                 <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
               </button>
+
+              {/* Uploaded Image Preview Chip */}
+              {uploadedImagePreview && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--emerald-light)', padding: '0.6rem 0.9rem', borderRadius: '10px', border: '1px solid var(--emerald-border)', marginTop: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <img 
+                      src={uploadedImagePreview} 
+                      alt="معاينة الصورة المرفوعة" 
+                      style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--emerald-primary)' }} 
+                    />
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع المعتمدة</span>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => { setUploadedImagePreview(null); showToast('تمت إزالة الصورة المرفوعة', 'info'); }}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}
+                    title="إزالة الصورة"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
 
               {/* Generate Projects CTA */}
               <button
@@ -1079,6 +1356,29 @@ export default function App() {
         )}
 
         {/* ============================================================
+            TAB: LCA CARBON CALCULATOR
+            ============================================================ */}
+        {activeTab === 'calculator' && (
+          <CarbonCalculatorView 
+            lcaResults={lcaResults} 
+            presets={PRESET_SCENARIOS}
+            currentScenarioId={currentPresetId}
+            onSelectPreset={handleSelectPresetScenario}
+            onOpenCertificate={() => {
+              setActiveTab('certificate');
+              triggerCelebration();
+            }} 
+          />
+        )}
+
+        {/* ============================================================
+            TAB: 150 LCA BENCHMARK DIRECTORY
+            ============================================================ */}
+        {activeTab === 'directory' && (
+          <LcaDirectoryBrowser />
+        )}
+
+        {/* ============================================================
             TAB 2: SAVED PROJECTS
             ============================================================ */}
         {activeTab === 'saved' && (
@@ -1086,7 +1386,9 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>مشاريعك المحفوظة ({savedProjects.length})</h3>
-                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>قائمتك المختارة من مشاريع إعادة التدوير المبتكرة للرجوع إليها وتنفيذها لاحقاً</p>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                  قائمتك المختارة من مشاريع إعادة التدوير المبتكرة المزامنة سحابياً مع حسابك
+                </p>
               </div>
             </div>
 
@@ -1095,7 +1397,7 @@ export default function App() {
                 <Star size={48} color="var(--border-strong)" style={{ margin: '0 auto 1rem' }} />
                 <h4 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.4rem' }}>لا توجد مشاريع محفوظة بعد</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                  يمكنك حفظ أي مشروع مبتكر أثناء تصفح المشاريع المقترحة للرجوع إليه في أي وقت.
+                  يمكنك حفظ أي مشروع مبتكر أثناء تصفح المشاريع المقترحة للرجوع إليه في أي وقت ومزامنته سحابياً.
                 </p>
                 <button
                   type="button"
@@ -1109,29 +1411,37 @@ export default function App() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
                 {savedProjects.map((proj, sIdx) => (
-                  <div key={sIdx} style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                  <div key={proj.id || sIdx} style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
                     <div style={{ width: '100%', height: '180px', background: '#0f172a', position: 'relative' }}>
                       <img
-                        src={proj.gallery?.finished || proj.generatedImage || '/step1.jpg'}
-                        alt={proj.name}
+                        src={proj.gallery?.finished || proj.generatedImage || proj.image_url || '/step1.jpg'}
+                        alt={proj.name || proj.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     </div>
                     <div style={{ padding: '1.25rem' }}>
                       <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-                        {proj.name}
+                        {proj.name || proj.title}
                       </h4>
                       <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem', height: '3.6em', overflow: 'hidden' }}>
-                        {proj.idea}
+                        {proj.idea || proj.description}
                       </p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          <Clock size={12} style={{ display: 'inline', marginLeft: '0.2rem' }} />
-                          {proj.time}
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', gap: '0.5rem' }}>
                         <button
                           type="button"
-                          onClick={() => setSavedProjects(prev => prev.filter((_, i) => i !== sIdx))}
+                          onClick={() => {
+                            setProjects([proj]);
+                            setExpandedProject(0);
+                            setActiveTab('generator');
+                            showToast(`تم فتح تفاصيل مشروع "${proj.name || proj.title}"!`);
+                          }}
+                          style={{ background: 'var(--emerald-light)', border: '1px solid var(--emerald-border)', color: 'var(--emerald-primary)', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          عرض المشروع والتنفيذ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSavedProject(proj.id, sIdx)}
                           style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                         >
                           <Trash2 size={13} />
@@ -1234,7 +1544,13 @@ export default function App() {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>شهادة رقمية رسمية معتمدة وفق المعايير البيئية الدولية ISO 14044</p>
               </div>
 
-              <button className="btn-print-official" onClick={() => window.print()}>
+              <button 
+                className="btn-print-official" 
+                onClick={() => {
+                  triggerCelebration();
+                  window.print();
+                }}
+              >
                 <Printer size={18} />
                 <span>طباعة الوثيقة الرسمية (Print / PDF)</span>
               </button>
@@ -1254,11 +1570,11 @@ export default function App() {
               </div>
 
               <div className="cert-body-text">
-                تشهد المنظومة الوطنية لإعادة التدوير والاستدامة البيئية الذكية بأن المشارك قد أنجز بنجاح
+                تشهد المنظومة الوطنية لإعادة التدوير والاستدامة البيئية الذكية بأن المشارك{user?.user_metadata?.full_name ? ` (${user.user_metadata.full_name})` : user?.email ? ` (${user.email})` : ''} قد أنجز بنجاح
                 مشروع إعادة التدوير المبتكر بالذكاء الاصطناعي:
                 <br />
                 <strong style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', display: 'block', margin: '0.75rem 0' }}>
-                  {certificateProject ? certificateProject.name : 'مشروع إعادة تدوير بيئي متعدد الخامات'}
+                  {certificateProject ? (certificateProject.name || certificateProject.title) : 'مشروع إعادة تدوير بيئي متعدد الخامات'}
                 </strong>
                 والذي تم تصميمه وتنفيذه وفق مواصفات الاقتصاد الدائري المعتمدة عالمياً.
               </div>
@@ -1345,6 +1661,24 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ============================================================
+          INTERACTIVE TOAST FEEDBACK NOTIFICATIONS
+          ============================================================ */}
+      {toast && (
+        <div className={`toast-banner ${toast.type}`}>
+          <Sparkles size={16} color="#34d399" />
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* ============================================================
+          SUPABASE AUTHENTICATION MODAL
+          ============================================================ */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
 
       {/* ============================================================
           OFFICIAL FOOTER

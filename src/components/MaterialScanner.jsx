@@ -6,10 +6,7 @@ import {
   Plus, 
   Minus, 
   Sliders, 
-  FileText, 
-  Camera, 
-  Search,
-  AlertCircle
+  Camera
 } from 'lucide-react';
 
 export default function MaterialScanner({ 
@@ -17,9 +14,7 @@ export default function MaterialScanner({
   materials, 
   onUpdateQuantity, 
   totalMassKg,
-  onAnalyzeCustomText,
-  presetList,
-  onSelectPreset 
+  onAnalyzeCustomText
 }) {
   const [inputText, setInputText] = useState(currentScenario?.rawText || '');
   const [isScanning, setIsScanning] = useState(false);

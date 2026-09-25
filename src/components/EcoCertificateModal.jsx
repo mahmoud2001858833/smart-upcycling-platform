@@ -1,25 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Award, 
   Printer, 
   X, 
-  CheckCircle2, 
-  ShieldCheck, 
   QrCode,
-  Recycle,
-  Sparkles
+  Recycle
 } from 'lucide-react';
 
 export default function EcoCertificateModal({ isOpen, onClose, lcaResults, projectName }) {
-  if (!isOpen || !lcaResults) return null;
-
-  const { totalMassKg, totalNetOffsetKg, equivalences, itemizedResults } = lcaResults;
-  const certId = `CERT-LCA-${Math.random().toString(36).substring(2, 9).toUpperCase()}-2026`;
+  const [certId] = useState(() => `CERT-LCA-${Math.random().toString(36).substring(2, 9).toUpperCase()}-2026`);
   const currentDate = new Date().toLocaleDateString('ar-EG', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  if (!isOpen || !lcaResults) return null;
+
+  const { totalMassKg, totalNetOffsetKg, equivalences, itemizedResults } = lcaResults;
 
   const handlePrint = () => {
     window.print();

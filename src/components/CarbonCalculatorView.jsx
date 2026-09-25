@@ -7,12 +7,17 @@ import {
   Lightbulb, 
   Award, 
   Info, 
-  ArrowUpRight,
   TrendingUp,
-  CheckCircle2
+  Layers
 } from 'lucide-react';
 
-export default function CarbonCalculatorView({ lcaResults, onOpenCertificate }) {
+export default function CarbonCalculatorView({ 
+  lcaResults, 
+  onOpenCertificate,
+  presets = [],
+  currentScenarioId,
+  onSelectPreset
+}) {
   if (!lcaResults) return null;
 
   const {
@@ -33,7 +38,7 @@ export default function CarbonCalculatorView({ lcaResults, onOpenCertificate }) 
     <div className="calculator-section">
       <div className="glass-card glow-card calculator-box">
         {/* Section Header */}
-        <div className="section-heading" style={{ marginBottom: '1.5rem' }}>
+        <div className="section-heading" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h3 style={{ fontSize: '1.4rem' }}>
               <Calculator size={24} color="#10b981" />
@@ -53,6 +58,40 @@ export default function CarbonCalculatorView({ lcaResults, onOpenCertificate }) 
             <span>استخراج شهادة الأثر البيئي</span>
           </button>
         </div>
+
+        {/* Preset Scenarios Switcher if available */}
+        {presets && presets.length > 0 && onSelectPreset && (
+          <div style={{ marginBottom: '1.5rem', background: 'var(--bg-surface-soft)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
+              <Layers size={16} color="var(--emerald-primary)" />
+              <span>اختر سيناريو الخامات لحساب وفره البيئي فورياً:</span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              {presets.map(ps => (
+                <button
+                  key={ps.id}
+                  type="button"
+                  onClick={() => onSelectPreset(ps)}
+                  style={{
+                    background: currentScenarioId === ps.id ? 'var(--emerald-primary)' : 'var(--bg-surface)',
+                    color: currentScenarioId === ps.id ? '#ffffff' : 'var(--text-primary)',
+                    border: '1px solid',
+                    borderColor: currentScenarioId === ps.id ? 'var(--emerald-primary)' : 'var(--border-medium)',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.9rem',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: currentScenarioId === ps.id ? 'var(--shadow-sm)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {ps.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LCA Mathematical Formula Banner */}
         <div className="lca-formula-banner">
