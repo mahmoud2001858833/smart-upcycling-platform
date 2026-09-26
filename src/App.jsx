@@ -2234,7 +2234,7 @@ export default function App() {
             bottom: 0, 
             zIndex: 9999, 
             overflowY: 'auto', 
-            backgroundColor: '#09090b', 
+            backgroundColor: '#f8fafc', 
             width: '100vw', 
             height: '100vh' 
           }}

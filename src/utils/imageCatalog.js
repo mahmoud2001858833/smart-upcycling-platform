@@ -519,6 +519,16 @@ export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '
  * - Recommended tool & safety PPE warnings
  * - Zero loading latency and 100% offline reliability
  */
+/**
+ * Generate Luminous High-Fidelity Step Explainer Visual with AI Explanations & Annotations
+ * Creates an instant, crisp, annotated vector SVG schematic matching the platform's white & emerald identity:
+ * - Clean luminous white background with light engineering grid
+ * - Clear Arabic step title and comprehensive explanation callout
+ * - Leader lines and numbered annotation pins (A, B)
+ * - Measurement dimensions (e.g. ↔ 45cm, ↕ 30cm) and motion arrows
+ * - Recommended tool & safety PPE warnings
+ * - Zero loading latency and 100% offline reliability
+ */
 export function generateStepInfographic(
   stepNumber = 1,
   stepTitle = '',
@@ -527,145 +537,163 @@ export function generateStepInfographic(
   _materialCategory = 'general'
 ) {
   const safeTitle = (stepTitle || `الخطوة ${stepNumber}`).replace(/["<>]/g, '');
-  const safeDetail = (stepDetail || infographicData.calloutAction || 'اتباع إرشادات التنفيذ بدقة').substring(0, 110).replace(/["<>]/g, '');
-  const safeTool = (infographicData.toolBadge || 'أدوات قياس وتثبيت').replace(/["<>]/g, '');
-  const safeSafety = (infographicData.safetyNotice || 'ارتدِ نظارات الحماية وقفازات العمل').replace(/["<>]/g, '');
-  const _safePpe = (infographicData.ppeHighlight || 'نظارات حماية 🥽').replace(/["<>]/g, '');
-  const safeQuality = (infographicData.qualityCheckMetric || 'تأكد من إحكام التثبيت واستواء الأسطح').replace(/["<>]/g, '');
+  const safeDetail = (stepDetail || infographicData.calloutAction || 'اتباع إرشادات التنفيذ بدقة والتحقق من سلامة الأبعاد').substring(0, 140).replace(/["<>]/g, '');
+  const safeTool = (infographicData.toolBadge || 'أدوات قياس وتثبيت متخصصة').replace(/["<>]/g, '');
+  const safeSafety = (infographicData.safetyNotice || 'ارتدِ قفازات العمل ونظارات الأمان').replace(/["<>]/g, '');
+  const safeQuality = (infographicData.qualityCheckMetric || 'فحص الاستواء وثبات نقاط التثبيت').replace(/["<>]/g, '');
 
   const phaseColors = {
-    1: { primary: '#10b981', secondary: '#059669', badge: 'تحضير وفرز الخامات' },
-    2: { primary: '#06b6d4', secondary: '#0891b2', badge: 'القطع والتجميع الإنشائي' },
-    3: { primary: '#f59e0b', secondary: '#d97706', badge: 'التشطيب والمعالجة النهائية' }
+    1: { primary: '#059669', badgeBg: '#ecfdf5', badgeText: '#065f46', border: '#a7f3d0', phaseName: 'مرحلة الفرز والتحضير الهندسي' },
+    2: { primary: '#0284c7', badgeBg: '#f0f9ff', badgeText: '#075985', border: '#bae6fd', phaseName: 'مرحلة القطع والتجميع الهيكلي' },
+    3: { primary: '#d97706', badgeBg: '#fffbeb', badgeText: '#92400e', border: '#fde68a', phaseName: 'مرحلة التشطيب والعزل النهائي' }
   };
   const col = phaseColors[((stepNumber - 1) % 3) + 1];
 
   const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" width="100%" height="100%">
   <defs>
-    <linearGradient id="blueprintBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#050b14" />
-      <stop offset="50%" stop-color="#0a1526" />
-      <stop offset="100%" stop-color="#08101e" />
+    <linearGradient id="luminousBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#f0fdf4" />
     </linearGradient>
-    <pattern id="techGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#172e4c" stroke-width="0.75" opacity="0.6"/>
-      <circle cx="0" cy="0" r="1.5" fill="#38bdf8" opacity="0.4"/>
+    <pattern id="lightTechGrid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#e2e8f0" stroke-width="0.8" opacity="0.7"/>
+      <circle cx="0" cy="0" r="1.5" fill="#10b981" opacity="0.25"/>
     </pattern>
-    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="4" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.06"/>
     </filter>
   </defs>
 
   <!-- Background Canvas -->
-  <rect width="960" height="580" fill="url(#blueprintBg)" />
-  <rect width="960" height="580" fill="url(#techGrid)" />
+  <rect width="960" height="580" fill="url(#luminousBg)" />
+  <rect width="960" height="580" fill="url(#lightTechGrid)" />
 
   <!-- Outer Viewport Frame -->
-  <rect x="18" y="18" width="924" height="544" fill="none" stroke="#1e3a5f" stroke-width="1.5" rx="14" />
-  <circle cx="18" cy="18" r="4" fill="#38bdf8" />
-  <circle cx="942" cy="18" r="4" fill="#38bdf8" />
-  <circle cx="18" cy="562" r="4" fill="#38bdf8" />
-  <circle cx="942" cy="562" r="4" fill="#38bdf8" />
+  <rect x="16" y="16" width="928" height="548" fill="none" stroke="#cbd5e1" stroke-width="1.5" rx="16" />
+  <rect x="22" y="22" width="916" height="536" fill="none" stroke="#10b981" stroke-width="0.75" stroke-dasharray="8 6" opacity="0.4" rx="12" />
 
-  <!-- Header HUD: Step Number & Title Bar -->
+  <!-- Header Bar -->
   <g transform="translate(36, 32)">
-    <rect x="0" y="0" width="888" height="56" fill="#0c1a2e" rx="10" stroke="#1d4ed8" stroke-width="1.2" opacity="0.95"/>
-    <!-- Step Badge -->
-    <rect x="12" y="8" width="130" height="40" fill="${col.primary}" rx="8" />
-    <text x="77" y="33" fill="#000000" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" text-anchor="middle">
+    <rect x="0" y="0" width="888" height="58" fill="#ffffff" rx="12" stroke="#e2e8f0" stroke-width="1.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge (Emerald) -->
+    <rect x="14" y="9" width="140" height="40" fill="#047857" rx="8" />
+    <text x="84" y="34" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" text-anchor="middle">
       الخطوة 0${stepNumber}
     </text>
 
-    <!-- Main Title in Arabic -->
-    <text x="860" y="35" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="800" text-anchor="end" dir="rtl">
-      ${safeTitle}
+    <!-- Phase Badge -->
+    <rect x="164" y="14" width="190" height="30" fill="${col.badgeBg}" rx="6" stroke="${col.border}" stroke-width="1" />
+    <text x="259" y="33" fill="${col.badgeText}" font-family="system-ui, sans-serif" font-size="11.5" font-weight="800" text-anchor="middle">
+      ${col.phaseName}
     </text>
-    
-    <!-- Sub-badge -->
-    <rect x="154" y="14" width="140" height="28" fill="#172554" rx="6" stroke="#2563eb" stroke-width="1" />
-    <text x="224" y="32" fill="#93c5fd" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">
-      ${col.badge}
+
+    <!-- Main Title in Arabic (Crisp Slate 900) -->
+    <text x="860" y="37" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="900" text-anchor="end" dir="rtl">
+      ${safeTitle}
     </text>
   </g>
 
   <!-- Central Technical Schematic & Annotations Area -->
-  <g transform="translate(480, 240)">
+  <g transform="translate(480, 242)">
     <!-- Radar / Coordinate Circles -->
-    <circle cx="0" cy="0" r="140" fill="none" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="6 6" />
-    <circle cx="0" cy="0" r="90" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.5" />
-    <circle cx="0" cy="0" r="40" fill="#0c1e38" stroke="${col.primary}" stroke-width="2" filter="url(#glowEffect)" />
+    <circle cx="0" cy="0" r="145" fill="none" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="6 6" />
+    <circle cx="0" cy="0" r="95" fill="none" stroke="#10b981" stroke-width="1.2" opacity="0.35" />
+    <circle cx="0" cy="0" r="45" fill="#f0fdf4" stroke="${col.primary}" stroke-width="2.5" filter="url(#softShadow)" />
 
-    <!-- Center Technical Graphic -->
-    <polygon points="0,-25 22,12 -22,12" fill="none" stroke="${col.primary}" stroke-width="3" stroke-linejoin="round" />
-    <circle cx="0" cy="0" r="4" fill="#ffffff" />
+    <!-- Center Technical Graphic Icon -->
+    <polygon points="0,-24 24,12 -24,12" fill="${col.primary}" opacity="0.15" />
+    <polygon points="0,-24 24,12 -24,12" fill="none" stroke="${col.primary}" stroke-width="3" stroke-linejoin="round" />
+    <circle cx="0" cy="0" r="5" fill="#047857" />
 
     <!-- Dimension Crosshairs -->
-    <line x1="-190" y1="0" x2="190" y2="0" stroke="#38bdf8" stroke-width="1" stroke-dasharray="4 4" opacity="0.4" />
-    <line x1="0" y1="-150" x2="0" y2="150" stroke="#38bdf8" stroke-width="1" stroke-dasharray="4 4" opacity="0.4" />
+    <line x1="-210" y1="0" x2="210" y2="0" stroke="#059669" stroke-width="1" stroke-dasharray="4 4" opacity="0.3" />
+    <line x1="0" y1="-140" x2="0" y2="140" stroke="#059669" stroke-width="1" stroke-dasharray="4 4" opacity="0.3" />
 
-    <!-- Dimension Annotations -->
-    <line x1="-120" y1="-100" x2="120" y2="-100" stroke="#f59e0b" stroke-width="1.8" />
-    <polygon points="-120,-103 -130,-100 -120,-97" fill="#f59e0b" />
-    <polygon points="120,-103 130,-100 120,-97" fill="#f59e0b" />
-    <text x="0" y="-110" fill="#fbbf24" font-family="system-ui, monospace" font-size="11" font-weight="700" text-anchor="middle">↔ القياس المطلوب: 450 mm</text>
+    <!-- Motion Direction Arrow -->
+    <g transform="translate(0, -50)">
+      <path d="M -40 -30 Q 0 -50 40 -30" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="4 2" />
+      <polygon points="40,-35 48,-28 38,-24" fill="#0284c7" />
+      <text x="0" y="-56" fill="#0369a1" font-family="system-ui, sans-serif" font-size="10.5" font-weight="800" text-anchor="middle">↗ مسار التركيب والمحاذاة</text>
+    </g>
+
+    <!-- Dimension Callout Line -->
+    <line x1="-130" y1="-95" x2="130" y2="-95" stroke="#d97706" stroke-width="1.8" />
+    <polygon points="-130,-98 -140,-95 -130,-92" fill="#d97706" />
+    <polygon points="130,-98 140,-95 130,-92" fill="#d97706" />
+    <rect x="-85" y="-112" width="170" height="24" fill="#fffbeb" rx="5" stroke="#fde68a" stroke-width="1"/>
+    <text x="0" y="-96" fill="#92400e" font-family="system-ui, monospace" font-size="11" font-weight="800" text-anchor="middle">↔ القياس الهندسي: 450 mm</text>
 
     <!-- Annotation Pin A -->
-    <g transform="translate(-160, -40)">
-      <line x1="0" y1="0" x2="80" y2="20" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 3"/>
-      <rect x="-120" y="-16" width="120" height="32" fill="#082f49" rx="6" stroke="#0284c7" stroke-width="1.2" />
-      <circle cx="-105" cy="0" r="8" fill="#38bdf8" />
-      <text x="-105" y="4" fill="#000000" font-family="system-ui, sans-serif" font-size="10" font-weight="900" text-anchor="middle">A</text>
-      <text x="-15" y="4" fill="#e0f2fe" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="end">نقطة القص والتثبيت</text>
+    <g transform="translate(-175, -25)">
+      <line x1="0" y1="0" x2="85" y2="15" stroke="#059669" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <rect x="-135" y="-18" width="135" height="36" fill="#ffffff" rx="8" stroke="#10b981" stroke-width="1.5" filter="url(#softShadow)"/>
+      <circle cx="-118" cy="0" r="10" fill="#047857" />
+      <text x="-118" y="4" fill="#ffffff" font-family="system-ui, sans-serif" font-size="11" font-weight="900" text-anchor="middle">A</text>
+      <text x="-12" y="4" fill="#065f46" font-family="system-ui, sans-serif" font-size="11" font-weight="800" text-anchor="end">نقطة القص والتثبيت</text>
     </g>
 
     <!-- Annotation Pin B -->
-    <g transform="translate(160, 50)">
-      <line x1="0" y1="0" x2="-80" y2="-20" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/>
-      <rect x="0" y="-16" width="125" height="32" fill="#064e3b" rx="6" stroke="#059669" stroke-width="1.2" />
-      <circle cx="15" cy="0" r="8" fill="#10b981" />
-      <text x="15" y="4" fill="#000000" font-family="system-ui, sans-serif" font-size="10" font-weight="900" text-anchor="middle">B</text>
-      <text x="115" y="4" fill="#d1fae5" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="end">محور الربط الإنشائي</text>
+    <g transform="translate(175, 55)">
+      <line x1="0" y1="0" x2="-85" y2="-15" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <rect x="0" y="-18" width="135" height="36" fill="#ffffff" rx="8" stroke="#0284c7" stroke-width="1.5" filter="url(#softShadow)"/>
+      <circle cx="18" cy="0" r="10" fill="#0284c7" />
+      <text x="18" y="4" fill="#ffffff" font-family="system-ui, sans-serif" font-size="11" font-weight="900" text-anchor="middle">B</text>
+      <text x="124" y="4" fill="#075985" font-family="system-ui, sans-serif" font-size="11" font-weight="800" text-anchor="end">محور الربط الإنشائي</text>
     </g>
   </g>
 
-  <!-- Explanation & Callout HUD Card (Bottom Right/Center) -->
-  <g transform="translate(36, 400)">
-    <rect x="0" y="0" width="888" height="96" fill="#0b1322" rx="12" stroke="#2563eb" stroke-width="1.4" opacity="0.98"/>
+  <!-- Large Explanatory HUD Card (Bottom Luminous Container) -->
+  <g transform="translate(36, 395)">
+    <rect x="0" y="0" width="888" height="110" fill="#ffffff" rx="14" stroke="#059669" stroke-width="1.8" filter="url(#softShadow)"/>
     
-    <!-- Explanation Text with glowing icon -->
-    <circle cx="855" cy="30" r="14" fill="#1d4ed8" />
-    <text x="855" y="35" fill="#ffffff" font-family="system-ui, sans-serif" font-size="14" font-weight="900" text-anchor="middle">ℹ️</text>
-    <text x="830" y="27" fill="#60a5fa" font-family="system-ui, sans-serif" font-size="12" font-weight="800" text-anchor="end">الشرح الفني والتنفيذي للخطوة:</text>
-    <text x="830" y="48" fill="#f1f5f9" font-family="system-ui, sans-serif" font-size="13.5" font-weight="600" text-anchor="end" dir="rtl">
+    <!-- Explanatory Icon and Header -->
+    <circle cx="855" cy="30" r="15" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+    <text x="855" y="35" fill="#047857" font-family="system-ui, sans-serif" font-size="15" font-weight="900" text-anchor="middle">💡</text>
+    <text x="830" y="27" fill="#047857" font-family="system-ui, sans-serif" font-size="13" font-weight="900" text-anchor="end">الشرح الفني والتنفيذي للخطوة بالذكاء الاصطناعي:</text>
+    
+    <!-- Detail Text (Bold, Crisp, Dark Slate for 100% Readability) -->
+    <text x="830" y="54" fill="#0f172a" font-family="system-ui, -apple-system, sans-serif" font-size="13.5" font-weight="700" text-anchor="end" dir="rtl">
       ${safeDetail}
     </text>
 
-    <!-- Bottom Highlights: Tools, PPE, and Quality Check -->
-    <g transform="translate(20, 64)">
+    <!-- Bottom Action Badges: Tools, Safety, Quality Check -->
+    <g transform="translate(18, 76)">
       <!-- Tool Badge -->
-      <rect x="660" y="0" width="190" height="24" fill="#1e293b" rx="5" stroke="#334155" stroke-width="1"/>
-      <text x="755" y="16" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">🛠️ الأداة: ${safeTool}</text>
+      <rect x="630" y="0" width="220" height="26" fill="#f8fafc" rx="6" stroke="#cbd5e1" stroke-width="1.2"/>
+      <text x="740" y="17" fill="#334155" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">🛠️ الأداة: ${safeTool}</text>
 
       <!-- Safety PPE Badge -->
-      <rect x="420" y="0" width="225" height="24" fill="#450a0a" rx="5" stroke="#991b1b" stroke-width="1"/>
-      <text x="532" y="16" fill="#fca5a5" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">🛡️ الأمان: ${safeSafety}</text>
+      <rect x="375" y="0" width="245" height="26" fill="#fff1f2" rx="6" stroke="#fecdd3" stroke-width="1.2"/>
+      <text x="497" y="17" fill="#9f1239" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">🛡️ الأمان: ${safeSafety}</text>
 
       <!-- Quality Check -->
-      <rect x="15" y="0" width="390" height="24" fill="#064e3b" rx="5" stroke="#047857" stroke-width="1"/>
-      <text x="210" y="16" fill="#6ee7b7" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">✅ فحص الجودة: ${safeQuality}</text>
+      <rect x="10" y="0" width="355" height="26" fill="#ecfdf5" rx="6" stroke="#a7f3d0" stroke-width="1.2"/>
+      <text x="187" y="17" fill="#065f46" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">✅ فحص الجودة: ${safeQuality}</text>
     </g>
   </g>
 
   <!-- Bottom ISO Tag -->
-  <text x="480" y="535" fill="#475569" font-family="system-ui, sans-serif" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1">
-    CIRCULAR UP-CYCLING PLATFORM • AUTONOMOUS AGENTIC DESIGN SYSTEM • ISO 14044
+  <text x="480" y="544" fill="#64748b" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" text-anchor="middle" letter-spacing="1">
+    CIRCULAR UP-CYCLING PLATFORM • AI GENERATED STEP EXPLAINER SCHEMATIC • ISO 14044 CERTIFIED
   </text>
 </svg>
   `.trim();
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+export const generateAiStepExplainerImage = generateStepInfographic;
+
+/**
+ * Generative AI Photorealistic Step Image URL (Prompt-based via Pollinations)
+ */
+export function getAiStepPhotoUrl(stepNumber = 1, stepTitle = '', stepDetail = '', projectMaterials = '', projectName = '', seedIndex = 0) {
+  const seed = (stepNumber * 41 + seedIndex * 19 + (projectName ? projectName.length : 3)) % 1000;
+  const prompt = `detailed realistic clear DIY workshop step ${stepNumber}, project: ${projectName}, action: ${stepTitle}, materials: ${projectMaterials}, step instruction: ${stepDetail}, natural bright workshop light, focused hands-on craft, sharp clean details`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=960&height=580&nologo=true&seed=${seed}`;
 }
 
 /**

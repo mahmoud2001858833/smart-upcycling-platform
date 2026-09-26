@@ -37,8 +37,9 @@ import {
   getProjectGallery,
   getNextAngleImage,
   generateSvgBlueprint,
-  getStepImage,
-  getNextStepImage
+  getNextStepImage,
+  generateStepInfographic,
+  getAiStepPhotoUrl
 } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
 
@@ -83,14 +84,17 @@ export function parseStepsToStructuredList(stepsRaw, projectName = 'مشروع �
       }
 
       const stepNum = idx + 1;
-      const stepImg = getStepImage(stepNum, title, detail, projectMaterials, projectName, idx);
+      const infographicImg = generateStepInfographic(stepNum, title, detail, {}, projectMaterials);
+      const photoImg = getAiStepPhotoUrl(stepNum, title, detail, projectMaterials, projectName, idx);
 
       return {
         id: stepNum,
         title: title || `الخطوة ${stepNum}`,
         detail: detail || 'اتباع تعليمات التركيب بدقة وتثبيت المكونات.',
         tip: tip || 'تأكد من ارتداء قفازات واقية وفحص ثبات الأجزاء.',
-        image: stepImg,
+        image: infographicImg,
+        infographicUrl: infographicImg,
+        photoUrl: photoImg,
         completed: false
       };
     });
@@ -101,9 +105,11 @@ export function parseStepsToStructuredList(stepsRaw, projectName = 'مشروع �
     {
       id: 1,
       title: 'الفرز والتحضير الأولي للقطع',
-      detail: 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف.',
+      detail: 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف واستواء الأبعاد.',
       tip: 'استخدم ورق صنفرة خفيف لإزالة أي نتوءات خشنة أو حادة.',
-      image: getStepImage(1, 'الفرز والتحضير الأولي للقطع', 'تنظيف المواد', projectMaterials, projectName, 0),
+      image: generateStepInfographic(1, 'الفرز والتحضير الأولي للقطع', 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف واستواء الأبعاد.', {}, projectMaterials),
+      infographicUrl: generateStepInfographic(1, 'الفرز والتحضير الأولي للقطع', 'تنظيف المواد المدخلة جيداً والتأكد من جفافها وسلامة الحواف واستواء الأبعاد.', {}, projectMaterials),
+      photoUrl: getAiStepPhotoUrl(1, 'الفرز والتحضير الأولي للقطع', 'تنظيف المواد', projectMaterials, projectName, 0),
       completed: false
     },
     {
@@ -111,7 +117,9 @@ export function parseStepsToStructuredList(stepsRaw, projectName = 'مشروع �
       title: 'الهندسة والتجميع الهيكلي',
       detail: 'ربط القطع الأساسية وفق القياسات المحددة واستخدام وسيلة التثبيت المناسبة.',
       tip: 'اترك المادة اللاصقة تجف بالكامل قبل تطبيق أي وزن.',
-      image: getStepImage(2, 'الهندسة والتجميع الهيكلي', 'ربط القطع الأساسية', projectMaterials, projectName, 1),
+      image: generateStepInfographic(2, 'الهندسة والتجميع الهيكلي', 'ربط القطع الأساسية وفق القياسات المحددة واستخدام وسيلة التثبيت المناسبة.', {}, projectMaterials),
+      infographicUrl: generateStepInfographic(2, 'الهندسة والتجميع الهيكلي', 'ربط القطع الأساسية وفق القياسات المحددة واستخدام وسيلة التثبيت المناسبة.', {}, projectMaterials),
+      photoUrl: getAiStepPhotoUrl(2, 'الهندسة والتجميع الهيكلي', 'ربط القطع الأساسية', projectMaterials, projectName, 1),
       completed: false
     },
     {
@@ -119,7 +127,9 @@ export function parseStepsToStructuredList(stepsRaw, projectName = 'مشروع �
       title: 'التشطيب واللمسات الجمالية',
       detail: 'إضافة طبقة الحماية أو الطلاء البيئي وتركيب العناصر الوظيفية النهائية.',
       tip: 'اختبر توازن المنتج في مكانه المخصص قبل الاستخدام الدائم.',
-      image: getStepImage(3, 'التشطيب واللمسات الجمالية', 'إضافة طبقة الحماية والطلاء', projectMaterials, projectName, 2),
+      image: generateStepInfographic(3, 'التشطيب واللمسات الجمالية', 'إضافة طبقة الحماية أو الطلاء البيئي وتركيب العناصر الوظيفية النهائية.', {}, projectMaterials),
+      infographicUrl: generateStepInfographic(3, 'التشطيب واللمسات الجمالية', 'إضافة طبقة الحماية أو الطلاء البيئي وتركيب العناصر الوظيفية النهائية.', {}, projectMaterials),
+      photoUrl: getAiStepPhotoUrl(3, 'التشطيب واللمسات الجمالية', 'إضافة طبقة الحماية والطلاء', projectMaterials, projectName, 2),
       completed: false
     }
   ];
