@@ -7,7 +7,8 @@ import {
   Trophy, Calculator, Check, Trash2, Award, Printer,
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
-  Plus, Wand2, Bot, Download
+  Plus, Wand2, Bot, Download,
+  Grid, Eye, BarChart2
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -95,6 +96,9 @@ export default function App() {
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
   const [regeneratingStepId, setRegeneratingStepId] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [materialSelectTab, setMaterialSelectTab] = useState('packs'); // 'packs' | 'grid' | 'custom'
+  const [projectsViewMode, setProjectsViewMode] = useState('spotlight'); // 'spotlight' | 'grid' | 'compare'
+  const [activeSpotlightIndex, setActiveSpotlightIndex] = useState(0);
 
   // LCA Calculator State
   const [currentPresetId, setCurrentPresetId] = useState(PRESET_SCENARIOS[0].id);
@@ -287,6 +291,7 @@ export default function App() {
 
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
+        setActiveSpotlightIndex(0);
         res.projects.forEach(p => preloadProjectImages(p));
         setFollowUpQuestions(res.followUpQuestions || []);
         setCertificateProject(res.projects[0]);
@@ -339,6 +344,7 @@ export default function App() {
       });
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
+        setActiveSpotlightIndex(0);
         res.projects.forEach(p => preloadProjectImages(p));
         setFollowUpQuestions(res.followUpQuestions || []);
         setCertificateProject(res.projects[0]);
@@ -1007,76 +1013,188 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Quick Inspiration Suggestions Bar (اقتراحات ملهمة جاهزة) */}
-              <div className="inspiration-suggestions-box">
-                <div className="inspiration-header">
-                  <div className="inspiration-title">
-                    <Sparkles size={14} className="text-amber-500" />
-                    <span>💡 اقتراحات ملهمة جاهزة بنقرة واحدة (Quick Ideas):</span>
+              {/* Modern Selection Studio Tabs (أرقى وأسهل تجربة اختيار) */}
+              <div className="selection-studio-tabs">
+                <button
+                  type="button"
+                  className={`studio-tab-btn ${materialSelectTab === 'packs' ? 'active' : ''}`}
+                  onClick={() => setMaterialSelectTab('packs')}
+                >
+                  <Sparkles size={15} />
+                  <span>حزم أفكار جاهزة (Packs)</span>
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab-btn ${materialSelectTab === 'grid' ? 'active' : ''}`}
+                  onClick={() => setMaterialSelectTab('grid')}
+                >
+                  <Layers size={15} />
+                  <span>المكتبة والخامات (61+ مادة)</span>
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab-btn ${materialSelectTab === 'custom' ? 'active' : ''}`}
+                  onClick={() => setMaterialSelectTab('custom')}
+                >
+                  <Camera size={15} />
+                  <span>إدخال حر ومسح بالكاميرا</span>
+                </button>
+              </div>
+
+              {/* Tab 1: Ready Inspiration Packs */}
+              {materialSelectTab === 'packs' && (
+                <div className="studio-tab-pane">
+                  <div className="inspiration-cards-grid-v2">
+                    {INSPIRATION_SUGGESTIONS.map(sug => (
+                      <div
+                        key={sug.id}
+                        className="inspiration-card-pill-v2"
+                        onClick={() => handleApplyInspiration(sug)}
+                        title={`تطبيق مواد: ${sug.materials.join(' + ')}`}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <span className="inspiration-pill-badge" style={{ color: sug.color, borderColor: `${sug.color}40`, backgroundColor: sug.bgTint }}>
+                              {sug.badge}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sug.userLevel === 'child' ? 'عائلي' : 'احترافي'}</span>
+                          </div>
+                          <h5 style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.3rem' }}>{sug.title}</h5>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: '0 0 0.6rem' }}>{sug.description}</p>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                          {sug.materials.map((m, mi) => (
+                            <span key={mi} className="mini-mat-tag">{m}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="inspiration-subtitle">انقر على أي فكرة لتطبيق خاماتها وإعداداتها فورياً</span>
                 </div>
-                <div className="inspiration-cards-scroll">
-                  {INSPIRATION_SUGGESTIONS.map(sug => (
-                    <div
-                      key={sug.id}
-                      className="inspiration-card-pill"
-                      onClick={() => handleApplyInspiration(sug)}
-                      title={`تطبيق مواد: ${sug.materials.join(' + ')}`}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="inspiration-pill-top">
-                        <span className="inspiration-pill-badge" style={{ color: sug.color, borderColor: `${sug.color}40`, backgroundColor: sug.bgTint }}>
-                          {sug.badge}
-                        </span>
+              )}
+
+              {/* Tab 2: Materials Grid & 61+ Library Modal Trigger */}
+              {materialSelectTab === 'grid' && (
+                <div className="studio-tab-pane">
+                  <div 
+                    className="materials-library-trigger-card" 
+                    onClick={() => setIsMaterialsLibraryOpen(true)}
+                    role="button"
+                    tabIndex={0}
+                    style={{ marginBottom: '1rem' }}
+                  >
+                    <div className="trigger-card-content">
+                      <div className="trigger-badge">
+                        <Sparkles size={13} />
+                        <span>المكتبة الشاملة V3</span>
                       </div>
-                      <h5 className="inspiration-pill-title">{sug.title}</h5>
-                      <p className="inspiration-pill-desc">{sug.description}</p>
-                      <div className="inspiration-pill-mats">
-                        {sug.materials.map((m, mi) => (
-                          <span key={mi} className="mini-mat-tag">{m}</span>
-                        ))}
-                      </div>
+                      <h4 className="trigger-title">
+                        📚 تصفح موسوعة الـ 61+ خامة (صور مصغرة وفحص توافق فوري)
+                      </h4>
+                      <p className="trigger-desc">
+                        تصفح الخامات المصنفة (بلاستيك، خشب، معادن، أقمشة، إلكترونيات) مع حسابات البصمة والتوافق الكيميائي.
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Deluxe Materials Library Trigger Banner */}
-              <div 
-                className="materials-library-trigger-card" 
-                onClick={() => setIsMaterialsLibraryOpen(true)}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="trigger-card-content">
-                  <div className="trigger-badge">
-                    <Sparkles size={13} />
-                    <span>المكتبة الذكية الموسعة (V3)</span>
+                    <div className="trigger-card-action">
+                      <span className="btn-explore-library">
+                        <span>فتح المكتبة</span>
+                        <Layers size={16} />
+                      </span>
+                    </div>
                   </div>
-                  <h4 className="trigger-title">
-                    📚 تصفح مكتبة الخامات والمواد (61+ مادة مع صور وفحص توافق)
-                  </h4>
-                  <p className="trigger-desc">
-                    اختر خاماتك مع صور مصغرة واقعية لكل مادة، فحص فوري للتوافق الكيميائي والميكانيكي، وحساب دقيق للبصمة الكربونية والمائية.
-                  </p>
-                </div>
-                <div className="trigger-card-action">
-                  <span className="btn-explore-library">
-                    <span>فتح المكتبة</span>
-                    <Layers size={16} />
-                  </span>
-                </div>
-              </div>
 
-              {/* Active Selected Materials Pill Bar */}
-              {selectedMaterials.length > 0 && (
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
+                    خامات سريعة الاختيار بنقرة واحدة:
+                  </label>
+                  <div className="material-quick-chips-grid">
+                    {COMMON_MATERIALS.map(mat => {
+                      const isSelected = selectedMaterials.includes(mat);
+                      return (
+                        <button
+                          type="button"
+                          key={mat}
+                          className={`material-quick-btn ${isSelected ? 'selected' : ''}`}
+                          onClick={() => toggleMaterial(mat)}
+                        >
+                          <span className="check-dot">
+                            {isSelected ? <Check size={11} strokeWidth={3} /> : '+'}
+                          </span>
+                          <span>{mat}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Custom Text & Camera Scanner */}
+              {materialSelectTab === 'custom' && (
+                <div className="studio-tab-pane">
+                  <div className="official-textarea-container" style={{ marginBottom: '0.85rem' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      اكتب أي مواد تملكها بحرية:
+                    </label>
+                    <textarea
+                      className="official-textarea"
+                      placeholder="مثال: علب حليب أطفال، براميل زيت، إطارات سيارات، شماعات سلك، قمصان صوف..."
+                      value={materials}
+                      onChange={e => setMaterials(e.target.value)}
+                    />
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
+
+                  <button
+                    type="button"
+                    className="btn-upload-camera"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                  >
+                    <Camera size={18} />
+                    <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
+                  </button>
+
+                  {uploadedImagePreview && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--emerald-light)', padding: '0.6rem 0.9rem', borderRadius: '10px', border: '1px solid var(--emerald-border)', marginTop: '0.6rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <img 
+                          src={uploadedImagePreview} 
+                          alt="معاينة الصورة المرفوعة" 
+                          style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--emerald-primary)' }} 
+                        />
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع المعتمدة</span>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => { setUploadedImagePreview(null); showToast('تمت إزالة الصورة المرفوعة', 'info'); }}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}
+                        title="إزالة الصورة"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Active Selected Materials Tray */}
+              {selectedMaterials.length > 0 ? (
                 <div className="selected-materials-bar">
                   <div className="selected-materials-header">
                     <div className="selected-materials-title">
                       <Leaf size={15} color="#059669" />
-                      <span>المواد المحددة حالياً لمشروعك ({selectedMaterials.length}):</span>
+                      <span>المواد المحددة لمشروعك ({selectedMaterials.length}):</span>
                     </div>
                     <button
                       type="button"
@@ -1112,7 +1230,7 @@ export default function App() {
                     <div className="companion-suggestions-strip">
                       <div className="companion-strip-label">
                         <Wand2 size={13} color="#059669" />
-                        <span>خامات مكملة مقترحة ذكياً للدمج مع اختيارك:</span>
+                        <span>خامات مكملة مقترحة ذكياً للدمج:</span>
                       </div>
                       <div className="companion-pills-list">
                         {companionSuggestions.map(mat => (
@@ -1131,117 +1249,46 @@ export default function App() {
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="selected-materials-empty-hint">
+                  💡 لم يتم تحديد أي خامات بعد. اختر حزمة ملهمة أو انقر على الخامات في التبويبات أعلاه.
+                </div>
               )}
 
-              {/* Common Materials Quick Chips */}
-              <div style={{ marginTop: '1rem', marginBottom: '1.25rem' }}>
-                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>
-                  اختيار سريع من المواد الشائعة:
-                </label>
-                <div className="material-chips-wrapper">
-                  {COMMON_MATERIALS.map(mat => {
-                    const isSelected = selectedMaterials.includes(mat);
-                    return (
-                      <button
-                        type="button"
-                        key={mat}
-                        className={`material-chip-btn ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleMaterial(mat)}
-                      >
-                        {isSelected && <Check size={13} strokeWidth={3} />}
-                        <span>{mat}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Custom Materials Input */}
-              <div className="official-textarea-container">
-                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                  مواد إضافية (أو اكتب بحرية):
-                </label>
-                <textarea
-                  className="official-textarea"
-                  placeholder="مثال: علب حليب أطفال، براميل زيت، إطارات سيارات، شماعات سلك، قمصان صوف..."
-                  value={materials}
-                  onChange={e => setMaterials(e.target.value)}
-                />
-              </div>
-
-              {/* Select Options: User Level & Project Type */}
-              <div className="form-select-row">
-                <div className="form-group-field">
-                  <label>مستوى المستخدم:</label>
-                  <select
-                    className="official-select-control"
-                    value={userLevel}
-                    onChange={e => setUserLevel(e.target.value)}
-                  >
+              {/* Modern Segmented Preferences Controls */}
+              <div className="preferences-segmented-box">
+                <div className="segmented-control-group">
+                  <span className="segmented-label">مستوى المنفّذ:</span>
+                  <div className="segmented-pills-row">
                     {USER_LEVELS.map(lvl => (
-                      <option key={lvl.value} value={lvl.value}>{lvl.label}</option>
+                      <button
+                        key={lvl.value}
+                        type="button"
+                        className={`segmented-pill-btn ${userLevel === lvl.value ? 'active' : ''}`}
+                        onClick={() => setUserLevel(lvl.value)}
+                      >
+                        {lvl.label}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
 
-                <div className="form-group-field">
-                  <label>نوع المشاريع المفضل:</label>
-                  <select
-                    className="official-select-control"
-                    value={projectType}
-                    onChange={e => setProjectType(e.target.value)}
-                  >
+                <div className="segmented-control-group">
+                  <span className="segmented-label">طابع ونوع المشروع:</span>
+                  <div className="segmented-pills-row">
                     {PROJECT_TYPES.map(typ => (
-                      <option key={typ.value} value={typ.value}>{typ.label}</option>
+                      <button
+                        key={typ.value}
+                        type="button"
+                        className={`segmented-pill-btn ${projectType === typ.value ? 'active' : ''}`}
+                        onClick={() => setProjectType(typ.value)}
+                      >
+                        {typ.label}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
-
-              {/* Hidden File Input for Image Upload */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
-
-              {/* Camera Upload Button */}
-              <button
-                type="button"
-                className="btn-upload-camera"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <Camera size={18} />
-                <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
-              </button>
-
-              {/* Uploaded Image Preview Chip */}
-              {uploadedImagePreview && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--emerald-light)', padding: '0.6rem 0.9rem', borderRadius: '10px', border: '1px solid var(--emerald-border)', marginTop: '0.6rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <img 
-                      src={uploadedImagePreview} 
-                      alt="معاينة الصورة المرفوعة" 
-                      style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--emerald-primary)' }} 
-                    />
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع المعتمدة</span>
-                    </div>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => { setUploadedImagePreview(null); showToast('تمت إزالة الصورة المرفوعة', 'info'); }}
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}
-                    title="إزالة الصورة"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
 
               {/* Generate Projects CTA */}
               <button
@@ -1278,175 +1325,489 @@ export default function App() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--emerald-primary)' }}>
-                      ✨ تم توليد {projects.length} مشاريع مخصصة مع معرض صور ثلاثي لكل مشروع:
-                    </span>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                      ⚡ مدعوم بـ Google Gemini & Generative Visual AI
-                    </span>
+                  {/* Top Projects View Toolbar with 3 Display Modes */}
+                  <div className="projects-view-toolbar">
+                    <div className="projects-count-tag">
+                      <Sparkles size={17} color="var(--emerald-primary)" />
+                      <span>المشاريع المولدة ({projects.length} مشاريع ذكية):</span>
+                    </div>
+
+                    <div className="projects-mode-pills">
+                      <button
+                        type="button"
+                        className={`mode-pill-btn ${projectsViewMode === 'spotlight' ? 'active' : ''}`}
+                        onClick={() => setProjectsViewMode('spotlight')}
+                        title="العرض الفاخر السينمائي مع استوديو الزوايا"
+                      >
+                        <Eye size={14} />
+                        <span>العرض الفاخر (Spotlight)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`mode-pill-btn ${projectsViewMode === 'grid' ? 'active' : ''}`}
+                        onClick={() => setProjectsViewMode('grid')}
+                        title="شبكة البطاقات المتعددة"
+                      >
+                        <Grid size={14} />
+                        <span>شبكة البطاقات (Cards)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`mode-pill-btn ${projectsViewMode === 'compare' ? 'active' : ''}`}
+                        onClick={() => setProjectsViewMode('compare')}
+                        title="مصفوفة المقارنة الفنية والبيئية الشاملة"
+                      >
+                        <BarChart2 size={14} />
+                        <span>المقارنة الذكية (Matrix)</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Modern Responsive Showcase Grid */}
-                  <div className="projects-showcase-grid">
-                    {projects.map((project, index) => {
-                      const activeView = project.activeGalleryView || 'finished';
-                      const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
-                      const isSaved = savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id));
-                      const stepsCount = project.parsedSteps ? project.parsedSteps.length : 0;
-                      const materialsList = typeof project.materials === 'string'
-                        ? project.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean).slice(0, 3)
-                        : (Array.isArray(project.materials) ? project.materials.slice(0, 3) : []);
+                  {/* Horizontal Project Navigation Ribbon */}
+                  <div className="project-selector-strip">
+                    {projects.map((proj, idx) => (
+                      <button
+                        key={proj.id || idx}
+                        type="button"
+                        className={`project-selector-item ${(projectsViewMode === 'spotlight' && activeSpotlightIndex === idx) ? 'active' : ''}`}
+                        onClick={() => {
+                          setActiveSpotlightIndex(idx);
+                          if (projectsViewMode !== 'spotlight') {
+                            setProjectsViewMode('spotlight');
+                          }
+                        }}
+                      >
+                        <span className="selector-num">{idx + 1}</span>
+                        <span className="selector-title">{proj.name}</span>
+                        {proj.metrics?.feasibilityScore && (
+                          <span className="selector-score">⭐ {proj.metrics.feasibilityScore}%</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
 
-                      return (
-                        <div
-                          key={project.id || index}
-                          className="project-showcase-card"
-                          onClick={() => setSelectedProjectModal(project)}
-                        >
-                          {/* Image Cover Container */}
-                          <div className="project-card-cover-wrap">
-                            <img
-                              src={activeImageUrl || generateSvgBlueprint(project.name, project.materials, activeView)}
-                              alt={project.name}
-                              className="project-card-cover-img"
-                              loading="lazy"
-                              onError={(e) => handleImageFallback(e, project.name, project.materials, activeView)}
-                            />
+                  {/* MODE 1: LUXURY SPOTLIGHT STUDIO */}
+                  {projectsViewMode === 'spotlight' && (() => {
+                    const activeProj = projects[activeSpotlightIndex] || projects[0];
+                    if (!activeProj) return null;
+                    const activeView = activeProj.activeGalleryView || 'finished';
+                    const activeImageUrl = activeProj.gallery?.[activeView] || activeProj.generatedImage;
+                    const isSaved = savedProjects.some(p => p.name === activeProj.name || (activeProj.id && p.id === activeProj.id));
+                    const stepsCount = activeProj.parsedSteps ? activeProj.parsedSteps.length : 0;
+                    const materialsList = typeof activeProj.materials === 'string'
+                      ? activeProj.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean)
+                      : (Array.isArray(activeProj.materials) ? activeProj.materials : []);
 
-                            {/* Gradient Overlay & Badges */}
-                            <div className="project-card-badges-overlay">
-                              <span className="badge-difficulty-card">
-                                {project.difficulty || 'متوسط'}
-                              </span>
-                              <span className="badge-time-card">
-                                <Clock size={11} />
-                                <span>{project.time || 'ساعتان'}</span>
-                              </span>
-                              {project.metrics?.feasibilityScore && (
-                                <span className="badge-feasibility-card">
-                                  <Target size={11} />
-                                  <span>{project.metrics.feasibilityScore}% جدوى</span>
-                                </span>
-                              )}
+                    return (
+                      <div className="spotlight-showcase-card">
+                        {/* Media Container with multi-angle gallery */}
+                        <div className="spotlight-media-container">
+                          <img
+                            src={activeImageUrl || generateSvgBlueprint(activeProj.name, activeProj.materials, activeView)}
+                            alt={activeProj.name}
+                            className="spotlight-hero-img"
+                            loading="lazy"
+                            onError={(e) => handleImageFallback(e, activeProj.name, activeProj.materials, activeView)}
+                          />
+
+                          {/* Top Badges */}
+                          <div className="spotlight-badges-tag">
+                            <span className="spotlight-badge cert">تدوير معتمد ISO 14044</span>
+                            <span className="spotlight-badge diff">{activeProj.difficulty || 'متوسط'}</span>
+                            {activeProj.metrics?.feasibilityScore && (
+                              <span className="spotlight-badge score">⭐ {activeProj.metrics.feasibilityScore}% جدوى</span>
+                            )}
+                          </div>
+
+                          {/* Top Action Overlay Buttons */}
+                          <div className="spotlight-top-controls">
+                            <button
+                              type="button"
+                              className={`spotlight-overlay-btn ${isSaved ? 'saved' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveProject(activeProj);
+                              }}
+                              title={isSaved ? 'المشروع محفوظ بالمفضلة' : 'حفظ بالمفضلة'}
+                            >
+                              <Star size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                              type="button"
+                              className="spotlight-overlay-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareProject(activeProj, activeSpotlightIndex);
+                              }}
+                              title="مشاركة ونسخ الرابط"
+                            >
+                              {copiedIndex === activeSpotlightIndex ? <CheckCheck size={16} color="#10b981" /> : <Share2 size={16} />}
+                            </button>
+                          </div>
+
+                          {/* 3-Angle Gallery Switcher Directly On Photo */}
+                          <div className="spotlight-angles-bar">
+                            <button
+                              type="button"
+                              className={`spotlight-angle-btn ${activeView === 'finished' ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSwitchGalleryView(activeSpotlightIndex, 'finished');
+                              }}
+                            >
+                              ✨ المنتج النهائي
+                            </button>
+                            <button
+                              type="button"
+                              className={`spotlight-angle-btn ${activeView === 'assembly' ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSwitchGalleryView(activeSpotlightIndex, 'assembly');
+                              }}
+                            >
+                              🔧 مراحل التجميع
+                            </button>
+                            <button
+                              type="button"
+                              className={`spotlight-angle-btn ${activeView === 'inUse' ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSwitchGalleryView(activeSpotlightIndex, 'inUse');
+                              }}
+                            >
+                              🏡 بالاستخدام الواقعي
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Spotlight Content Body */}
+                        <div className="spotlight-content-body">
+                          <div className="spotlight-header-row">
+                            <div>
+                              <span className="spotlight-mini-tag">المشروع رقم {activeSpotlightIndex + 1} من أصل {projects.length}</span>
+                              <h2 className="spotlight-title">{activeProj.name}</h2>
                             </div>
+                            <span className="spotlight-pts-pill">+35 نقطة بيئية 🌱</span>
+                          </div>
 
-                            {/* Floating Quick Action Icons */}
-                            <div className="project-card-hover-actions">
-                              <button
-                                type="button"
-                                className={`card-quick-action-btn ${isSaved ? 'saved' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSaveProject(project);
-                                }}
-                                title={isSaved ? 'المشروع محفوظ' : 'حفظ في المفضلة'}
-                              >
-                                <Star size={15} fill={isSaved ? 'currentColor' : 'none'} />
-                              </button>
+                          <p className="spotlight-description">{activeProj.idea}</p>
 
-                              <button
-                                type="button"
-                                className="card-quick-action-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleShareProject(project, index);
-                                }}
-                                title="مشاركة ونسخ"
-                              >
-                                {copiedIndex === index ? <CheckCheck size={15} color="#10b981" /> : <Share2 size={15} />}
-                              </button>
+                          {/* 4 Core KPI Tiles */}
+                          <div className="spotlight-kpi-grid">
+                            <div className="spotlight-kpi-tile emerald">
+                              <Leaf size={20} />
+                              <div>
+                                <span className="kpi-num">{activeProj.metrics?.co2SavedKg || '2.4'} كغ</span>
+                                <span className="kpi-sub">وفر كربوني (CO₂)</span>
+                              </div>
+                            </div>
+                            <div className="spotlight-kpi-tile cyan">
+                              <Trophy size={20} />
+                              <div>
+                                <span className="kpi-num">{activeProj.metrics?.estimatedSavings || '$25'}</span>
+                                <span className="kpi-sub">الوفر المالي التقديري</span>
+                              </div>
+                            </div>
+                            <div className="spotlight-kpi-tile blue">
+                              <Shield size={20} />
+                              <div>
+                                <span className="kpi-num">{activeProj.metrics?.durabilityYears || '3+'} سنوات</span>
+                                <span className="kpi-sub">العمر الافتراضي</span>
+                              </div>
+                            </div>
+                            <div className="spotlight-kpi-tile amber">
+                              <Clock size={20} />
+                              <div>
+                                <span className="kpi-num">{activeProj.time || 'ساعتان'}</span>
+                                <span className="kpi-sub">مدة التنفيذ المقدرة</span>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Card Content Details */}
-                          <div className="project-card-main-content">
-                            <div className="project-card-category-strip">
-                              <span className="project-card-eco-pill">
-                                <Leaf size={12} />
-                                <span>تدوير معتمد ISO 14044</span>
-                              </span>
-                              <span className="project-card-points-tag">+30 نقطة 🌱</span>
-                            </div>
-
-                            <h3 className="project-card-headline">{project.name}</h3>
-
-                            <p className="project-card-snippet">
-                              {project.idea}
-                            </p>
-
-                            {/* Materials chips */}
-                            {materialsList.length > 0 && (
-                              <div className="project-card-materials-chips">
-                                {materialsList.map((m, mIdx) => (
-                                  <span key={mIdx} className="material-mini-chip">
-                                    {m}
-                                  </span>
+                          {/* Materials Preview Chips */}
+                          {materialsList.length > 0 && (
+                            <div className="spotlight-materials-preview">
+                              <span className="mats-label">الخامات المستعملة:</span>
+                              <div className="mats-chips-wrap">
+                                {materialsList.map((m, mi) => (
+                                  <span key={mi} className="spotlight-mat-chip">{m}</span>
                                 ))}
                                 {stepsCount > 0 && (
-                                  <span className="steps-mini-chip">
-                                    {stepsCount} مراحل
+                                  <span className="spotlight-steps-chip">📋 {stepsCount} خطوات إرشادية مصورة</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 6 AI Agents Swarm Verification Strip */}
+                          <div className="spotlight-swarm-strip">
+                            🤖 مصادق هندسياً من طاقم الـ 6 وكلاء: خبير الخامات • كبير المهندسين • مدقق السلامة • محلل دورة الحياة (LCA)
+                          </div>
+
+                          {/* Action CTA Buttons */}
+                          <div className="spotlight-cta-row">
+                            <button
+                              type="button"
+                              className="btn-open-dedicated-spotlight"
+                              onClick={() => setSelectedProjectModal(activeProj)}
+                            >
+                              <span>دخول استوديو التنفيذ الكامل والخطوات المصورة</span>
+                              <ArrowLeft size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-spotlight-consult"
+                              onClick={() => handleConsultExpertForProject(activeProj)}
+                            >
+                              <MessageSquare size={16} />
+                              <span>استشارة الخبير الذكي</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-spotlight-cert"
+                              onClick={() => setActiveCertModalProject(activeProj)}
+                            >
+                              <Award size={16} />
+                              <span>الشهادة المعتمدة</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* MODE 2: CARDS GRID VIEW */}
+                  {projectsViewMode === 'grid' && (
+                    <div className="projects-showcase-grid">
+                      {projects.map((project, index) => {
+                        const activeView = project.activeGalleryView || 'finished';
+                        const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
+                        const isSaved = savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id));
+                        const stepsCount = project.parsedSteps ? project.parsedSteps.length : 0;
+                        const materialsList = typeof project.materials === 'string'
+                          ? project.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean).slice(0, 3)
+                          : (Array.isArray(project.materials) ? project.materials.slice(0, 3) : []);
+
+                        return (
+                          <div
+                            key={project.id || index}
+                            className="project-showcase-card"
+                            onClick={() => setSelectedProjectModal(project)}
+                          >
+                            <div className="project-card-cover-wrap">
+                              <img
+                                src={activeImageUrl || generateSvgBlueprint(project.name, project.materials, activeView)}
+                                alt={project.name}
+                                className="project-card-cover-img"
+                                loading="lazy"
+                                onError={(e) => handleImageFallback(e, project.name, project.materials, activeView)}
+                              />
+
+                              <div className="project-card-badges-overlay">
+                                <span className="badge-difficulty-card">
+                                  {project.difficulty || 'متوسط'}
+                                </span>
+                                <span className="badge-time-card">
+                                  <Clock size={11} />
+                                  <span>{project.time || 'ساعتان'}</span>
+                                </span>
+                                {project.metrics?.feasibilityScore && (
+                                  <span className="badge-feasibility-card">
+                                    <Target size={11} />
+                                    <span>{project.metrics.feasibilityScore}% جدوى</span>
                                   </span>
                                 )}
                               </div>
-                            )}
 
-                            {/* Mini KPIs Strip */}
-                            {project.metrics && (
-                              <div className="project-card-metrics-strip">
-                                <div className="mini-kpi">
-                                  <span className="kpi-label">الوفر المالي</span>
-                                  <span className="kpi-val">{project.metrics.estimatedSavings || '15-25$'}</span>
-                                </div>
-                                <div className="mini-kpi">
-                                  <span className="kpi-label">العمر الافتراضي</span>
-                                  <span className="kpi-val">{project.metrics.durabilityYears || 'سنتان'}</span>
-                                </div>
-                                <div className="mini-kpi">
-                                  <span className="kpi-label">وفر الكربون</span>
-                                  <span className="kpi-val emerald">{project.metrics.co2SavedKg || '1.8'} كغ</span>
-                                </div>
+                              <div className="project-card-hover-actions">
+                                <button
+                                  type="button"
+                                  className={`card-quick-action-btn ${isSaved ? 'saved' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSaveProject(project);
+                                  }}
+                                  title={isSaved ? 'المشروع محفوظ' : 'حفظ في المفضلة'}
+                                >
+                                  <Star size={15} fill={isSaved ? 'currentColor' : 'none'} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="card-quick-action-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShareProject(project, index);
+                                  }}
+                                  title="مشاركة ونسخ"
+                                >
+                                  {copiedIndex === index ? <CheckCheck size={15} color="#10b981" /> : <Share2 size={15} />}
+                                </button>
                               </div>
-                            )}
-
-                            {/* 6 AI Agents Validation Strip */}
-                            <div className="project-card-swarm-badge">
-                              <span className="swarm-badge-pill">
-                                🤖 تدقيق ومصادقة 6 وكلاء أذكياء (المواد • الهندسة • الأثر • السلامة)
-                              </span>
                             </div>
 
-                            {/* Primary CTA Button */}
-                            <div className="project-card-cta-row">
-                              <button
-                                type="button"
-                                className="btn-open-project-modal"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedProjectModal(project);
-                                }}
-                              >
-                                <span>عرض صفحة المشروع المستقلة</span>
-                                <ArrowLeft size={16} />
-                              </button>
+                            <div className="project-card-main-content">
+                              <div className="project-card-category-strip">
+                                <span className="project-card-eco-pill">
+                                  <Leaf size={12} />
+                                  <span>تدوير معتمد ISO 14044</span>
+                                </span>
+                                <span className="project-card-points-tag">+30 نقطة 🌱</span>
+                              </div>
 
-                              <button
-                                type="button"
-                                className="btn-quick-consult"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleConsultExpertForProject(project);
-                                }}
-                                title="استشارة الخبير الذكي حول هذا المشروع"
-                              >
-                                <MessageSquare size={16} />
-                              </button>
+                              <h3 className="project-card-headline">{project.name}</h3>
+
+                              <p className="project-card-snippet">
+                                {project.idea}
+                              </p>
+
+                              {materialsList.length > 0 && (
+                                <div className="project-card-materials-chips">
+                                  {materialsList.map((m, mIdx) => (
+                                    <span key={mIdx} className="material-mini-chip">
+                                      {m}
+                                    </span>
+                                  ))}
+                                  {stepsCount > 0 && (
+                                    <span className="steps-mini-chip">
+                                      {stepsCount} مراحل
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {project.metrics && (
+                                <div className="project-card-metrics-strip">
+                                  <div className="mini-kpi">
+                                    <span className="kpi-label">الوفر المالي</span>
+                                    <span className="kpi-val">{project.metrics.estimatedSavings || '15-25$'}</span>
+                                  </div>
+                                  <div className="mini-kpi">
+                                    <span className="kpi-label">العمر الافتراضي</span>
+                                    <span className="kpi-val">{project.metrics.durabilityYears || 'سنتان'}</span>
+                                  </div>
+                                  <div className="mini-kpi">
+                                    <span className="kpi-label">وفر الكربون</span>
+                                    <span className="kpi-val emerald">{project.metrics.co2SavedKg || '1.8'} كغ</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="project-card-swarm-badge">
+                                <span className="swarm-badge-pill">
+                                  🤖 تدقيق ومصادقة 6 وكلاء أذكياء (المواد • الهندسة • الأثر)
+                                </span>
+                              </div>
+
+                              <div className="project-card-cta-row">
+                                <button
+                                  type="button"
+                                  className="btn-open-project-modal"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedProjectModal(project);
+                                  }}
+                                >
+                                  <span>عرض صفحة المشروع المستقلة</span>
+                                  <ArrowLeft size={16} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="btn-quick-consult"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConsultExpertForProject(project);
+                                  }}
+                                  title="استشارة الخبير الذكي حول هذا المشروع"
+                                >
+                                  <MessageSquare size={16} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* MODE 3: SIDE-BY-SIDE COMPARISON MATRIX */}
+                  {projectsViewMode === 'compare' && (
+                    <div className="project-comparison-table-wrap">
+                      <table className="project-comparison-table">
+                        <thead>
+                          <tr>
+                            <th>المعيار والمواصفة الفنية</th>
+                            {projects.map((proj, idx) => (
+                              <th key={proj.id || idx}>
+                                <div className="compare-th-title">{proj.name}</div>
+                                <span className="compare-th-badge">خيار #{idx + 1}</span>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="compare-metric-label">مستوى الصعوبة والتنفيذ</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val">{proj.difficulty || 'متوسط'}</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">زمن التنفيذ المقدر</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val">{proj.time || 'ساعتان'}</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">وفر الانبعاثات (CO₂)</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val highlight">{proj.metrics?.co2SavedKg || '2.0'} كغ CO₂</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">الوفر المالي التقديري</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val highlight">{proj.metrics?.estimatedSavings || '$20'}</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">نسبة الجدوى الهندسية</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val">{proj.metrics?.feasibilityScore || '90'}%</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">العمر الافتراضي للمنتج</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val">{proj.metrics?.durabilityYears || 'سنتان'}</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">مراحل التنفيذ المصورة</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx} className="compare-metric-val">{proj.parsedSteps ? proj.parsedSteps.length : 0} مراحل معتمدة</td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="compare-metric-label">إجراء فوري</td>
+                            {projects.map((proj, idx) => (
+                              <td key={idx}>
+                                <button
+                                  type="button"
+                                  className="btn-compare-action"
+                                  onClick={() => setSelectedProjectModal(proj)}
+                                >
+                                  <span>فتح استوديو المشروع</span>
+                                  <ArrowLeft size={14} />
+                                </button>
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
                   {/* Smart Customization & AI Suggestions Section */}
                   <div className="smart-customization-section">
