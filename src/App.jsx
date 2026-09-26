@@ -8,7 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Plus, Wand2, Bot, Download,
-  Grid, Eye, BarChart2
+  Grid, Eye, BarChart2, GraduationCap
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -33,6 +33,10 @@ import AuthModal from './components/AuthModal';
 import MaterialsLibraryModal from './components/MaterialsLibraryModal.jsx';
 import ProjectDedicatedPage from './components/ProjectDedicatedPage.jsx';
 import EcoCertificateModal from './components/EcoCertificateModal.jsx';
+import StudentPortalSection from './components/StudentPortalSection.jsx';
+import StudentLabReportModal from './components/StudentLabReportModal.jsx';
+import StudentRubricModal from './components/StudentRubricModal.jsx';
+import StudentQuizModal from './components/StudentQuizModal.jsx';
 
 import {
   getSavedProjects,
@@ -51,6 +55,9 @@ export default function App() {
   const [selectedProjectModal, setSelectedProjectModal] = useState(null);
   const [isMaterialsLibraryOpen, setIsMaterialsLibraryOpen] = useState(false);
   const [activeCertModalProject, setActiveCertModalProject] = useState(null);
+  const [activeLabReportProject, setActiveLabReportProject] = useState(null);
+  const [activeRubricProject, setActiveRubricProject] = useState(null);
+  const [activeQuizProject, setActiveQuizProject] = useState(null);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
 
@@ -874,6 +881,15 @@ export default function App() {
             >
               <Lightbulb size={16} />
               <span>مولد المشاريع</span>
+            </button>
+
+            <button
+              className={`official-nav-btn ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+              style={{ flex: '1 1 auto', justifyContent: 'center' }}
+            >
+              <GraduationCap size={16} />
+              <span>بوابة الطلاب والمدارس 🎓</span>
             </button>
 
             <button
@@ -1870,6 +1886,27 @@ export default function App() {
         )}
 
         {/* ============================================================
+            TAB: STUDENT & ACADEMIC HUB (بوابة الطلاب والمدارس)
+            ============================================================ */}
+        {activeTab === 'students' && (
+          <StudentPortalSection
+            onSelectProject={(project) => {
+              setSelectedProjectModal(project);
+            }}
+            onOpenLabReport={(project) => {
+              setActiveLabReportProject(project);
+            }}
+            onOpenRubric={(project) => {
+              setActiveRubricProject(project);
+            }}
+            onOpenQuiz={(project) => {
+              setActiveQuizProject(project);
+            }}
+            user={user}
+          />
+        )}
+
+        {/* ============================================================
             TAB: LCA CARBON CALCULATOR
             ============================================================ */}
         {activeTab === 'calculator' && (
@@ -2301,6 +2338,35 @@ export default function App() {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
       />
+
+      {/* ============================================================
+          STUDENT & ACADEMIC SUITE GLOBAL MODALS
+          ============================================================ */}
+      {activeLabReportProject && (
+        <StudentLabReportModal
+          isOpen={Boolean(activeLabReportProject)}
+          onClose={() => setActiveLabReportProject(null)}
+          project={activeLabReportProject}
+          user={user}
+        />
+      )}
+
+      {activeRubricProject && (
+        <StudentRubricModal
+          isOpen={Boolean(activeRubricProject)}
+          onClose={() => setActiveRubricProject(null)}
+          project={activeRubricProject}
+          user={user}
+        />
+      )}
+
+      {activeQuizProject && (
+        <StudentQuizModal
+          isOpen={Boolean(activeQuizProject)}
+          onClose={() => setActiveQuizProject(null)}
+          project={activeQuizProject}
+        />
+      )}
 
       {/* ============================================================
           OFFICIAL FOOTER

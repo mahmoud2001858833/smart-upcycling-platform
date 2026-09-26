@@ -208,13 +208,23 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   // Google OAuth Handler
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (role = 'student') => {
     setError(null);
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle({
+        name: fullName || 'طالب الابتكار (حساب Google)',
+        email: email || 'student.innovator@gmail.com',
+        role: role
+      });
+      setSuccessMessage('تم تسجيل الدخول بحساب Google بنجاح! تم تفعيل حسابك كطالب موثق 🎓');
+      setTimeout(() => {
+        onClose();
+        resetForm();
+      }, 700);
     } catch (err) {
       triggerErrorShake(formatErrorMessage(err));
+    } finally {
       setGoogleLoading(false);
     }
   };

@@ -4,11 +4,15 @@ import {
   Clock, Shield, Award, Sparkles, AlertCircle, ChevronLeft, 
   ChevronRight, Wrench, Layers, Leaf, Droplets, Zap, 
   DollarSign, CheckSquare, Square, Eye, MessageCircle,
-  Lightbulb, Bot, RefreshCw, Maximize2, X
+  Lightbulb, Bot, RefreshCw, Maximize2, X,
+  Play, Pause, RotateCcw, Timer, FileText, GraduationCap
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
 import { generateStepInfographic, getAiStepPhotoUrl } from '../utils/imageCatalog.js';
+import StudentLabReportModal from './StudentLabReportModal.jsx';
+import StudentRubricModal from './StudentRubricModal.jsx';
+import StudentQuizModal from './StudentQuizModal.jsx';
 
 export default function ProjectDedicatedPage({ 
   project, 
@@ -29,6 +33,58 @@ export default function ProjectDedicatedPage({
   const [stepSeeds, setStepSeeds] = useState({});
   const [isRegeneratingAi, setIsRegeneratingAi] = useState(false);
   const [lightboxStep, setLightboxStep] = useState(null);
+
+  // Student Academic Suite Modals
+  const [isLabReportOpen, setIsLabReportOpen] = useState(false);
+  const [isRubricOpen, setIsRubricOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
+
+  // Drying & Assembly Stopwatch / Timer
+  const [timerSeconds, setTimerSeconds] = useState(180); // 3 mins default
+  const [initialTimerSeconds, setInitialTimerSeconds] = useState(180);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerFinished, setTimerFinished] = useState(false);
+
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.8);
+    } catch {
+      // AudioContext fallback
+    }
+  };
+
+  useEffect(() => {
+    let interval = null;
+    if (isTimerRunning && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsTimerRunning(false);
+            setTimerFinished(true);
+            playChime();
+            confetti({ particleCount: 50, spread: 60 });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timerSeconds]);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -312,6 +368,19 @@ export default function ProjectDedicatedPage({
                 {project.idea || project.description}
               </p>
 
+              {/* STEM Curriculum Tags */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="px-2.5 py-1 rounded-xl bg-white/15 text-emerald-200 border border-white/20 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs">
+                  🧬 كيمياء البوليمرات والمواد
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/15 text-amber-200 border border-white/20 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs">
+                  📐 فيزياء العزوم والاتزان الهيكلي
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/15 text-cyan-200 border border-white/20 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs">
+                  🌿 علوم البيئة والاقتصاد الدائري
+                </span>
+              </div>
+
               {/* Quick Environmental & Economics KPIs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-3">
@@ -391,6 +460,50 @@ export default function ProjectDedicatedPage({
                 <span>{isSpeaking ? 'إيقاف الدليل الصوتي' : 'استمع للدليل الصوتي بالذكاء الاصطناعي'}</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Student Academic Suite Bar */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-6 h-6 text-emerald-700" />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                <span>الأدوات الأكاديمية والمدرسية (Student Academic Suite)</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">معتمد للمدارس</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                توثيق أكاديمي فوري متوافق مع مناهج العلوم ومعارض الابتكار المدرسي
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              onClick={() => setIsLabReportOpen(true)}
+              className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <FileText className="w-4 h-4" />
+              <span>تقرير البحث العلمي PDF</span>
+            </button>
+
+            <button
+              onClick={() => setIsRubricOpen(true)}
+              className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+            >
+              <Award className="w-4 h-4 text-amber-600" />
+              <span>استمارة التقييم (100pt)</span>
+            </button>
+
+            <button
+              onClick={() => setIsQuizOpen(true)}
+              className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+            >
+              <Lightbulb className="w-4 h-4 text-teal-600" />
+              <span>اختبار الاستيعاب البيئي</span>
+            </button>
           </div>
         </div>
 
@@ -940,6 +1053,107 @@ export default function ProjectDedicatedPage({
                     )}
                   </div>
 
+                  {/* Interactive Step Drying & Assembly Timer */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Timer className="w-4 h-4 text-emerald-700" />
+                          <span className="text-xs font-bold text-slate-800">
+                            مؤقت التثبيت والجفاف التفاعلي (Step Timer)
+                          </span>
+                        </div>
+                        <span className={`text-base font-black px-3 py-0.5 rounded-lg border font-mono ${
+                          timerFinished 
+                            ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
+                            : isTimerRunning 
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : 'bg-white text-slate-700 border-slate-200'
+                        }`}>
+                          {timerFinished ? 'انتهى الوقت! 🔔' : `${Math.floor(timerSeconds / 60)}:${(timerSeconds % 60).toString().padStart(2, '0')}`}
+                        </span>
+                      </div>
+
+                      {/* Presets and Controls */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsTimerRunning(false);
+                              setTimerFinished(false);
+                              setTimerSeconds(60);
+                              setInitialTimerSeconds(60);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer ${
+                              initialTimerSeconds === 60 ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            1 دقيقة تثبيت
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsTimerRunning(false);
+                              setTimerFinished(false);
+                              setTimerSeconds(180);
+                              setInitialTimerSeconds(180);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer ${
+                              initialTimerSeconds === 180 ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            3 دقائق جفاف سريع
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsTimerRunning(false);
+                              setTimerFinished(false);
+                              setTimerSeconds(600);
+                              setInitialTimerSeconds(600);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer ${
+                              initialTimerSeconds === 600 ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            10 دقائق لصق تام
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (timerFinished) {
+                                setTimerFinished(false);
+                                setTimerSeconds(initialTimerSeconds);
+                              }
+                              setIsTimerRunning(!isTimerRunning);
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer text-white shadow-xs ${
+                              isTimerRunning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                            }`}
+                          >
+                            {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            <span>{isTimerRunning ? 'إيقاف مؤقت' : 'بدء المؤقت'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsTimerRunning(false);
+                              setTimerFinished(false);
+                              setTimerSeconds(initialTimerSeconds);
+                            }}
+                            className="p-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-all cursor-pointer"
+                            title="إعادة ضبط"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                   {/* Mark Step As Completed Button */}
                   <button
                     onClick={() => toggleStepCompleted(activeStepTab)}
@@ -1202,6 +1416,25 @@ export default function ProjectDedicatedPage({
           </div>
         </div>
       )}
+
+      {/* STUDENT ACADEMIC SUITE MODALS */}
+      <StudentLabReportModal
+        isOpen={isLabReportOpen}
+        onClose={() => setIsLabReportOpen(false)}
+        project={project}
+      />
+
+      <StudentRubricModal
+        isOpen={isRubricOpen}
+        onClose={() => setIsRubricOpen(false)}
+        project={project}
+      />
+
+      <StudentQuizModal
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
+        project={project}
+      />
 
     </div>
   );
