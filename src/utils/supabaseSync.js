@@ -8,8 +8,21 @@ import { supabase } from '../supabaseClient';
 const LOCAL_STORAGE_SAVED_KEY = 'smart_upcycling_saved_projects_v3';
 const LOCAL_STORAGE_PROFILE_KEY = 'smart_upcycling_user_profile_v3';
 
-// 1. Fetch user saved projects
+// Helper to normalize project titles for deduplication comparison
+export function normalizeProjectTitle(title = '') {
+  return (title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[ى]/g, 'ي')
+    .replace(/[^\w\s\u0600-\u06FF]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+// 1. Fetch user saved projects with strict deduplication
 export async function getSavedProjects(userId) {
+  let list = [];
   if (userId) {
     try {
       const { data, error } = await supabase
@@ -18,9 +31,11 @@ export async function getSavedProjects(userId) {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        return data.map(item => ({
+        list = data.map(item => ({
           ...item,
-          // ensure backwards compatibility with client format
+          name: item.title || item.name,
+          title: item.title || item.name,
+          idea: item.description || item.idea,
           materials: typeof item.materials === 'string' ? item.materials : (item.materials?.join?.(', ') || ''),
           tools: item.tools || 'أدوات حرفية قياسية',
           time: item.estimated_time || item.time || 'ساعتان',
@@ -32,32 +47,86 @@ export async function getSavedProjects(userId) {
     }
   }
 
-  // Fallback to local storage
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_SAVED_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
+  // Fallback to local storage if cloud is empty or offline
+  if (list.length === 0) {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_SAVED_KEY);
+      list = raw ? JSON.parse(raw) : [];
+    } catch {
+      list = [];
+    }
   }
+
+  // Strict Deduplication: filter out any repeated projects by normalized title
+  const uniqueMap = new Map();
+  for (const item of list) {
+    const rawTitle = item.title || item.name || '';
+    const normKey = normalizeProjectTitle(rawTitle);
+    if (normKey && !uniqueMap.has(normKey)) {
+      uniqueMap.set(normKey, {
+        ...item,
+        title: rawTitle,
+        name: rawTitle
+      });
+    }
+  }
+
+  const deduplicatedList = Array.from(uniqueMap.values());
+
+  // Keep local storage clean and deduplicated as well
+  try {
+    localStorage.setItem(LOCAL_STORAGE_SAVED_KEY, JSON.stringify(deduplicatedList));
+  } catch (e) {
+    // Ignore local storage quota
+  }
+
+  return deduplicatedList;
 }
 
-// 2. Save a project to Supabase & localStorage
+// 2. Save a project to Supabase & localStorage (Zero Duplicates Guaranteed)
 export async function saveProjectToCloud(userId, project) {
-  // Update local storage first for instant feedback
+  if (!project) return { success: false };
+
+  const projectTitle = (project.name || project.title || 'مشروع إعادة تدوير').trim();
+  const normTitle = normalizeProjectTitle(projectTitle);
+
+  // 1. Update local storage first, ensuring NO duplicate exists
   try {
     const current = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SAVED_KEY) || '[]');
-    const exists = current.some(p => p.id === project.id || p.name === project.name);
-    const updated = exists ? current : [project, ...current];
-    localStorage.setItem(LOCAL_STORAGE_SAVED_KEY, JSON.stringify(updated));
+    const existsLocally = current.some(p => {
+      const pNorm = normalizeProjectTitle(p.name || p.title || '');
+      return pNorm === normTitle || (p.id && project.id && p.id === project.id);
+    });
+
+    if (!existsLocally) {
+      const updated = [{ ...project, name: projectTitle, title: projectTitle }, ...current];
+      localStorage.setItem(LOCAL_STORAGE_SAVED_KEY, JSON.stringify(updated));
+    }
   } catch (e) {
     console.warn('Local storage write failed:', e);
   }
 
+  // 2. Save to Supabase Cloud only if not already saved!
   if (userId) {
     try {
+      // Check if project with this title already exists in cloud for this user
+      const { data: existingRows } = await supabase
+        .from('saved_projects')
+        .select('id, title')
+        .eq('user_id', userId);
+
+      const alreadyInCloud = Array.isArray(existingRows) && existingRows.some(row => 
+        normalizeProjectTitle(row.title) === normTitle
+      );
+
+      if (alreadyInCloud) {
+        // Project already exists in Supabase - return existing without creating duplicates
+        return { success: true, savedProject: project, alreadySaved: true };
+      }
+
       const row = {
         user_id: userId,
-        title: project.name || project.title || 'مشروع إعادة تدوير',
+        title: projectTitle,
         description: project.idea || project.description || '',
         difficulty: project.difficulty || 'متوسط',
         estimated_time: project.time || 'ساعتان',

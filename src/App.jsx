@@ -43,10 +43,23 @@ import {
   saveProjectToCloud,
   deleteProjectFromCloud,
   getUserProfileStats,
-  updateUserProfileStats
+  updateUserProfileStats,
+  normalizeProjectTitle
 } from './utils/supabaseSync.js';
 import { handleImageFallback, generateSvgBlueprint, preloadProjectImages } from './utils/imageCatalog.js';
 import './index.css';
+
+// Resilient check to see if a project is already saved in the user's list
+function isProjectSaved(list, p) {
+  if (!Array.isArray(list) || !p) return false;
+  const pTitle = (p.title || p.name || '').trim();
+  const pNorm = normalizeProjectTitle(pTitle);
+  return list.some(item => {
+    if (p.id && item.id && item.id === p.id) return true;
+    const itemNorm = normalizeProjectTitle(item.title || item.name || '');
+    return itemNorm && itemNorm === pNorm;
+  });
+}
 
 export default function App() {
   const { user, signOut } = useAuth();
@@ -553,13 +566,16 @@ export default function App() {
 
   // Save Project with Supabase Cloud Sync
   const handleSaveProject = async (project) => {
-    if (savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id))) {
+    if (!project) return;
+    const projTitle = (project.title || project.name || '').trim();
+    if (isProjectSaved(savedProjects, project)) {
       showToast('هذا المشروع محفوظ لديك بالفعل!', 'info');
       return;
     }
     const res = await saveProjectToCloud(user?.id, project);
-    setSavedProjects(prev => [res.savedProject, ...prev]);
-    showToast(`تم حفظ مشروع "${project.name}" في قائمتك المفضلة! ⭐`);
+    const updated = await getSavedProjects(user?.id);
+    setSavedProjects(updated);
+    showToast(`تم حفظ مشروع "${projTitle}" في قائمتك المفضلة! ⭐`);
   };
 
   // Delete Project from Cloud & Local
@@ -1408,7 +1424,7 @@ export default function App() {
                     if (!activeProj) return null;
                     const activeView = activeProj.activeGalleryView || 'finished';
                     const activeImageUrl = activeProj.gallery?.[activeView] || activeProj.generatedImage;
-                    const isSaved = savedProjects.some(p => p.name === activeProj.name || (activeProj.id && p.id === activeProj.id));
+                    const isSaved = isProjectSaved(savedProjects, activeProj);
                     const stepsCount = activeProj.parsedSteps ? activeProj.parsedSteps.length : 0;
                     const materialsList = typeof activeProj.materials === 'string'
                       ? activeProj.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean)
@@ -1598,7 +1614,7 @@ export default function App() {
                       {projects.map((project, index) => {
                         const activeView = project.activeGalleryView || 'finished';
                         const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
-                        const isSaved = savedProjects.some(p => p.name === project.name || (project.id && p.id === project.id));
+                        const isSaved = isProjectSaved(savedProjects, project);
                         const stepsCount = project.parsedSteps ? project.parsedSteps.length : 0;
                         const materialsList = typeof project.materials === 'string'
                           ? project.materials.split(/[,،]/).map(m => m.trim()).filter(Boolean).slice(0, 3)
@@ -2282,7 +2298,7 @@ export default function App() {
               setSelectedProjectModal(null);
               window.location.hash = '';
             }}
-            isSaved={Array.isArray(savedProjects) && savedProjects.some(p => p.name === selectedProjectModal.name || (selectedProjectModal.id && p.id === selectedProjectModal.id))}
+            isSaved={isProjectSaved(savedProjects, selectedProjectModal)}
             onToggleSave={handleSaveProject}
             onOpenCertificate={(proj) => {
               setActiveCertModalProject(proj);
