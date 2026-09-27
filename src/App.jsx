@@ -17,7 +17,8 @@ import {
   fetchAiProjects,
   regenerateSpecificGalleryView,
   regenerateStepImage,
-  sendChatMessageToAi
+  sendChatMessageToAi,
+  getStoredGeminiApiKey
 } from './utils/aiProjectEngine.js';
 import { calculateCollectiveOffset } from './utils/lcaCalculator.js';
 import { PRESET_SCENARIOS } from './data/presetScenarios.js';
@@ -37,6 +38,7 @@ import StudentPortalSection from './components/StudentPortalSection.jsx';
 import StudentLabReportModal from './components/StudentLabReportModal.jsx';
 import StudentRubricModal from './components/StudentRubricModal.jsx';
 import StudentQuizModal from './components/StudentQuizModal.jsx';
+import GeminiApiKeyModal from './components/GeminiApiKeyModal.jsx';
 
 import {
   getSavedProjects,
@@ -71,6 +73,8 @@ export default function App() {
   const [activeLabReportProject, setActiveLabReportProject] = useState(null);
   const [activeRubricProject, setActiveRubricProject] = useState(null);
   const [activeQuizProject, setActiveQuizProject] = useState(null);
+  const [isGeminiKeyModalOpen, setIsGeminiKeyModalOpen] = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState(() => Boolean(getStoredGeminiApiKey()));
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
 
@@ -745,6 +749,22 @@ export default function App() {
               <span>{completedProjects} مشروع منجز</span>
             </span>
 
+            <button
+              type="button"
+              onClick={() => setIsGeminiKeyModalOpen(true)}
+              className="eco-point-badge"
+              title="إعدادات محرك Google Gemini AI المباشر"
+              style={{
+                cursor: 'pointer',
+                backgroundColor: hasGeminiKey ? '#ecfdf5' : '#f8fafc',
+                borderColor: hasGeminiKey ? '#a7f3d0' : '#e2e8f0',
+                color: hasGeminiKey ? '#065f46' : '#475569'
+              }}
+            >
+              <Sparkles size={14} color={hasGeminiKey ? '#059669' : '#64748b'} />
+              <span>{hasGeminiKey ? 'Gemini AI متصل 🟢' : 'محرك Gemini AI ⚡'}</span>
+            </button>
+
             {impact.co2Saved > 0 && (
               <span className="official-live-badge">
                 <Leaf size={14} />
@@ -1341,6 +1361,15 @@ export default function App() {
                   </>
                 )}
               </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '0.65rem', fontSize: '0.75rem', color: '#64748b' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+                <span>
+                  {hasGeminiKey 
+                    ? 'متصل بسحابة Google Gemini 1.5 Flash الحية • يولد مشاريع حية حصرية لكل طلب' 
+                    : 'محرك الذكاء الاصطناعي التوليدي نشط • ابتكار مشاريع حصرية مخصصة لخاماتك لكل طلب'}
+                </span>
+              </div>
             </div>
 
             {/* Left Column: Generated Projects Display */}
@@ -2346,6 +2375,17 @@ export default function App() {
         onApplyMaterials={handleApplyLibraryMaterials}
       />
 
+      {/* ============================================================
+          GOOGLE GEMINI DIRECT AI API KEY MODAL
+          ============================================================ */}
+      <GeminiApiKeyModal
+        isOpen={isGeminiKeyModalOpen}
+        onClose={() => setIsGeminiKeyModalOpen(false)}
+        onKeySaved={(k) => {
+          setHasGeminiKey(Boolean(k));
+          showToast(k ? 'تم تفعيل وربط Google Gemini 1.5 Flash السحابي بنجاح! 🚀' : 'تم العودة للمحرك التوليدي الحي الفوري الداخلي ⚡', 'success');
+        }}
+      />
 
       {/* ============================================================
           SUPABASE AUTHENTICATION MODAL
