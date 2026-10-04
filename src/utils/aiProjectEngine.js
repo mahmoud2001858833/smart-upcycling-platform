@@ -203,8 +203,8 @@ export function setStoredGeminiApiKey(key) {
 /**
  * Direct Live Google Gemini 1.5 Flash API Caller
  */
-export async function fetchFromGeminiApi({ materials, userLevel = 'adult', projectType = 'practical', apiKey }) {
-  const prompt = `أنت مهندس تصميم صناعي واستدامة بيئية ورائد في ابتكار مشاريع إعادة التدوير التصاعدي (Upcycling).
+function buildProjectsPrompt({ materials, userLevel = 'adult', projectType = 'practical' }) {
+  return `أنت مهندس تصميم صناعي واستدامة بيئية ورائد في ابتكار مشاريع إعادة التدوير التصاعدي (Upcycling).
 المطلوب: ابتكار 3 مشاريع إعادة تدوير تصاعدي حصرية وجديدة تماماً ومصممة خصيصاً بالاعتماد المباشر على هذه المواد المدخلة:
 "${materials}"
 المستوى المستهدف: ${userLevel}
@@ -235,6 +235,56 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
     "سؤال متابعة ذكي 3 يخص موقع الاستخدام"
   ]
 }`;
+}
+
+function parseJsonLoose(rawText) {
+  const clean = rawText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    const s = clean.indexOf('{');
+    const e = clean.lastIndexOf('}');
+    if (s >= 0 && e > s) return JSON.parse(clean.slice(s, e + 1));
+    throw new Error('تعذر قراءة استجابة الذكاء الاصطناعي');
+  }
+}
+
+const OPENROUTER_MODEL = 'google/gemini-2.5-flash';
+
+export function getOpenRouterKey() {
+  return import.meta.env?.VITE_OPENROUTER_API_KEY || '';
+}
+
+/**
+ * OpenRouter caller (primary live engine when VITE_OPENROUTER_API_KEY is set)
+ */
+export async function fetchFromOpenRouter({ materials, userLevel, projectType, apiKey }) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      temperature: 0.9,
+      max_tokens: 6000,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are an expert upcycling engineer. Reply with valid JSON only.' },
+        { role: 'user', content: buildProjectsPrompt({ materials, userLevel, projectType }) }
+      ]
+    })
+  });
+  if (!res.ok) throw new Error(`OpenRouter (${res.status})`);
+  const result = await res.json();
+  const text = result.choices?.[0]?.message?.content;
+  if (!text) throw new Error('استجابة فارغة من OpenRouter');
+  return parseJsonLoose(text);
+}
+
+export async function fetchFromGeminiApi({ materials, userLevel = 'adult', projectType = 'practical', apiKey }) {
+  const prompt = buildProjectsPrompt({ materials, userLevel, projectType });
 
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -265,6 +315,19 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
  * Invoke the live AI Recycling Advisor (Gemini) with full dynamic on-demand synthesis
  */
 export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null }) {
+  // 0. OpenRouter (primary live engine)
+  const orKey = getOpenRouterKey();
+  if (orKey && !imageBase64) {
+    try {
+      const orData = await fetchFromOpenRouter({ materials, userLevel, projectType, apiKey: orKey });
+      if (orData && Array.isArray(orData.projects) && orData.projects.length > 0) {
+        return processEnrichedAiProjects(orData.projects, materials, orData.followUpQuestions);
+      }
+    } catch (orErr) {
+      console.warn('OpenRouter failed, trying next engine:', orErr);
+    }
+  }
+
   // 1. Try Direct Gemini 1.5 Flash Cloud API if API Key is configured
   const apiKey = getStoredGeminiApiKey();
   if (apiKey) {
@@ -490,6 +553,30 @@ export async function sendChatToGeminiApi({ question, conversationHistory = [], 
  * Chat with Live AI Recycling Expert
  */
 export async function sendChatMessageToAi({ question, conversationHistory = [], projectContext = null }) {
+  // 0. OpenRouter chat
+  const orKey = getOpenRouterKey();
+  if (orKey) {
+    try {
+      const msgs = [
+        { role: 'system', content: `أنت خبير إعادة التدوير والاستدامة في منصة Smart Upcycling. أجب بالعربية بأسلوب مهني وعملي ومختصر.${projectContext ? ` المشروع الحالي: "${projectContext.name}" من (${projectContext.materials}).` : ''}` },
+        ...conversationHistory.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+        { role: 'user', content: question }
+      ];
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}` },
+        body: JSON.stringify({ model: OPENROUTER_MODEL, messages: msgs, max_tokens: 1200 })
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const t = j.choices?.[0]?.message?.content;
+        if (t) return t;
+      }
+    } catch (e) {
+      console.warn('OpenRouter chat failed:', e);
+    }
+  }
+
   // 1. Try Direct Gemini API if configured
   const apiKey = getStoredGeminiApiKey();
   if (apiKey) {
