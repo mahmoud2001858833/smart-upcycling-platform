@@ -13,6 +13,7 @@ import { generateStepInfographic, getAiStepPhotoUrl } from '../utils/imageCatalo
 import StudentLabReportModal from './StudentLabReportModal.jsx';
 import StudentRubricModal from './StudentRubricModal.jsx';
 import StudentQuizModal from './StudentQuizModal.jsx';
+import { useProjectAiImages } from '../hooks/useProjectAiImages.js';
 
 export default function ProjectDedicatedPage({ 
   project, 
@@ -190,6 +191,11 @@ export default function ProjectDedicatedPage({
 
   // Regenerate step AI visual
   const handleRegenerateStepAi = (stepIdx) => {
+    if (ai.enabled) {
+      setViewModes(prev => ({ ...prev, [stepIdx]: 'photo' }));
+      ai.regenerateStep(stepIdx);
+      return;
+    }
     setIsRegeneratingAi(true);
     setStepSeeds(prev => ({
       ...prev,
@@ -228,17 +234,22 @@ export default function ProjectDedicatedPage({
     window.print();
   };
 
+  // Real AI pictures (cached in IndexedDB, generated on demand through the secure gateway)
+  const ai = useProjectAiImages(project, activeStepTab);
+  const aiHeroUrl = activeAngle === 'blueprint' ? null : ai.heroUrl(activeAngle);
+
   // Multi-angle image resolver
   const currentHeroImage = useMemo(() => {
     if (activeAngle === 'blueprint') {
       return project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
     }
+    if (aiHeroUrl) return aiHeroUrl;
     const gallery = project?.multiAngleViews || project?.gallery;
     if (gallery && gallery[activeAngle]) {
       return gallery[activeAngle];
     }
     return project?.image || project?.generatedImage;
-  }, [activeAngle, project]);
+  }, [activeAngle, project, aiHeroUrl]);
 
   if (!project) return null;
 
@@ -364,9 +375,19 @@ export default function ProjectDedicatedPage({
                 {project.title || project.name}
               </h1>
 
+              {project.tagline && (
+                <p className="text-base sm:text-lg font-bold text-amber-200">{project.tagline}</p>
+              )}
+
               <p className="text-sm sm:text-base text-emerald-100/90 leading-relaxed max-w-3xl">
                 {project.idea || project.description}
               </p>
+
+              {project.story && (
+                <p className="text-sm text-white/80 leading-relaxed max-w-3xl border-r-4 border-amber-300/70 pr-3">
+                  {project.story}
+                </p>
+              )}
 
               {/* STEM Curriculum Tags */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -855,7 +876,7 @@ export default function ProjectDedicatedPage({
           {steps[activeStepTab] && (() => {
             const step = steps[activeStepTab];
             const isCompleted = completedSteps[activeStepTab];
-            const viewMode = viewModes[activeStepTab] || 'infographic'; // default to infographic with on-image explanation!
+            const viewMode = viewModes[activeStepTab] || (ai.enabled ? 'photo' : 'infographic');
             const seed = stepSeeds[activeStepTab] || 0;
 
             // Generate instant annotated infographic for this step
@@ -877,7 +898,12 @@ export default function ProjectDedicatedPage({
               seed
             );
 
-            const displayImage = viewMode === 'infographic' ? infographicUrl : photoUrl;
+            const aiStepUrl = ai.enabled ? ai.stepUrl(activeStepTab) : null;
+            const aiStepState = ai.enabled ? ai.stepState(activeStepTab) : null;
+            const aiPending = ai.enabled && viewMode === 'photo' && !aiStepUrl && aiStepState !== 'error';
+            const displayImage = viewMode === 'infographic'
+              ? infographicUrl
+              : (aiStepUrl || (ai.enabled ? infographicUrl : photoUrl));
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -888,11 +914,27 @@ export default function ProjectDedicatedPage({
                     <img
                       src={displayImage}
                       alt={step.title}
-                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi ? 'opacity-40 blur-xs' : 'opacity-100'}`}
+                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi || aiPending ? 'opacity-40 blur-xs' : 'opacity-100'}`}
                       onError={(e) => {
                         e.target.src = infographicUrl;
                       }}
                     />
+
+                    {aiPending && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-700 pointer-events-none">
+                        <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
+                        <span className="text-xs font-bold bg-white/90 px-3 py-1 rounded-full border border-slate-200">جاري رسم صورة هذه المرحلة بالذكاء الاصطناعي…</span>
+                      </div>
+                    )}
+                    {ai.enabled && aiStepState === 'error' && viewMode === 'photo' && (
+                      <button
+                        type="button"
+                        onClick={() => ai.regenerateStep(activeStepTab)}
+                        className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold cursor-pointer shadow-md"
+                      >
+                        تعذر توليد الصورة — إعادة المحاولة
+                      </button>
+                    )}
 
                     {/* Mode Toggle Pills (Infographic with explanation vs Realistic AI Photo) */}
                     <div className="absolute top-3 right-3 flex items-center gap-1.5 p-1 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md">
@@ -904,7 +946,7 @@ export default function ProjectDedicatedPage({
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        📐 رسم وشرح توضيحي بالذكاء الاصطناعي
+                        📐 رسم توضيحي بالعربية
                       </button>
                       <button
                         onClick={() => setViewModes(prev => ({ ...prev, [activeStepTab]: 'photo' }))}
@@ -914,7 +956,7 @@ export default function ProjectDedicatedPage({
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        📸 صورة واقعية بالذكاء الاصطناعي
+                        📸 صورة المرحلة
                       </button>
                     </div>
 
@@ -980,9 +1022,40 @@ export default function ProjectDedicatedPage({
 
                   {/* Step detail description */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                    <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                      {step.detail || step.instruction || step.description}
-                    </p>
+                    {Array.isArray(step.actions) && step.actions.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {step.goal && (
+                          <p className="text-sm text-slate-900 leading-relaxed font-bold">🎯 {step.goal}</p>
+                        )}
+                        <ol className="space-y-1.5 text-sm text-slate-800 leading-relaxed list-none p-0 m-0">
+                          {step.actions.map((a, ai2) => (
+                            <li key={ai2} className="flex items-start gap-2">
+                              <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">{ai2 + 1}</span>
+                              <span>{String(a).replace(/^\s*\d+\s*[).\-–]\s*/, '')}</span>
+                            </li>
+                          ))}
+                        </ol>
+                        {step.measurements && (
+                          <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-xs text-cyan-950 flex items-start gap-2">
+                            <Wrench className="w-4 h-4 text-cyan-700 flex-shrink-0 mt-0.5" />
+                            <span><strong>القياسات:</strong> {step.measurements}</span>
+                          </div>
+                        )}
+                        {step.checkpoint && (
+                          <div className="p-3 rounded-xl bg-white border border-emerald-300 text-xs text-slate-800 flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            <span><strong>كيف تتأكد أنك أصبت:</strong> {step.checkpoint}</span>
+                          </div>
+                        )}
+                        {step.minutes ? (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> الوقت التقريبي: {step.minutes} دقيقة</div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-800 leading-relaxed font-medium">
+                        {step.detail || step.instruction || step.description}
+                      </p>
+                    )}
 
                     {step.tip && (
                       <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2">
@@ -1240,7 +1313,22 @@ export default function ProjectDedicatedPage({
             </div>
           )}
 
-          {/* 3 Upgrade Avenues */}
+          {Array.isArray(project.upgrades) && project.upgrades.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {project.upgrades.slice(0, 3).map((u, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                    <Zap className="w-4 h-4 text-emerald-600" />
+                    <span>ترقية مقترحة {i + 1}</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">{u}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 3 Upgrade Avenues (generic, shown only for non-AI-developed projects) */}
+          {!(Array.isArray(project.upgrades) && project.upgrades.length > 0) && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <div className="flex items-center gap-2 text-cyan-800 font-bold">
@@ -1272,6 +1360,7 @@ export default function ProjectDedicatedPage({
               </p>
             </div>
           </div>
+          )}
         </div>
 
         {/* MATERIALS & TOOLS CHECKLIST */}
@@ -1292,7 +1381,21 @@ export default function ProjectDedicatedPage({
             </div>
 
             <div className="space-y-2 text-xs">
-              {Array.isArray(project.materials) ? (
+              {Array.isArray(project.materialsList) && project.materialsList.length > 0 ? (
+                project.materialsList.map((m, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <div className="text-slate-900 font-bold">
+                        {m.item}{m.quantity ? <span className="text-emerald-700"> — {m.quantity}</span> : null}
+                        {m.supply ? <span className="mr-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">مستلزم إضافي</span> : null}
+                      </div>
+                      {m.preparation && <div className="text-slate-600">التجهيز: {m.preparation}</div>}
+                      {m.role && <div className="text-slate-500">الدور: {m.role}</div>}
+                    </div>
+                  </div>
+                ))
+              ) : Array.isArray(project.materials) ? (
                 project.materials.map((mat, i) => (
                   <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
                     <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
@@ -1314,9 +1417,21 @@ export default function ProjectDedicatedPage({
               <span>الأدوات ومعدات التثبيت</span>
             </h3>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
-              {project.tools || 'منشار يدوي، ورق صنفرة P150/P220، غراء خشب أو سيليكون، مسطرة قياس، مقص متين.'}
-            </div>
+            {Array.isArray(project.toolsList) && project.toolsList.length > 0 ? (
+              <div className="space-y-2 text-xs">
+                {project.toolsList.map((t, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="font-bold text-slate-900">{t.name}</div>
+                    {t.purpose && <div className="text-slate-600">{t.purpose}</div>}
+                    {t.alternative && <div className="text-slate-500">البديل: {t.alternative}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
+                {project.tools || 'منشار يدوي، ورق صنفرة P150/P220، غراء خشب أو سيليكون، مسطرة قياس، مقص متين.'}
+              </div>
+            )}
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="font-bold text-slate-900">إرشادات الأمان الموصى بها من وكيل السلامة:</div>
@@ -1326,6 +1441,23 @@ export default function ProjectDedicatedPage({
             </div>
           </div>
         </div>
+
+        {Array.isArray(project.troubleshooting) && project.troubleshooting.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <span>إذا حدث خطأ… الحلول الجاهزة</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {project.troubleshooting.map((t, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                  <div className="font-bold text-slate-900">⚠️ {t.problem}</div>
+                  <div className="text-slate-700 leading-relaxed">✅ {t.fix}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* BOTTOM PRINTABLE POSTER FOOTER */}
         <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">

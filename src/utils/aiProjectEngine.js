@@ -42,6 +42,8 @@ import {
   getAiStepPhotoUrl
 } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
+import { generateProjectsWithAi } from './projectPipeline.js';
+import { callAi } from './aiGateway.js';
 
 
 /**
@@ -264,7 +266,22 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
 /**
  * Invoke the live AI Recycling Advisor (Gemini) with full dynamic on-demand synthesis
  */
-export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null }) {
+export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null, onProgress, onHeroReady }) {
+  // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway
+  let pipelineError = null;
+  if (!imageBase64 && materials && materials.trim()) {
+    try {
+      return await generateProjectsWithAi({ materials, userLevel, projectType, onProgress, onHeroReady });
+    } catch (pipelineErr) {
+      pipelineError = pipelineErr;
+      console.warn('OpenRouter pipeline failed, using legacy engines:', pipelineErr);
+    }
+  }
+
+  const withFallbackNote = (result) => (
+    pipelineError ? { ...result, usedFallback: true, fallbackReason: pipelineError.message } : result
+  );
+
   // 1. Try Direct Gemini 1.5 Flash Cloud API if API Key is configured
   const apiKey = getStoredGeminiApiKey();
   if (apiKey) {
@@ -272,7 +289,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
       console.log('Invoking Google Gemini 1.5 Flash Direct API...');
       const geminiData = await fetchFromGeminiApi({ materials, userLevel, projectType, apiKey });
       if (geminiData && Array.isArray(geminiData.projects) && geminiData.projects.length > 0) {
-        return processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions);
+        return withFallbackNote(processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions));
       }
     } catch (geminiErr) {
       console.warn('Gemini Direct API call failed, switching to live dynamic synthesis engine:', geminiErr);
@@ -303,7 +320,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.projects) && data.projects.length > 0) {
-        return processEnrichedAiProjects(data.projects, materials, data.followUpQuestions);
+        return withFallbackNote(processEnrichedAiProjects(data.projects, materials, data.followUpQuestions));
       }
     }
   } catch (err) {
@@ -311,7 +328,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
   }
 
   // 3. Live Dynamic AI Project Synthesis Engine (Generates bespoke projects for every request on the fly)
-  return synthesizeDynamicBespokeProjects(materials, userLevel, projectType);
+  return withFallbackNote(synthesizeDynamicBespokeProjects(materials, userLevel, projectType));
 }
 
 /**
@@ -490,6 +507,20 @@ export async function sendChatToGeminiApi({ question, conversationHistory = [], 
  * Chat with Live AI Recycling Expert
  */
 export async function sendChatMessageToAi({ question, conversationHistory = [], projectContext = null }) {
+  // 0. OpenRouter gateway (key stays on the server)
+  try {
+    const out = await callAi('chat', {
+      question,
+      history: conversationHistory,
+      project: projectContext
+        ? { name: projectContext.name, materials: projectContext.materials, idea: projectContext.idea }
+        : null
+    }, { timeoutMs: 70000 });
+    if (out.reply) return out.reply;
+  } catch (gatewayErr) {
+    console.warn('AI gateway chat unavailable, falling back:', gatewayErr.message);
+  }
+
   // 1. Try Direct Gemini API if configured
   const apiKey = getStoredGeminiApiKey();
   if (apiKey) {

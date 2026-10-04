@@ -290,6 +290,24 @@ export default function App() {
 
 
   // Generate Projects with Live AI Engine
+  // Patch a project's hero picture when the AI image finishes (kept in memory only, never saved)
+  const patchProjectHero = (projectId, view, url) => {
+    const apply = (p) => {
+      if (!p || p.id !== projectId) return p;
+      const key = view === 'finished' ? 'finished' : view;
+      const gallery = { ...(p.gallery || {}), [key]: url };
+      const multi = { ...(p.multiAngleViews || {}), [key]: url };
+      return {
+        ...p,
+        gallery,
+        multiAngleViews: multi,
+        ...(key === 'finished' ? { generatedImage: url, image: url } : {})
+      };
+    };
+    setProjects(prev => prev.map(apply));
+    setSelectedProjectModal(prev => (prev ? apply(prev) : prev));
+  };
+
   const handleGenerateProjects = async () => {
     const allMaterials = [...selectedMaterials];
     if (materials.trim()) {
@@ -303,15 +321,20 @@ export default function App() {
     }
 
     setIsLoading(true);
-    setLoadingStep('تحليل بنية المواد والخواص الفيزيائية عبر Gemini AI...');
+    setLoadingStep('جاري تحليل المواد وبدء العصف الذهني بالذكاء الاصطناعي...');
 
     try {
       const materialsString = allMaterials.join('، ');
       const res = await fetchAiProjects({
         materials: materialsString,
         userLevel,
-        projectType
+        projectType,
+        onProgress: (p) => setLoadingStep(p.message),
+        onHeroReady: patchProjectHero
       });
+      if (res.usedFallback) {
+        showToast('تعذر الوصول لمحرك الذكاء الاصطناعي المتقدم فاستُخدم المولّد البديل: ' + (res.fallbackReason || ''), 'info');
+      }
 
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
@@ -364,7 +387,9 @@ export default function App() {
       const res = await fetchAiProjects({
         materials: topScenario.materials.join('، '),
         userLevel: topScenario.difficulty || 'متوسط',
-        projectType: topScenario.type || 'ديكور منزلي'
+        projectType: topScenario.type || 'ديكور منزلي',
+        onProgress: (p) => setLoadingStep(p.message),
+        onHeroReady: patchProjectHero
       });
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
