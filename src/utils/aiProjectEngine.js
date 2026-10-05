@@ -42,6 +42,8 @@ import {
   getAiStepPhotoUrl
 } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
+import { generateProjectsWithAi } from './projectPipeline.js';
+import { callAi } from './aiGateway.js';
 
 
 /**
@@ -203,99 +205,38 @@ export function setStoredGeminiApiKey(key) {
 /**
  * Direct Live Google Gemini 1.5 Flash API Caller
  */
-function buildProjectsPrompt({ materials, userLevel = 'adult', projectType = 'practical' }) {
-  const levelAr = { child: 'طفل (6-12 سنة) - مشاريع آمنة بلا أدوات حادة', teen: 'مراهق (13-17 سنة)', adult: 'بالغ', all: 'كل المستويات' }[userLevel] || userLevel;
-  const typeAr = { practical: 'عملي ونفعي', scientific: 'علمي وتجريبي', artistic: 'فني وديكور', group: 'جماعي ومدرسي', all: 'متنوع' }[projectType] || projectType;
-  return `أنت مصمم منتجات ومهندس استدامة محترف متخصص في التدوير التصاعدي (Upcycling)، وتكتب لمنصة تعليمية عربية.
+export async function fetchFromGeminiApi({ materials, userLevel = 'adult', projectType = 'practical', apiKey }) {
+  const prompt = `أنت مهندس تصميم صناعي واستدامة بيئية ورائد في ابتكار مشاريع إعادة التدوير التصاعدي (Upcycling).
+المطلوب: ابتكار 3 مشاريع إعادة تدوير تصاعدي حصرية وجديدة تماماً ومصممة خصيصاً بالاعتماد المباشر على هذه المواد المدخلة:
+"${materials}"
+المستوى المستهدف: ${userLevel}
+نوع المشروع: ${projectType}
 
-المواد المتوفرة لدى المستخدم: "${materials}"
-المستوى: ${levelAr}
-نوع المشاريع المطلوب: ${typeAr}
-
-المطلوب: ابتكر 3 مشاريع **مختلفة جذرياً عن بعضها** (فكرة ووظيفة وشكل)، واقعية وقابلة للتنفيذ في البيت، وتستخدم المواد المذكورة فعلاً (لا تضف مواد غير ضرورية). تجنب الأفكار المبتذلة المتكررة (أصيص عادي، منظم أقلام عادي) واختر أفكاراً ذكية تدهش المستخدم ولها فائدة حقيقية. اجعل المشروع الأول الأسهل، والثاني متوسطاً، والثالث الأكثر إبداعاً.
-
-لكل مشروع:
-- اسم جذاب ومحدد (3-7 كلمات).
-- 5 إلى 6 خطوات تنفيذ، كل خطوة فعل واحد واضح (قص، ثقب، لصق، صنفرة، طلاء...) مع قياسات وكميات محددة بالسنتيمتر والدقائق.
-- لكل خطوة imagePrompt بالإنجليزية فقط: وصف تصوير قريب (close-up) لليدين وهما تنفذان هذه الخطوة تحديداً على المادة المحددة، مثل "close-up of hands cutting a plastic bottle in half with scissors along a marked line, workshop table, photorealistic".
-- imagePrompts للمشروع بالإنجليزية: finished (المنتج النهائي في بيئة جميلة)، assembly (مراحل التجميع)، inUse (يُستخدم في حياة واقعية).
-
-أجب بـ JSON صالح فقط (بدون markdown) وبالعربية لكل النصوص عدا imagePrompt:
+أجب حصراً بصيغة JSON صالحة باللغة العربية دون أي نص إضافي أو علامات markdown codeblock.
+الهيكل المطلوب بدقة:
 {
   "projects": [
     {
-      "name": "",
-      "idea": "فقرة قصيرة: ما هو، لمن، وما الذي يميزه",
-      "wowFactor": "جملة واحدة تشرح لماذا الفكرة ذكية ومختلفة",
-      "materials": "المواد مع الكميات",
-      "tools": "الأدوات",
-      "stepsData": [
-        { "title": "عنوان قصير يتضمن الفعل", "detail": "شرح تنفيذي دقيق بالقياسات", "tip": "نصيحة أمان أو جودة", "imagePrompt": "English close-up prompt" }
-      ],
-      "principle": "المبدأ العلمي وراء الفكرة",
-      "time": "مثل: 90 دقيقة",
-      "difficulty": "سهل | متوسط | متقدم",
-      "cost": "التكلفة التقديرية للمواد الإضافية مقابل سعر المنتج الجاهز",
-      "safety": "احتياطات الأمان",
-      "results": "النتيجة النهائية والفائدة",
-      "development": "فكرة تطوير رئيسية",
-      "variations": ["تعديل 1 لتخصيص المشروع", "تعديل 2", "تعديل 3"],
-      "sustainability": "الأثر البيئي بأرقام تقريبية",
-      "imagePrompts": { "finished": "", "assembly": "", "inUse": "" }
+      "name": "اسم المشروع المبتكر الخاص بالمواد المدخلة",
+      "idea": "شرح تفصيلي لفكرة المشروع والغرض النفعي والجمالي منه وكيف يدمج المواد معاً",
+      "materials": "قائمة الخامات المطلوبة بدقة مع لوازم التثبيت",
+      "tools": "قائمة الأدوات اللازمة للتنفيذ",
+      "steps": "الخطوة 1: [اسم المرحلة متضمناً فعل العمل مثل قص أو فرز]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة أمان أو دقة]\\n\\nالخطوة 2: [اسم المرحلة متضمناً فعل التجميع أو الربط]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة تقنية]\\n\\nالخطوة 3: [اسم المرحلة متضمناً فعل التشطيب أو الفحص]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة فحص أداء]",
+      "principle": "المبدأ العلمي والبيئي والهندسي المستفاد",
+      "time": "المدة المقدرة للإنجاز (مثال: ساعتان)",
+      "difficulty": "مستوى الصعوبة (سهل / متوسط / متقدم)",
+      "safety": "إرشادات الأمان ومعدات الوقاية الشخصية PPE",
+      "results": "النتائج الجمالية والوظيفية والوفر المالي المقدر",
+      "development": "فكرة ذكية لتطوير المشروع مستقبلاً",
+      "sustainability": "الأثر البيئي وكمية الكربون المتجنبة"
     }
   ],
-  "followUpQuestions": ["سؤال ذكي 1", "سؤال ذكي 2", "سؤال ذكي 3"]
+  "followUpQuestions": [
+    "سؤال متابعة ذكي 1 يخص المواد",
+    "سؤال متابعة ذكي 2 يخص الأدوات",
+    "سؤال متابعة ذكي 3 يخص موقع الاستخدام"
+  ]
 }`;
-}
-
-function parseJsonLoose(rawText) {
-  const clean = rawText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch {
-    const s = clean.indexOf('{');
-    const e = clean.lastIndexOf('}');
-    if (s >= 0 && e > s) return JSON.parse(clean.slice(s, e + 1));
-    throw new Error('تعذر قراءة استجابة الذكاء الاصطناعي');
-  }
-}
-
-const OPENROUTER_MODEL = 'google/gemini-2.5-flash';
-
-export function getOpenRouterKey() {
-  return import.meta.env?.VITE_OPENROUTER_API_KEY || '';
-}
-
-/**
- * OpenRouter caller (primary live engine when VITE_OPENROUTER_API_KEY is set)
- */
-export async function fetchFromOpenRouter({ materials, userLevel, projectType, apiKey }) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      temperature: 0.9,
-      max_tokens: 8000,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: 'You are an expert upcycling engineer. Reply with valid JSON only.' },
-        { role: 'user', content: buildProjectsPrompt({ materials, userLevel, projectType }) }
-      ]
-    })
-  });
-  if (!res.ok) throw new Error(`OpenRouter (${res.status})`);
-  const result = await res.json();
-  const text = result.choices?.[0]?.message?.content;
-  if (!text) throw new Error('استجابة فارغة من OpenRouter');
-  return parseJsonLoose(text);
-}
-
-export async function fetchFromGeminiApi({ materials, userLevel = 'adult', projectType = 'practical', apiKey }) {
-  const prompt = buildProjectsPrompt({ materials, userLevel, projectType });
 
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -325,19 +266,21 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
 /**
  * Invoke the live AI Recycling Advisor (Gemini) with full dynamic on-demand synthesis
  */
-export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null }) {
-  // 0. OpenRouter (primary live engine)
-  const orKey = getOpenRouterKey();
-  if (orKey && !imageBase64) {
+export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null, onProgress, onHeroReady }) {
+  // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway
+  let pipelineError = null;
+  if (!imageBase64 && materials && materials.trim()) {
     try {
-      const orData = await fetchFromOpenRouter({ materials, userLevel, projectType, apiKey: orKey });
-      if (orData && Array.isArray(orData.projects) && orData.projects.length > 0) {
-        return processEnrichedAiProjects(orData.projects, materials, orData.followUpQuestions);
-      }
-    } catch (orErr) {
-      console.warn('OpenRouter failed, trying next engine:', orErr);
+      return await generateProjectsWithAi({ materials, userLevel, projectType, onProgress, onHeroReady });
+    } catch (pipelineErr) {
+      pipelineError = pipelineErr;
+      console.warn('OpenRouter pipeline failed, using legacy engines:', pipelineErr);
     }
   }
+
+  const withFallbackNote = (result) => (
+    pipelineError ? { ...result, usedFallback: true, fallbackReason: pipelineError.message } : result
+  );
 
   // 1. Try Direct Gemini 1.5 Flash Cloud API if API Key is configured
   const apiKey = getStoredGeminiApiKey();
@@ -346,7 +289,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
       console.log('Invoking Google Gemini 1.5 Flash Direct API...');
       const geminiData = await fetchFromGeminiApi({ materials, userLevel, projectType, apiKey });
       if (geminiData && Array.isArray(geminiData.projects) && geminiData.projects.length > 0) {
-        return processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions);
+        return withFallbackNote(processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions));
       }
     } catch (geminiErr) {
       console.warn('Gemini Direct API call failed, switching to live dynamic synthesis engine:', geminiErr);
@@ -377,7 +320,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.projects) && data.projects.length > 0) {
-        return processEnrichedAiProjects(data.projects, materials, data.followUpQuestions);
+        return withFallbackNote(processEnrichedAiProjects(data.projects, materials, data.followUpQuestions));
       }
     }
   } catch (err) {
@@ -385,7 +328,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
   }
 
   // 3. Live Dynamic AI Project Synthesis Engine (Generates bespoke projects for every request on the fly)
-  return synthesizeDynamicBespokeProjects(materials, userLevel, projectType);
+  return withFallbackNote(synthesizeDynamicBespokeProjects(materials, userLevel, projectType));
 }
 
 /**
@@ -409,55 +352,13 @@ function processEnrichedAiProjects(rawProjects, materials, followUpQuestions) {
     }
   }
 
-  const aiImageUrl = (prompt, seed, w = 960, h = 600) =>
-    `https://image.pollinations.ai/prompt/${encodeURIComponent(`${prompt}, photorealistic, sharp focus, natural lighting, no text, no watermark`)}?width=${w}&height=${h}&nologo=true&seed=${seed}&model=flux`;
-
   const enrichedProjects = uniqueRawProjects.map((proj, idx) => {
-    const projMaterials = proj.materials || materials;
-    const gallery = buildMultiImageGallery(proj.name, proj.idea, projMaterials, idx);
-    const seed = Math.floor(Math.random() * 100000);
-
-    // The finished-product picture is generated from the AI's own English prompt (falls back to curated photo on error)
-    const prompts = proj.imagePrompts || {};
-    if (prompts.finished) {
-      gallery.fallbackFinished = gallery.finished;
-      gallery.finished = aiImageUrl(prompts.finished, seed);
-    }
-
+    const gallery = buildMultiImageGallery(proj.name, proj.idea, proj.materials || materials, idx);
     const metrics = deriveEngineeringMetrics(proj, materials || '');
-
-    let parsedSteps;
-    let stepsText = proj.steps;
-    if (Array.isArray(proj.stepsData) && proj.stepsData.length > 0) {
-      parsedSteps = proj.stepsData.map((st, i) => {
-        const title = st.title || `الخطوة ${i + 1}`;
-        const detail = st.detail || '';
-        const infographic = generateStepInfographic(i + 1, title, detail, {}, projMaterials);
-        const photo = st.imagePrompt
-          ? aiImageUrl(st.imagePrompt, seed + i + 1)
-          : getAiStepPhotoUrl(i + 1, title, detail, projMaterials, proj.name, i);
-        return {
-          id: i + 1,
-          title,
-          detail,
-          tip: st.tip || 'تأكد من ارتداء قفازات واقية وفحص ثبات الأجزاء.',
-          image: infographic,
-          infographicUrl: infographic,
-          photoUrl: photo,
-          aiImageUrl: photo,
-          completed: false
-        };
-      });
-      stepsText = proj.stepsData
-        .map((st, i) => `الخطوة ${i + 1}: ${st.title}\n- التفاصيل: ${st.detail}\n- نصيحة: ${st.tip || ''}`)
-        .join('\n\n');
-    } else {
-      parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, projMaterials);
-    }
+    const parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, proj.materials || materials);
 
     const baseProj = {
       ...proj,
-      steps: stepsText,
       id: `proj-ai-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       title: proj.name,
       gallery,
@@ -466,13 +367,11 @@ function processEnrichedAiProjects(rawProjects, materials, followUpQuestions) {
       multiAngleViews: gallery,
       activeGalleryView: 'finished',
       metrics,
-      parsedSteps
+      parsedSteps,
+      steps: parsedSteps
     };
-    // keep legacy contract: steps holds the parsed list for the UI
-    baseProj.steps = parsedSteps;
-    baseProj.stepsText = stepsText;
 
-    return orchestrateProjectSwarm(baseProj, projMaterials);
+    return orchestrateProjectSwarm(baseProj, proj.materials || materials);
   });
 
   return {
@@ -608,28 +507,18 @@ export async function sendChatToGeminiApi({ question, conversationHistory = [], 
  * Chat with Live AI Recycling Expert
  */
 export async function sendChatMessageToAi({ question, conversationHistory = [], projectContext = null }) {
-  // 0. OpenRouter chat
-  const orKey = getOpenRouterKey();
-  if (orKey) {
-    try {
-      const msgs = [
-        { role: 'system', content: `أنت خبير إعادة التدوير والاستدامة في منصة Smart Upcycling. أجب بالعربية بأسلوب مهني وعملي ومختصر.${projectContext ? ` المشروع الحالي: "${projectContext.name}" من (${projectContext.materials}).` : ''}` },
-        ...conversationHistory.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-        { role: 'user', content: question }
-      ];
-      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}` },
-        body: JSON.stringify({ model: OPENROUTER_MODEL, messages: msgs, max_tokens: 1200 })
-      });
-      if (r.ok) {
-        const j = await r.json();
-        const t = j.choices?.[0]?.message?.content;
-        if (t) return t;
-      }
-    } catch (e) {
-      console.warn('OpenRouter chat failed:', e);
-    }
+  // 0. OpenRouter gateway (key stays on the server)
+  try {
+    const out = await callAi('chat', {
+      question,
+      history: conversationHistory,
+      project: projectContext
+        ? { name: projectContext.name, materials: projectContext.materials, idea: projectContext.idea }
+        : null
+    }, { timeoutMs: 70000 });
+    if (out.reply) return out.reply;
+  } catch (gatewayErr) {
+    console.warn('AI gateway chat unavailable, falling back:', gatewayErr.message);
   }
 
   // 1. Try Direct Gemini API if configured
