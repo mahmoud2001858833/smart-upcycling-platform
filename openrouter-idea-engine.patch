@@ -1,0 +1,1792 @@
+From 436f0c5866be1082d41231c43a2d4e05f4d77834 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 21:27:31 +0300
+Subject: [PATCH] Add two-stage OpenRouter idea engine with per-step AI images
+
+- Secure AI gateway: Supabase edge function (ai-gateway) + Vite dev middleware sharing one core; key stays server-side
+- Ideate (8 scored concepts, top 3 distinct archetypes) then develop (full numeric build manual, validate + repair)
+- Per-project and per-step AI images with consistent visual bible, cached in IndexedDB, lazy generation
+- Project page shows rich materials/tools/steps/checkpoints/troubleshooting; saves strip heavy images (516KB -> 18KB)
+- Falls back to legacy generators with a visible notice
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BVk6DdFcXv5DrLGbakYp6A
+---
+ .env.example                                 |   8 +
+ README.md                                    |  24 +
+ src/App.jsx                                  |  31 +-
+ src/components/ProjectDedicatedPage.jsx      | 160 +++++-
+ src/hooks/useProjectAiImages.js              | 107 ++++
+ src/utils/aiGateway.js                       |  62 ++
+ src/utils/aiImageStore.js                    | 172 ++++++
+ src/utils/aiProjectEngine.js                 |  39 +-
+ src/utils/projectPipeline.js                 | 193 +++++++
+ src/utils/supabaseSync.js                    |   6 +-
+ supabase/functions/_shared/openrouterCore.js | 559 +++++++++++++++++++
+ supabase/functions/ai-gateway/index.ts       |  53 ++
+ vite.config.js                               |  56 +-
+ 13 files changed, 1437 insertions(+), 33 deletions(-)
+ create mode 100644 src/hooks/useProjectAiImages.js
+ create mode 100644 src/utils/aiGateway.js
+ create mode 100644 src/utils/aiImageStore.js
+ create mode 100644 src/utils/projectPipeline.js
+ create mode 100644 supabase/functions/_shared/openrouterCore.js
+ create mode 100644 supabase/functions/ai-gateway/index.ts
+
+diff --git a/.env.example b/.env.example
+index ee7e972..015bed4 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,3 +1,11 @@
+ # Supabase Configuration
+ VITE_SUPABASE_URL=https://rtdgynwnuxtqidsegjzs.supabase.co
+ VITE_SUPABASE_ANON_KEY=your_anon_key_here
++
++# --- AI gateway (OpenRouter) — SERVER-SIDE ONLY, never prefix with VITE_ ---
++# Local dev: put this in .env.local (git-ignored). Production: `supabase secrets set OPENROUTER_API_KEY=...`
++# OPENROUTER_API_KEY=sk-or-v1-...
++# Optional model overrides (comma-separated = fallback order). Check openrouter.ai/models for current slugs.
++# OPENROUTER_IDEATION_MODEL=google/gemini-3.8-flash
++# OPENROUTER_DEVELOP_MODEL=anthropic/claude-opus-5.5
++# OPENROUTER_IMAGE_MODEL=google/gemini-2.5-flash-image
+diff --git a/README.md b/README.md
+index 2b1bc27..ea7fa9a 100644
+--- a/README.md
++++ b/README.md
+@@ -50,3 +50,27 @@ npm run build
+ 
+ ## 📄 الترخيص (License)
+ MIT License • 2026 المنظومة الوطنية لإعادة التدوير والاستدامة الذكية
++
++---
++
++## 🧠 محرك الأفكار المتقدم (OpenRouter)
++
++يعمل التوليد على مرحلتين:
++1. **عصف ذهني:** 8 أفكار مختلفة جذرياً، كل فكرة مقيّمة (إبهار، ابتكار، فائدة، قابلية تنفيذ)، ثم يُختار أقوى 3 بأنماط مختلفة.
++2. **تطوير:** دليل تنفيذ كامل لكل مشروع (6–9 مراحل بقياسات دقيقة، نقطة تحقق لكل مرحلة، حلول للأخطاء الشائعة، تطويرات مقترحة)، مع تحقق آلي وإصلاح تلقائي إن نقص شيء.
++3. **صور:** صورة رئيسية + صورة لكل مرحلة تُولَّد بالذكاء الاصطناعي بنفس "هوية بصرية" ثابتة للمنتج، وتُخزَّن في IndexedDB.
++
++### الإعداد
++مفتاح OpenRouter يبقى على الخادم فقط:
++
++```bash
++# تطوير محلي: ملف .env.local (لا يُرفع إلى git)
++echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env.local
++npm run dev
++
++# الإنتاج: دالة Supabase
++supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
++supabase functions deploy ai-gateway
++```
++
++حدّد حداً للإنفاق على المفتاح من لوحة OpenRouter لأن الدالة عامة. النماذج قابلة للتغيير عبر المتغيرات `OPENROUTER_*_MODEL` (انظر `.env.example`).
+diff --git a/src/App.jsx b/src/App.jsx
+index 84734b3..88077f4 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -290,6 +290,24 @@ export default function App() {
+ 
+ 
+   // Generate Projects with Live AI Engine
++  // Patch a project's hero picture when the AI image finishes (kept in memory only, never saved)
++  const patchProjectHero = (projectId, view, url) => {
++    const apply = (p) => {
++      if (!p || p.id !== projectId) return p;
++      const key = view === 'finished' ? 'finished' : view;
++      const gallery = { ...(p.gallery || {}), [key]: url };
++      const multi = { ...(p.multiAngleViews || {}), [key]: url };
++      return {
++        ...p,
++        gallery,
++        multiAngleViews: multi,
++        ...(key === 'finished' ? { generatedImage: url, image: url } : {})
++      };
++    };
++    setProjects(prev => prev.map(apply));
++    setSelectedProjectModal(prev => (prev ? apply(prev) : prev));
++  };
++
+   const handleGenerateProjects = async () => {
+     const allMaterials = [...selectedMaterials];
+     if (materials.trim()) {
+@@ -303,15 +321,20 @@ export default function App() {
+     }
+ 
+     setIsLoading(true);
+-    setLoadingStep('تحليل بنية المواد والخواص الفيزيائية عبر Gemini AI...');
++    setLoadingStep('جاري تحليل المواد وبدء العصف الذهني بالذكاء الاصطناعي...');
+ 
+     try {
+       const materialsString = allMaterials.join('، ');
+       const res = await fetchAiProjects({
+         materials: materialsString,
+         userLevel,
+-        projectType
++        projectType,
++        onProgress: (p) => setLoadingStep(p.message),
++        onHeroReady: patchProjectHero
+       });
++      if (res.usedFallback) {
++        showToast('تعذر الوصول لمحرك الذكاء الاصطناعي المتقدم فاستُخدم المولّد البديل: ' + (res.fallbackReason || ''), 'info');
++      }
+ 
+       if (res.success && res.projects?.length > 0) {
+         setProjects(res.projects);
+@@ -364,7 +387,9 @@ export default function App() {
+       const res = await fetchAiProjects({
+         materials: topScenario.materials.join('، '),
+         userLevel: topScenario.difficulty || 'متوسط',
+-        projectType: topScenario.type || 'ديكور منزلي'
++        projectType: topScenario.type || 'ديكور منزلي',
++        onProgress: (p) => setLoadingStep(p.message),
++        onHeroReady: patchProjectHero
+       });
+       if (res.success && res.projects?.length > 0) {
+         setProjects(res.projects);
+diff --git a/src/components/ProjectDedicatedPage.jsx b/src/components/ProjectDedicatedPage.jsx
+index 431fc0c..3e8eefb 100644
+--- a/src/components/ProjectDedicatedPage.jsx
++++ b/src/components/ProjectDedicatedPage.jsx
+@@ -13,6 +13,7 @@ import { generateStepInfographic, getAiStepPhotoUrl } from '../utils/imageCatalo
+ import StudentLabReportModal from './StudentLabReportModal.jsx';
+ import StudentRubricModal from './StudentRubricModal.jsx';
+ import StudentQuizModal from './StudentQuizModal.jsx';
++import { useProjectAiImages } from '../hooks/useProjectAiImages.js';
+ 
+ export default function ProjectDedicatedPage({ 
+   project, 
+@@ -190,6 +191,11 @@ export default function ProjectDedicatedPage({
+ 
+   // Regenerate step AI visual
+   const handleRegenerateStepAi = (stepIdx) => {
++    if (ai.enabled) {
++      setViewModes(prev => ({ ...prev, [stepIdx]: 'photo' }));
++      ai.regenerateStep(stepIdx);
++      return;
++    }
+     setIsRegeneratingAi(true);
+     setStepSeeds(prev => ({
+       ...prev,
+@@ -228,17 +234,22 @@ export default function ProjectDedicatedPage({
+     window.print();
+   };
+ 
++  // Real AI pictures (cached in IndexedDB, generated on demand through the secure gateway)
++  const ai = useProjectAiImages(project, activeStepTab);
++  const aiHeroUrl = activeAngle === 'blueprint' ? null : ai.heroUrl(activeAngle);
++
+   // Multi-angle image resolver
+   const currentHeroImage = useMemo(() => {
+     if (activeAngle === 'blueprint') {
+       return project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
+     }
++    if (aiHeroUrl) return aiHeroUrl;
+     const gallery = project?.multiAngleViews || project?.gallery;
+     if (gallery && gallery[activeAngle]) {
+       return gallery[activeAngle];
+     }
+     return project?.image || project?.generatedImage;
+-  }, [activeAngle, project]);
++  }, [activeAngle, project, aiHeroUrl]);
+ 
+   if (!project) return null;
+ 
+@@ -364,10 +375,20 @@ export default function ProjectDedicatedPage({
+                 {project.title || project.name}
+               </h1>
+ 
++              {project.tagline && (
++                <p className="text-base sm:text-lg font-bold text-amber-200">{project.tagline}</p>
++              )}
++
+               <p className="text-sm sm:text-base text-emerald-100/90 leading-relaxed max-w-3xl">
+                 {project.idea || project.description}
+               </p>
+ 
++              {project.story && (
++                <p className="text-sm text-white/80 leading-relaxed max-w-3xl border-r-4 border-amber-300/70 pr-3">
++                  {project.story}
++                </p>
++              )}
++
+               {/* STEM Curriculum Tags */}
+               <div className="flex flex-wrap items-center gap-2 pt-1">
+                 <span className="px-2.5 py-1 rounded-xl bg-white/15 text-emerald-200 border border-white/20 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs">
+@@ -855,7 +876,7 @@ export default function ProjectDedicatedPage({
+           {steps[activeStepTab] && (() => {
+             const step = steps[activeStepTab];
+             const isCompleted = completedSteps[activeStepTab];
+-            const viewMode = viewModes[activeStepTab] || 'infographic'; // default to infographic with on-image explanation!
++            const viewMode = viewModes[activeStepTab] || (ai.enabled ? 'photo' : 'infographic');
+             const seed = stepSeeds[activeStepTab] || 0;
+ 
+             // Generate instant annotated infographic for this step
+@@ -877,7 +898,12 @@ export default function ProjectDedicatedPage({
+               seed
+             );
+ 
+-            const displayImage = viewMode === 'infographic' ? infographicUrl : photoUrl;
++            const aiStepUrl = ai.enabled ? ai.stepUrl(activeStepTab) : null;
++            const aiStepState = ai.enabled ? ai.stepState(activeStepTab) : null;
++            const aiPending = ai.enabled && viewMode === 'photo' && !aiStepUrl && aiStepState !== 'error';
++            const displayImage = viewMode === 'infographic'
++              ? infographicUrl
++              : (aiStepUrl || (ai.enabled ? infographicUrl : photoUrl));
+ 
+             return (
+               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+@@ -888,12 +914,28 @@ export default function ProjectDedicatedPage({
+                     <img
+                       src={displayImage}
+                       alt={step.title}
+-                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi ? 'opacity-40 blur-xs' : 'opacity-100'}`}
++                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi || aiPending ? 'opacity-40 blur-xs' : 'opacity-100'}`}
+                       onError={(e) => {
+                         e.target.src = infographicUrl;
+                       }}
+                     />
+ 
++                    {aiPending && (
++                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-700 pointer-events-none">
++                        <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
++                        <span className="text-xs font-bold bg-white/90 px-3 py-1 rounded-full border border-slate-200">جاري رسم صورة هذه المرحلة بالذكاء الاصطناعي…</span>
++                      </div>
++                    )}
++                    {ai.enabled && aiStepState === 'error' && viewMode === 'photo' && (
++                      <button
++                        type="button"
++                        onClick={() => ai.regenerateStep(activeStepTab)}
++                        className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold cursor-pointer shadow-md"
++                      >
++                        تعذر توليد الصورة — إعادة المحاولة
++                      </button>
++                    )}
++
+                     {/* Mode Toggle Pills (Infographic with explanation vs Realistic AI Photo) */}
+                     <div className="absolute top-3 right-3 flex items-center gap-1.5 p-1 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md">
+                       <button
+@@ -904,7 +946,7 @@ export default function ProjectDedicatedPage({
+                             : 'text-slate-600 hover:text-slate-900'
+                         }`}
+                       >
+-                        📐 رسم وشرح توضيحي بالذكاء الاصطناعي
++                        📐 رسم توضيحي بالعربية
+                       </button>
+                       <button
+                         onClick={() => setViewModes(prev => ({ ...prev, [activeStepTab]: 'photo' }))}
+@@ -914,7 +956,7 @@ export default function ProjectDedicatedPage({
+                             : 'text-slate-600 hover:text-slate-900'
+                         }`}
+                       >
+-                        📸 صورة واقعية بالذكاء الاصطناعي
++                        📸 صورة المرحلة
+                       </button>
+                     </div>
+ 
+@@ -980,9 +1022,40 @@ export default function ProjectDedicatedPage({
+ 
+                   {/* Step detail description */}
+                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+-                    <p className="text-sm text-slate-800 leading-relaxed font-medium">
+-                      {step.detail || step.instruction || step.description}
+-                    </p>
++                    {Array.isArray(step.actions) && step.actions.length > 0 ? (
++                      <div className="space-y-2.5">
++                        {step.goal && (
++                          <p className="text-sm text-slate-900 leading-relaxed font-bold">🎯 {step.goal}</p>
++                        )}
++                        <ol className="space-y-1.5 text-sm text-slate-800 leading-relaxed list-none p-0 m-0">
++                          {step.actions.map((a, ai2) => (
++                            <li key={ai2} className="flex items-start gap-2">
++                              <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">{ai2 + 1}</span>
++                              <span>{String(a).replace(/^\s*\d+\s*[).\-–]\s*/, '')}</span>
++                            </li>
++                          ))}
++                        </ol>
++                        {step.measurements && (
++                          <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-xs text-cyan-950 flex items-start gap-2">
++                            <Wrench className="w-4 h-4 text-cyan-700 flex-shrink-0 mt-0.5" />
++                            <span><strong>القياسات:</strong> {step.measurements}</span>
++                          </div>
++                        )}
++                        {step.checkpoint && (
++                          <div className="p-3 rounded-xl bg-white border border-emerald-300 text-xs text-slate-800 flex items-start gap-2">
++                            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
++                            <span><strong>كيف تتأكد أنك أصبت:</strong> {step.checkpoint}</span>
++                          </div>
++                        )}
++                        {step.minutes ? (
++                          <div className="text-[11px] text-slate-500 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> الوقت التقريبي: {step.minutes} دقيقة</div>
++                        ) : null}
++                      </div>
++                    ) : (
++                      <p className="text-sm text-slate-800 leading-relaxed font-medium">
++                        {step.detail || step.instruction || step.description}
++                      </p>
++                    )}
+ 
+                     {step.tip && (
+                       <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2">
+@@ -1240,7 +1313,22 @@ export default function ProjectDedicatedPage({
+             </div>
+           )}
+ 
+-          {/* 3 Upgrade Avenues */}
++          {Array.isArray(project.upgrades) && project.upgrades.length > 0 && (
++            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
++              {project.upgrades.slice(0, 3).map((u, i) => (
++                <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
++                  <div className="flex items-center gap-2 text-emerald-800 font-bold">
++                    <Zap className="w-4 h-4 text-emerald-600" />
++                    <span>ترقية مقترحة {i + 1}</span>
++                  </div>
++                  <p className="text-slate-600 leading-relaxed">{u}</p>
++                </div>
++              ))}
++            </div>
++          )}
++
++          {/* 3 Upgrade Avenues (generic, shown only for non-AI-developed projects) */}
++          {!(Array.isArray(project.upgrades) && project.upgrades.length > 0) && (
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+               <div className="flex items-center gap-2 text-cyan-800 font-bold">
+@@ -1272,6 +1360,7 @@ export default function ProjectDedicatedPage({
+               </p>
+             </div>
+           </div>
++          )}
+         </div>
+ 
+         {/* MATERIALS & TOOLS CHECKLIST */}
+@@ -1292,7 +1381,21 @@ export default function ProjectDedicatedPage({
+             </div>
+ 
+             <div className="space-y-2 text-xs">
+-              {Array.isArray(project.materials) ? (
++              {Array.isArray(project.materialsList) && project.materialsList.length > 0 ? (
++                project.materialsList.map((m, i) => (
++                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
++                    <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
++                    <div className="space-y-0.5">
++                      <div className="text-slate-900 font-bold">
++                        {m.item}{m.quantity ? <span className="text-emerald-700"> — {m.quantity}</span> : null}
++                        {m.supply ? <span className="mr-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">مستلزم إضافي</span> : null}
++                      </div>
++                      {m.preparation && <div className="text-slate-600">التجهيز: {m.preparation}</div>}
++                      {m.role && <div className="text-slate-500">الدور: {m.role}</div>}
++                    </div>
++                  </div>
++                ))
++              ) : Array.isArray(project.materials) ? (
+                 project.materials.map((mat, i) => (
+                   <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
+                     <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+@@ -1314,9 +1417,21 @@ export default function ProjectDedicatedPage({
+               <span>الأدوات ومعدات التثبيت</span>
+             </h3>
+ 
+-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
+-              {project.tools || 'منشار يدوي، ورق صنفرة P150/P220، غراء خشب أو سيليكون، مسطرة قياس، مقص متين.'}
+-            </div>
++            {Array.isArray(project.toolsList) && project.toolsList.length > 0 ? (
++              <div className="space-y-2 text-xs">
++                {project.toolsList.map((t, i) => (
++                  <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
++                    <div className="font-bold text-slate-900">{t.name}</div>
++                    {t.purpose && <div className="text-slate-600">{t.purpose}</div>}
++                    {t.alternative && <div className="text-slate-500">البديل: {t.alternative}</div>}
++                  </div>
++                ))}
++              </div>
++            ) : (
++              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
++                {project.tools || 'منشار يدوي، ورق صنفرة P150/P220، غراء خشب أو سيليكون، مسطرة قياس، مقص متين.'}
++              </div>
++            )}
+ 
+             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+               <div className="font-bold text-slate-900">إرشادات الأمان الموصى بها من وكيل السلامة:</div>
+@@ -1327,6 +1442,23 @@ export default function ProjectDedicatedPage({
+           </div>
+         </div>
+ 
++        {Array.isArray(project.troubleshooting) && project.troubleshooting.length > 0 && (
++          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
++            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
++              <AlertCircle className="w-5 h-5 text-amber-600" />
++              <span>إذا حدث خطأ… الحلول الجاهزة</span>
++            </h3>
++            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
++              {project.troubleshooting.map((t, i) => (
++                <div key={i} className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
++                  <div className="font-bold text-slate-900">⚠️ {t.problem}</div>
++                  <div className="text-slate-700 leading-relaxed">✅ {t.fix}</div>
++                </div>
++              ))}
++            </div>
++          </div>
++        )}
++
+         {/* BOTTOM PRINTABLE POSTER FOOTER */}
+         <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+           <div>
+diff --git a/src/hooks/useProjectAiImages.js b/src/hooks/useProjectAiImages.js
+new file mode 100644
+index 0000000..9e19937
+--- /dev/null
++++ b/src/hooks/useProjectAiImages.js
+@@ -0,0 +1,107 @@
++import { useCallback, useEffect, useRef, useState } from 'react';
++import { heroSpec, stepSpec, loadCachedImage, requestImage } from '../utils/aiImageStore.js';
++
++const HERO_VIEWS = ['finished', 'assembly', 'inUse'];
++
++/**
++ * Resolves AI pictures for a project: cache first (IndexedDB), then generates what is missing.
++ * Only active for projects built by the AI pipeline (they carry image prompts).
++ *
++ * state values: 'loading' | 'ready' | 'error'
++ */
++export function useProjectAiImages(project, activeStepIndex = 0) {
++  const enabled = Boolean(project?.isAiDeveloped);
++  const [hero, setHero] = useState({});
++  const [stepImgs, setStepImgs] = useState({});
++  const [state, setState] = useState({});
++  const aliveRef = useRef(true);
++
++  const projectId = project?.id;
++  const stepCount = project?.steps?.length || 0;
++
++  const set = useCallback((bucket, id, url, st) => {
++    if (!aliveRef.current) return;
++    if (url) (bucket === 'hero' ? setHero : setStepImgs)(prev => ({ ...prev, [id]: url }));
++    setState(prev => ({ ...prev, [`${bucket}:${id}`]: st }));
++  }, []);
++
++  const run = useCallback((bucket, id, spec, priority, force = false) => {
++    if (!spec) return Promise.resolve();
++    set(bucket, id, null, 'loading');
++    return requestImage(spec, { priority, force })
++      .then(url => set(bucket, id, url, 'ready'))
++      .catch(err => {
++        console.warn(`AI image (${bucket}:${id}) failed:`, err.message);
++        set(bucket, id, null, 'error');
++      });
++  }, [set]);
++
++  // reset + restore from cache whenever the project changes
++  useEffect(() => {
++    aliveRef.current = true;
++    setHero({});
++    setStepImgs({});
++    setState({});
++    if (!enabled) return () => { aliveRef.current = false; };
++
++    (async () => {
++      for (const view of HERO_VIEWS) {
++        const spec = heroSpec(project, view);
++        if (!spec) continue;
++        const cached = await loadCachedImage(spec);
++        if (cached) set('hero', view, cached, 'ready');
++      }
++      for (let i = 0; i < stepCount; i++) {
++        const spec = stepSpec(project, project.steps[i]);
++        if (!spec) continue;
++        const cached = await loadCachedImage(spec);
++        if (cached) set('step', i, cached, 'ready');
++      }
++    })();
++
++    return () => { aliveRef.current = false; };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [projectId, enabled]);
++
++  // generate missing pictures: hero first, then the step being viewed, then the rest
++  useEffect(() => {
++    if (!enabled) return;
++    const missingHero = view => !hero[view] && state[`hero:${view}`] !== 'loading' && state[`hero:${view}`] !== 'error';
++    if (missingHero('finished')) run('hero', 'finished', heroSpec(project, 'finished'), 100);
++
++    for (let offset = 0; offset < stepCount; offset++) {
++      const i = (activeStepIndex + offset) % stepCount;
++      const st = state[`step:${i}`];
++      if (stepImgs[i] || st === 'loading' || st === 'error') continue;
++      run('step', i, stepSpec(project, project.steps[i]), 90 - offset);
++    }
++
++    for (const view of ['assembly', 'inUse']) {
++      if (missingHero(view)) run('hero', view, heroSpec(project, view), 10);
++    }
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [enabled, projectId, activeStepIndex, stepCount, hero, stepImgs, state]);
++
++  const regenerateStep = useCallback(
++    i => run('step', i, stepSpec(project, project.steps[i]), 200, true),
++    [project, run]
++  );
++  const regenerateHero = useCallback(
++    view => run('hero', view, heroSpec(project, view), 200, true),
++    [project, run]
++  );
++  const retryStep = useCallback(i => {
++    setState(prev => { const n = { ...prev }; delete n[`step:${i}`]; return n; });
++  }, []);
++
++  return {
++    enabled,
++    heroUrl: view => hero[view] || null,
++    stepUrl: i => stepImgs[i] || null,
++    heroState: view => state[`hero:${view}`] || null,
++    stepState: i => state[`step:${i}`] || null,
++    regenerateStep,
++    regenerateHero,
++    retryStep
++  };
++}
+diff --git a/src/utils/aiGateway.js b/src/utils/aiGateway.js
+new file mode 100644
+index 0000000..d725a8d
+--- /dev/null
++++ b/src/utils/aiGateway.js
+@@ -0,0 +1,62 @@
++/**
++ * Client for the AI gateway. The OpenRouter key lives ONLY on the server side:
++ *  - dev:  Vite middleware at /api/ai   (reads OPENROUTER_API_KEY from .env.local)
++ *  - prod: Supabase Edge Function `ai-gateway` (reads the OPENROUTER_API_KEY secret)
++ */
++
++const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
++const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
++const CUSTOM_URL = import.meta.env?.VITE_AI_GATEWAY_URL || '';
++
++// null = not probed yet, true/false after the first dev attempt
++let devGatewayAvailable = import.meta.env?.DEV ? null : false;
++
++async function postJson(url, headers, body, timeoutMs) {
++  const ctrl = new AbortController();
++  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
++  try {
++    return await fetch(url, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json', ...headers },
++      body,
++      signal: ctrl.signal
++    });
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++function unwrap(data) {
++  if (!data || data.success === false) {
++    throw new Error(data?.error || 'فشل طلب الذكاء الاصطناعي');
++  }
++  return data;
++}
++
++export async function callAi(action, payload = {}, { timeoutMs = 150000 } = {}) {
++  const body = JSON.stringify({ action, payload });
++
++  if (devGatewayAvailable !== false) {
++    try {
++      const res = await postJson('/api/ai', {}, body, timeoutMs);
++      const isJson = (res.headers.get('content-type') || '').includes('json');
++      if (isJson) {
++        devGatewayAvailable = true;
++        return unwrap(await res.json());
++      }
++      devGatewayAvailable = false; // static host / no middleware
++    } catch (e) {
++      if (devGatewayAvailable === true) throw e; // middleware exists; real failure
++      devGatewayAvailable = false;
++    }
++  }
++
++  const url = CUSTOM_URL || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/ai-gateway` : '');
++  if (!url) throw new Error('بوابة الذكاء الاصطناعي غير مهيأة (VITE_SUPABASE_URL)');
++
++  const res = await postJson(url, { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body, timeoutMs);
++  let data = null;
++  try { data = await res.json(); } catch { /* handled below */ }
++  if (!res.ok && !data) throw new Error(`فشل الاتصال بالبوابة (${res.status})`);
++  return unwrap(data);
++}
+diff --git a/src/utils/aiImageStore.js b/src/utils/aiImageStore.js
+new file mode 100644
+index 0000000..c51dcd7
+--- /dev/null
++++ b/src/utils/aiImageStore.js
+@@ -0,0 +1,172 @@
++/**
++ * AI image store: generation queue + persistent cache.
++ *
++ * Generated images are large data URLs, so they are kept in IndexedDB (not localStorage,
++ * and not in React app state that gets saved). Projects only carry the prompts; images are
++ * looked up by a hash of the prompt, so a saved project gets its pictures back instantly.
++ */
++
++import { callAi } from './aiGateway.js';
++
++const DB_NAME = 'upcycling-ai-images';
++const STORE = 'images';
++const MAX_PARALLEL = 3;
++
++/* ---------------- hashing ---------------- */
++
++export function hashKey(text) {
++  let h = 0x811c9dc5;
++  for (let i = 0; i < text.length; i++) {
++    h ^= text.charCodeAt(i);
++    h = Math.imul(h, 0x01000193);
++  }
++  return (h >>> 0).toString(36) + '-' + text.length.toString(36);
++}
++
++export function imageKey({ kind, visualBible = '', prompt = '' }) {
++  return hashKey(`${kind}|${visualBible}|${prompt}`);
++}
++
++/* ---------------- IndexedDB (fails soft) ---------------- */
++
++let dbPromise = null;
++function openDb() {
++  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
++  if (!dbPromise) {
++    dbPromise = new Promise(resolve => {
++      try {
++        const req = indexedDB.open(DB_NAME, 1);
++        req.onupgradeneeded = () => req.result.createObjectStore(STORE);
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => resolve(null);
++      } catch { resolve(null); }
++    });
++  }
++  return dbPromise;
++}
++
++async function idbGet(key) {
++  const db = await openDb();
++  if (!db) return null;
++  return new Promise(resolve => {
++    try {
++      const r = db.transaction(STORE).objectStore(STORE).get(key);
++      r.onsuccess = () => resolve(r.result || null);
++      r.onerror = () => resolve(null);
++    } catch { resolve(null); }
++  });
++}
++
++async function idbPut(key, value) {
++  const db = await openDb();
++  if (!db) return;
++  try { db.transaction(STORE, 'readwrite').objectStore(STORE).put(value, key); } catch { /* quota etc. */ }
++}
++
++/* ---------------- memory cache + queue ---------------- */
++
++const memory = new Map();     // key -> dataUrl
++const inflight = new Map();   // key -> Promise
++const waiting = [];           // queued jobs {run, priority}
++let running = 0;
++
++function pump() {
++  while (running < MAX_PARALLEL && waiting.length) {
++    waiting.sort((a, b) => b.priority - a.priority);
++    const job = waiting.shift();
++    running++;
++    job.run().finally(() => { running--; pump(); });
++  }
++}
++
++export function peekImage(spec) {
++  return memory.get(imageKey(spec)) || null;
++}
++
++export async function loadCachedImage(spec) {
++  const key = imageKey(spec);
++  if (memory.has(key)) return memory.get(key);
++  const stored = await idbGet(key);
++  if (stored) memory.set(key, stored);
++  return stored;
++}
++
++/**
++ * Get (or generate) one image. Resolves to a data URL, rejects on failure.
++ * spec: { kind: 'hero'|'assembly'|'lifestyle'|'step', visualBible, prompt }
++ */
++export function requestImage(spec, { priority = 0, force = false } = {}) {
++  const key = imageKey(force ? { ...spec, prompt: spec.prompt + `#${Date.now()}` } : spec);
++  const cacheKey = imageKey(spec);
++
++  if (!force && memory.has(cacheKey)) return Promise.resolve(memory.get(cacheKey));
++  if (!force && inflight.has(cacheKey)) return inflight.get(cacheKey);
++
++  const p = new Promise((resolve, reject) => {
++    waiting.push({
++      priority,
++      run: async () => {
++        try {
++          if (!force) {
++            const stored = await idbGet(cacheKey);
++            if (stored) { memory.set(cacheKey, stored); return resolve(stored); }
++          }
++          const res = await callAi('image', {
++            kind: spec.kind,
++            visualBible: spec.visualBible,
++            prompt: spec.prompt
++          }, { timeoutMs: 100000 });
++          memory.set(cacheKey, res.imageUrl);
++          idbPut(cacheKey, res.imageUrl);
++          resolve(res.imageUrl);
++        } catch (e) {
++          reject(e);
++        } finally {
++          inflight.delete(key);
++        }
++      }
++    });
++    pump();
++  });
++
++  inflight.set(key, p);
++  return p;
++}
++
++/* ---------------- project helpers ---------------- */
++
++export function heroSpec(project, view = 'finished') {
++  const prompts = project?.imagePrompts || {};
++  const map = {
++    finished: ['hero', prompts.hero],
++    assembly: ['assembly', prompts.assembly],
++    inUse: ['lifestyle', prompts.lifestyle]
++  };
++  const [kind, prompt] = map[view] || map.finished;
++  if (!prompt) return null;
++  return { kind, visualBible: project.visualBible || '', prompt };
++}
++
++export function stepSpec(project, step) {
++  if (!step?.imagePrompt) return null;
++  return { kind: 'step', visualBible: project.visualBible || '', prompt: step.imagePrompt };
++}
++
++const isHeavy = v => typeof v === 'string' && v.startsWith('data:image/') && !v.startsWith('data:image/svg') && v.length > 2000;
++
++/**
++ * Never let generated data URLs reach localStorage / cloud saves.
++ * Heavy images are swapped for the lightweight fallback (project.fallbackGallery);
++ * the real pictures come back from IndexedDB by prompt hash when the project is opened.
++ */
++export function stripHeavyImages(project) {
++  if (!project) return project;
++  const fb = project.fallbackGallery || {};
++  const swap = (v, key) => (isHeavy(v) ? (fb[key] || fb.finished || '') : v);
++  const out = { ...project };
++  if (out.gallery) out.gallery = Object.fromEntries(Object.entries(out.gallery).map(([k, v]) => [k, swap(v, k)]));
++  if (out.multiAngleViews) out.multiAngleViews = Object.fromEntries(Object.entries(out.multiAngleViews).map(([k, v]) => [k, swap(v, k)]));
++  out.generatedImage = swap(out.generatedImage, 'finished');
++  out.image = swap(out.image, 'finished');
++  return out;
++}
+diff --git a/src/utils/aiProjectEngine.js b/src/utils/aiProjectEngine.js
+index d159a96..b3c8bd5 100644
+--- a/src/utils/aiProjectEngine.js
++++ b/src/utils/aiProjectEngine.js
+@@ -42,6 +42,8 @@ import {
+   getAiStepPhotoUrl
+ } from './imageCatalog.js';
+ import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
++import { generateProjectsWithAi } from './projectPipeline.js';
++import { callAi } from './aiGateway.js';
+ 
+ 
+ /**
+@@ -264,7 +266,22 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
+ /**
+  * Invoke the live AI Recycling Advisor (Gemini) with full dynamic on-demand synthesis
+  */
+-export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null }) {
++export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null, onProgress, onHeroReady }) {
++  // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway
++  let pipelineError = null;
++  if (!imageBase64 && materials && materials.trim()) {
++    try {
++      return await generateProjectsWithAi({ materials, userLevel, projectType, onProgress, onHeroReady });
++    } catch (pipelineErr) {
++      pipelineError = pipelineErr;
++      console.warn('OpenRouter pipeline failed, using legacy engines:', pipelineErr);
++    }
++  }
++
++  const withFallbackNote = (result) => (
++    pipelineError ? { ...result, usedFallback: true, fallbackReason: pipelineError.message } : result
++  );
++
+   // 1. Try Direct Gemini 1.5 Flash Cloud API if API Key is configured
+   const apiKey = getStoredGeminiApiKey();
+   if (apiKey) {
+@@ -272,7 +289,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
+       console.log('Invoking Google Gemini 1.5 Flash Direct API...');
+       const geminiData = await fetchFromGeminiApi({ materials, userLevel, projectType, apiKey });
+       if (geminiData && Array.isArray(geminiData.projects) && geminiData.projects.length > 0) {
+-        return processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions);
++        return withFallbackNote(processEnrichedAiProjects(geminiData.projects, materials, geminiData.followUpQuestions));
+       }
+     } catch (geminiErr) {
+       console.warn('Gemini Direct API call failed, switching to live dynamic synthesis engine:', geminiErr);
+@@ -303,7 +320,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
+     if (res.ok) {
+       const data = await res.json();
+       if (data.success && Array.isArray(data.projects) && data.projects.length > 0) {
+-        return processEnrichedAiProjects(data.projects, materials, data.followUpQuestions);
++        return withFallbackNote(processEnrichedAiProjects(data.projects, materials, data.followUpQuestions));
+       }
+     }
+   } catch (err) {
+@@ -311,7 +328,7 @@ export async function fetchAiProjects({ materials, userLevel = 'adult', projectT
+   }
+ 
+   // 3. Live Dynamic AI Project Synthesis Engine (Generates bespoke projects for every request on the fly)
+-  return synthesizeDynamicBespokeProjects(materials, userLevel, projectType);
++  return withFallbackNote(synthesizeDynamicBespokeProjects(materials, userLevel, projectType));
+ }
+ 
+ /**
+@@ -490,6 +507,20 @@ export async function sendChatToGeminiApi({ question, conversationHistory = [],
+  * Chat with Live AI Recycling Expert
+  */
+ export async function sendChatMessageToAi({ question, conversationHistory = [], projectContext = null }) {
++  // 0. OpenRouter gateway (key stays on the server)
++  try {
++    const out = await callAi('chat', {
++      question,
++      history: conversationHistory,
++      project: projectContext
++        ? { name: projectContext.name, materials: projectContext.materials, idea: projectContext.idea }
++        : null
++    }, { timeoutMs: 70000 });
++    if (out.reply) return out.reply;
++  } catch (gatewayErr) {
++    console.warn('AI gateway chat unavailable, falling back:', gatewayErr.message);
++  }
++
+   // 1. Try Direct Gemini API if configured
+   const apiKey = getStoredGeminiApiKey();
+   if (apiKey) {
+diff --git a/src/utils/projectPipeline.js b/src/utils/projectPipeline.js
+new file mode 100644
+index 0000000..0c638fd
+--- /dev/null
++++ b/src/utils/projectPipeline.js
+@@ -0,0 +1,193 @@
++/**
++ * Two-stage AI project pipeline (via the OpenRouter gateway):
++ *   1. IDEATE  — brainstorm 8 distinct concepts, self-scored; keep the best 3 with different archetypes.
++ *   2. DEVELOP — write a full, numeric, photo-ready build manual for each of the 3 (in parallel).
++ * Then map the result to the project shape the UI already understands.
++ */
++
++import { callAi } from './aiGateway.js';
++import { getProjectGallery } from './imageCatalog.js';
++import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
++import { requestImage, heroSpec } from './aiImageStore.js';
++
++const joinNonEmpty = (parts, sep) => parts.filter(Boolean).join(sep);
++
++function toAppProject({ dev, concept, index, userMaterials }) {
++  const materialsText = dev.materialsList
++    .map(m => (m.quantity ? `${m.item} (${m.quantity})` : m.item))
++    .join('، ');
++  const toolsText = dev.toolsList.map(t => t.name).join('، ');
++
++  const fallbackGallery = (() => {
++    const g = getProjectGallery(dev.name, materialsText || userMaterials, index);
++    // http(s) URLs only: heavy SVG data URLs are re-rendered on demand and must not bloat localStorage
++    return { finished: g.finished, assembly: g.assembly, inUse: g.inUse };
++  })();
++
++  const steps = dev.steps.map((s, i) => {
++    const num = i + 1;
++    const detail = joinNonEmpty([
++      s.goal,
++      s.actions.join('\n'),
++      s.measurements ? `الأبعاد والأرقام: ${s.measurements}` : ''
++    ], '\n');
++    return {
++      id: num,
++      title: s.title,
++      phase: s.phase,
++      goal: s.goal,
++      actions: s.actions,
++      measurements: s.measurements,
++      detail,
++      tip: s.tip,
++      warning: s.warning,
++      checkpoint: s.checkpoint,
++      minutes: s.minutes,
++      imagePrompt: s.imagePrompt,
++      // the page renders the Arabic infographic on demand; real pictures come from the image store
++      image: '',
++      infographicUrl: '',
++      photoUrl: '',
++      completed: false
++    };
++  });
++
++  const savings = Math.max(0, dev.cost.marketEquivalentUsd - dev.cost.diyUsd);
++  const safetyText = joinNonEmpty([
++    dev.safety.ppe && `معدات الوقاية: ${dev.safety.ppe}`,
++    dev.safety.hazards.length && `المخاطر: ${dev.safety.hazards.join('، ')}`,
++    dev.safety.childNote && `للأطفال: ${dev.safety.childNote}`
++  ], ' — ');
++
++  const base = {
++    id: `proj-ai-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
++    name: dev.name,
++    title: dev.name,
++    tagline: dev.tagline,
++    story: dev.story,
++    idea: dev.idea,
++    principle: dev.principle,
++    materials: materialsText,
++    materialsList: dev.materialsList,
++    tools: toolsText,
++    toolsList: dev.toolsList,
++    dimensions: dev.dimensions,
++    time: dev.time,
++    difficulty: dev.difficulty,
++    safety: safetyText,
++    safetyDetails: dev.safety,
++    results: dev.results,
++    development: dev.upgrades.join(' • '),
++    upgrades: dev.upgrades,
++    troubleshooting: dev.troubleshooting,
++    sustainability: dev.sustainability.explanation
++      ? `${dev.sustainability.explanation}${dev.sustainability.co2SavedKg ? ` (≈ ${dev.sustainability.co2SavedKg} كغ CO₂)` : ''}`
++      : '',
++    co2SavedKg: dev.sustainability.co2SavedKg || undefined,
++    wasteDivertedKg: dev.sustainability.wasteDivertedKg,
++    estimatedCost: dev.cost.diyUsd ? `${dev.cost.diyUsd}$` : undefined,
++    aiConcept: {
++      archetype: concept.archetype,
++      mechanism: concept.mechanism,
++      scores: concept.scores,
++      rankScore: concept.rankScore
++    },
++    // image generation inputs (the pictures themselves live in IndexedDB)
++    visualBible: dev.visualBible,
++    imagePrompts: {
++      hero: dev.heroImagePrompt,
++      assembly: dev.assemblyImagePrompt || dev.heroImagePrompt,
++      lifestyle: dev.lifestyleImagePrompt || dev.heroImagePrompt
++    },
++    fallbackGallery,
++    gallery: { ...fallbackGallery },
++    multiAngleViews: { ...fallbackGallery },
++    generatedImage: fallbackGallery.finished,
++    image: fallbackGallery.finished,
++    activeGalleryView: 'finished',
++    metrics: {
++      feasibilityScore: dev.engineering.feasibilityScore,
++      durabilityYears: dev.engineering.durability || '—',
++      estimatedSavings: savings ? `${savings} دولار تقريباً` : '—',
++      bondingGuide: {
++        adhesive: dev.engineering.adhesive,
++        cuttingTechnique: dev.engineering.cutting,
++        safetyGear: dev.engineering.safetyGear || dev.safety.ppe
++      }
++    },
++    parsedSteps: steps,
++    steps,
++    isAiDeveloped: true
++  };
++
++  const enriched = orchestrateProjectSwarm(base, userMaterials);
++
++  // The model's own safety warning / checkpoint beat the keyword-based swarm defaults.
++  enriched.steps = enriched.steps.map((st, i) => ({
++    ...st,
++    infographic: {
++      ...(st.infographic || {}),
++      ...(st.warning ? { safetyNotice: st.warning } : {}),
++      ...(st.checkpoint ? { qualityCheckMetric: st.checkpoint } : {})
++    },
++    qualityCheck: st.checkpoint || st.qualityCheck,
++    audioScript: joinNonEmpty([
++      `المرحلة ${i + 1}: ${st.title}.`,
++      st.goal,
++      ...(st.actions || []),
++      st.warning && `تنبيه: ${st.warning}`,
++      st.checkpoint && `للتأكد: ${st.checkpoint}`
++    ], ' ')
++  }));
++  enriched.parsedSteps = enriched.steps;
++  return enriched;
++}
++
++/**
++ * @param {{materials:string,userLevel:string,projectType:string,onProgress?:(p:{phase:string,message:string,done?:number,total?:number})=>void,onHeroReady?:(projectId:string,view:string,url:string)=>void}} opts
++ */
++export async function generateProjectsWithAi({ materials, userLevel, projectType, onProgress, onHeroReady }) {
++  const say = (phase, message, extra = {}) => onProgress?.({ phase, message, ...extra });
++
++  say('ideate', 'عصف ذهني: ابتكار 8 أفكار مختلفة وتقييم كل فكرة…');
++  const ideation = await callAi('ideate', { materials, level: userLevel, type: projectType, count: 8 }, { timeoutMs: 100000 });
++  const concepts = ideation.concepts || [];
++  if (concepts.length === 0) throw new Error('لم تُنتج مرحلة العصف الذهني أفكاراً');
++
++  say('select', `تم اختيار أقوى ${concepts.length} أفكار: ${concepts.map(c => c.name).join(' • ')}`, { done: 0, total: concepts.length });
++
++  let finished = 0;
++  const results = await Promise.allSettled(concepts.map(async (concept, index) => {
++    const out = await callAi('develop', { materials, concept, level: userLevel, type: projectType }, { timeoutMs: 150000 });
++    finished++;
++    say('develop', `كتابة الدليل التفصيلي… اكتمل ${finished} من ${concepts.length}`, { done: finished, total: concepts.length });
++    return toAppProject({ dev: out.project, concept, index, userMaterials: materials });
++  }));
++
++  const projects = results.filter(r => r.status === 'fulfilled').map(r => r.value);
++  if (projects.length === 0) {
++    const reason = results.find(r => r.status === 'rejected')?.reason;
++    throw new Error(reason?.message || 'تعذر تطوير الأفكار إلى مشاريع كاملة');
++  }
++
++  // Warm the hero pictures in the background; the UI patches itself when each one lands.
++  say('images', 'بدء توليد الصور الرئيسية للمشاريع…');
++  projects.forEach((p, i) => {
++    const spec = heroSpec(p, 'finished');
++    if (!spec) return;
++    requestImage(spec, { priority: 100 - i })
++      .then(url => onHeroReady?.(p.id, 'finished', url))
++      .catch(err => console.warn('hero image failed:', err.message));
++  });
++
++  return {
++    success: true,
++    projects,
++    failedCount: results.length - projects.length,
++    followUpQuestions: [
++      `ما الأدوات المتوفرة لديك فعلاً من هذه القائمة: ${(projects[0].toolsList || []).slice(0, 3).map(t => t.name).join('، ') || 'أدوات القص والتثبيت'}؟`,
++      'هل تريد نسخة أبسط أو أسرع من أحد هذه المشاريع؟',
++      'أين ستضع المنتج النهائي (المنزل، الشرفة، المكتب، الفصل)؟ يمكنني تكييف التصميم والمقاسات.'
++    ]
++  };
++}
+diff --git a/src/utils/supabaseSync.js b/src/utils/supabaseSync.js
+index 54b445c..9208973 100644
+--- a/src/utils/supabaseSync.js
++++ b/src/utils/supabaseSync.js
+@@ -1,3 +1,4 @@
++import { stripHeavyImages } from './aiImageStore.js';
+ import { supabase } from '../supabaseClient';
+ 
+ /**
+@@ -84,8 +85,9 @@ export async function getSavedProjects(userId) {
+ }
+ 
+ // 2. Save a project to Supabase & localStorage (Zero Duplicates Guaranteed)
+-export async function saveProjectToCloud(userId, project) {
+-  if (!project) return { success: false };
++export async function saveProjectToCloud(userId, rawProject) {
++  if (!rawProject) return { success: false };
++  const project = stripHeavyImages(rawProject);
+ 
+   const projectTitle = (project.name || project.title || 'مشروع إعادة تدوير').trim();
+   const normTitle = normalizeProjectTitle(projectTitle);
+diff --git a/supabase/functions/_shared/openrouterCore.js b/supabase/functions/_shared/openrouterCore.js
+new file mode 100644
+index 0000000..02428c4
+--- /dev/null
++++ b/supabase/functions/_shared/openrouterCore.js
+@@ -0,0 +1,559 @@
++/**
++ * OpenRouter core — server-side only.
++ *
++ * Pure ESM with no Deno/Node-specific APIs, so the same file runs in:
++ *   - the Supabase Edge Function  (supabase/functions/ai-gateway/index.ts)
++ *   - the Vite dev server         (vite.config.js, local development)
++ *
++ * The OpenRouter key is passed in by the host (a secret / .env.local value).
++ * It must never be shipped to the browser.
++ */
++
++const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
++
++/* ------------------------------------------------------------------ */
++/* Configuration                                                       */
++/* ------------------------------------------------------------------ */
++
++export function resolveConfig(env = {}) {
++  const list = (v, fallback) =>
++    (v ? String(v).split(',').map(s => s.trim()).filter(Boolean) : fallback);
++
++  return {
++    // Cheap + fast: brainstorming many concepts.
++    ideationModels: list(env.OPENROUTER_IDEATION_MODEL, [
++      'google/gemini-3.8-flash',
++      'anthropic/claude-opus-5.5'
++    ]),
++    // Strongest available: writing the full project manual.
++    developModels: list(env.OPENROUTER_DEVELOP_MODEL, [
++      'anthropic/claude-opus-5.5',
++      'google/gemini-3.8-flash'
++    ]),
++    chatModels: list(env.OPENROUTER_CHAT_MODEL, [
++      'google/gemini-3.8-flash',
++      'anthropic/claude-opus-5.5'
++    ]),
++    // Must be models that can OUTPUT images. Verify on openrouter.ai/models
++    // (filter: Output modalities -> Image) and override with the env var.
++    imageModels: list(env.OPENROUTER_IMAGE_MODEL, [
++      'google/gemini-2.5-flash-image'
++    ]),
++    baseUrl: env.OPENROUTER_BASE_URL || OPENROUTER_URL,
++    siteUrl: env.OPENROUTER_SITE_URL || 'https://smart-upcycling-platform.local',
++    siteName: env.OPENROUTER_SITE_NAME || 'Smart Upcycling Platform'
++  };
++}
++
++/* ------------------------------------------------------------------ */
++/* Low-level OpenRouter call with model fallback                        */
++/* ------------------------------------------------------------------ */
++
++async function postOpenRouter({ apiKey, config, body, timeoutMs }) {
++  const ctrl = new AbortController();
++  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
++  try {
++    const res = await fetch(config.baseUrl || OPENROUTER_URL, {
++      method: 'POST',
++      signal: ctrl.signal,
++      headers: {
++        'Authorization': `Bearer ${apiKey}`,
++        'Content-Type': 'application/json',
++        'HTTP-Referer': config.siteUrl,
++        'X-Title': config.siteName
++      },
++      body: JSON.stringify(body)
++    });
++    const text = await res.text();
++    let data = null;
++    try { data = JSON.parse(text); } catch { /* keep raw text for the error */ }
++    return { status: res.status, ok: res.ok, data, raw: text };
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++function errorMessage(r) {
++  return r.data?.error?.message || r.raw?.slice(0, 300) || `HTTP ${r.status}`;
++}
++
++export async function chat({
++  apiKey, config, models, messages,
++  json = false, temperature = 0.8, maxTokens = 8000, timeoutMs = 100000
++}) {
++  if (!apiKey) throw new Error('OPENROUTER_API_KEY غير مضبوط على الخادم');
++  let lastErr = null;
++
++  for (const model of models) {
++    const base = { model, messages, temperature, max_tokens: maxTokens };
++    const attempts = json ? [{ ...base, response_format: { type: 'json_object' } }, base] : [base];
++
++    for (const body of attempts) {
++      let r;
++      try {
++        r = await postOpenRouter({ apiKey, config, body, timeoutMs });
++      } catch (e) {
++        lastErr = new Error(`${model}: ${e.name === 'AbortError' ? 'انتهت المهلة' : e.message}`);
++        break; // try next model
++      }
++      if (r.ok) {
++        const content = r.data?.choices?.[0]?.message?.content;
++        const text = Array.isArray(content)
++          ? content.map(p => p?.text || '').join('')
++          : (content || '');
++        if (text) return { text, model };
++        lastErr = new Error(`${model}: استجابة فارغة`);
++        break;
++      }
++      lastErr = new Error(`${model}: ${errorMessage(r)}`);
++      // 400/422 usually means response_format unsupported -> retry same model without it
++      if ((r.status === 400 || r.status === 422) && body.response_format) continue;
++      // Auth / credit problems will not be fixed by another model
++      if (r.status === 401 || r.status === 402) throw lastErr;
++      break;
++    }
++  }
++  throw lastErr || new Error('فشل الاتصال بـ OpenRouter');
++}
++
++export function extractJson(text) {
++  if (!text) throw new Error('نص فارغ');
++  let t = String(text).replace(/```(?:json)?/gi, '').trim();
++  const first = t.indexOf('{');
++  const last = t.lastIndexOf('}');
++  if (first === -1 || last === -1) throw new Error('لا يوجد JSON في الاستجابة');
++  t = t.slice(first, last + 1);
++  try {
++    return JSON.parse(t);
++  } catch {
++    // tolerate trailing commas
++    return JSON.parse(t.replace(/,\s*([}\]])/g, '$1'));
++  }
++}
++
++/* ------------------------------------------------------------------ */
++/* Prompts                                                             */
++/* ------------------------------------------------------------------ */
++
++const LEVEL_TEXT = {
++  child: 'children aged 6-12 (NO sharp blades, NO heat tools, NO power tools; adult supervision assumed; bright and playful results)',
++  teen: 'teenagers 13-17 (light hand tools allowed, adult nearby for heat/power tools)',
++  adult: 'adults (hand and basic power tools allowed)',
++  all: 'a mixed family audience (provide an easy path; mark adult-only steps clearly)'
++};
++
++const TYPE_TEXT = {
++  practical: 'practical, everyday-useful objects',
++  scientific: 'science-driven projects that demonstrate a real physical/chemical/biological principle and can be tested',
++  artistic: 'art and interior-decor pieces with strong visual identity',
++  group: 'collaborative projects for a classroom/team where several people build parts and combine them',
++  all: 'any category — but keep the three final picks very different from each other'
++};
++
++function levelText(v) { return LEVEL_TEXT[v] || String(v || LEVEL_TEXT.adult); }
++function typeText(v) { return TYPE_TEXT[v] || String(v || TYPE_TEXT.all); }
++
++const DESIGNER_PERSONA = `You are a world-class upcycling designer and circular-economy engineer — think of the product sense of Dieter Rams, the hands-on rigor of a master woodworker/metalworker, and the clarity of the best DIY instructors.
++You know real material properties (PET, HDPE, glass, aluminium, corrugated cardboard, denim, plywood, steel cans...), how they cut, bond, bend, crack, burn, rust and age.
++You NEVER invent physically impossible builds. Every measurement, tool and technique you give must work in a normal home workshop.`;
++
++export function buildIdeationMessages({ materials, level, type, count = 8, avoid = [] }) {
++  const system = `${DESIGNER_PERSONA}
++
++TASK: Brainstorm ${count} genuinely distinct upcycling project concepts that use the user's materials.
++
++HARD RULES
++1. Every concept must be built mainly from the user's materials. List which ones it uses.
++2. BAN the clichés unless radically elevated into something new: plain pencil holder, basic flower pot, generic organizer box, bottle-cap picture, plain lantern. If you use a familiar category, the twist must be obvious.
++3. Aim for "I would pay for this" perceived value: a result that looks like a designed product, not a school craft.
++4. Spread the ${count} concepts across DIFFERENT archetypes (examples: lighting, furniture, smart-garden / hydroponics, kinetic or science toy, sound / acoustic object, storage system, wearable / accessory, climate / water / energy helper, game / educational kit, wall art with function). No two concepts may share an archetype.
++5. Must be buildable at home with common tools in under 1 day. Respect the audience safety limits.
++6. Think about the CLEVER MECHANISM: a physical principle, a joint, a trick of the material that makes the idea feel inventive (e.g. capillary wicking, Helmholtz resonance, living hinges in PET, solar chimney, counterweights).
++7. Be honest in your scores. Do not give every concept 9s.
++
++AUDIENCE: ${levelText(level)}
++CATEGORY PREFERENCE: ${typeText(type)}
++${avoid.length ? `DO NOT repeat these earlier ideas: ${avoid.join(' | ')}` : ''}
++
++OUTPUT: valid JSON only, no markdown. Names/pitches in elegant Modern Standard Arabic.
++{
++  "concepts": [
++    {
++      "name": "اسم قصير جذاب",
++      "archetype": "one English word from the examples above",
++      "pitch": "جملتان تشرحان الفكرة ولماذا هي مدهشة",
++      "mechanism": "الحيلة الفيزيائية/الهندسية التي تجعلها ذكية",
++      "usesMaterials": ["..."],
++      "whyNotCliche": "ما الذي يميزها عن الفكرة المعتادة",
++      "scores": { "wow": 1-10, "novelty": 1-10, "usefulness": 1-10, "feasibility": 1-10 }
++    }
++  ]
++}`;
++
++  const user = `المواد المتوفرة لدى المستخدم:\n${materials}\n\nابتكر الآن ${count} أفكاراً مختلفة جذرياً.`;
++  return [{ role: 'system', content: system }, { role: 'user', content: user }];
++}
++
++export function buildDevelopMessages({ materials, concept, level, type }) {
++  const system = `${DESIGNER_PERSONA}
++
++TASK: Turn the chosen concept into a COMPLETE, premium build manual that a motivated beginner can follow without guessing.
++
++QUALITY BAR
++- Write like an editor at a top design magazine crossed with a precise engineer: vivid but exact. No filler, no generic sentences like "make sure it is firm".
++- Every step has concrete numbers: dimensions in cm/mm, counts, angles, drying/curing times, grit sizes, screw sizes, temperatures where relevant.
++- Each step is split into short numbered micro-actions (3-6 actions) so it can be followed with dirty hands.
++- Give a checkpoint per step: how the builder KNOWS the step is correct (what it should look/feel/measure like).
++- Include a real troubleshooting section with failures that actually happen with these materials.
++- Safety must match the audience. Name the real hazards (glass edges, solvent fumes, hot glue burns, sharp metal burrs, ...).
++- 6 to 9 steps, in a logical order: preparation → measuring/cutting → forming → assembly → finishing → test.
++- Use ONLY the user's materials as the main body; extra supplies (glue, screws, paint, LED strip...) go in the list flagged "supply": true and must be cheap and common.
++- Numbers must be internally consistent (the parts you cut must add up to the finished dimensions you state).
++
++IMAGE PROMPTS (for an image model, written in ENGLISH)
++- "visualBible": ONE dense paragraph that describes the finished object precisely and permanently — shape, exact materials, colours, finish, approximate size, distinguishing details. It will be prepended to every image so the object looks identical in all pictures.
++- Each step "imagePrompt": describe ONLY what the camera sees at that stage: the partially built object in its current state, the specific tool in use, hands (no faces), the workbench, camera angle, what is highlighted. Be specific and visual. Never request text, labels, logos or watermarks inside the image.
++- "heroImagePrompt" (finished, beautiful, styled shot), "assemblyImagePrompt" (flat-lay / exploded layout of all parts and tools before assembly), "lifestyleImagePrompt" (the object in use in a real home setting).
++
++AUDIENCE: ${levelText(level)}
++CATEGORY: ${typeText(type)}
++
++OUTPUT: valid JSON only, no markdown. All human-facing text in elegant, clear Modern Standard Arabic (numbers may use Western digits). Image prompts in English.
++{
++  "name": "اسم المشروع (حتى 8 كلمات)",
++  "tagline": "عبارة تسويقية قصيرة",
++  "story": "3-4 جمل: المشكلة التي يحلها + وصف حسي للنتيجة النهائية",
++  "idea": "فقرة أنيقة تشرح التصميم وكيف تتكامل الخامات",
++  "principle": "المبدأ العلمي/الهندسي الذي يجعل التصميم يعمل، بشرح مبسط",
++  "materialsList": [ { "item": "...", "quantity": "...", "preparation": "كيف تُجهَّز", "role": "دورها في التصميم", "supply": false } ],
++  "toolsList": [ { "name": "...", "purpose": "...", "alternative": "بديل متاح" } ],
++  "dimensions": "الأبعاد النهائية مع أي أبعاد حرجة",
++  "steps": [
++    {
++      "title": "عنوان يبدأ بفعل",
++      "phase": "تحضير | قص | تشكيل | تجميع | تشطيب | اختبار",
++      "goal": "الهدف من المرحلة في جملة",
++      "actions": ["1) ...", "2) ..."],
++      "measurements": "الأبعاد والأرقام الحرجة لهذه المرحلة",
++      "tip": "نصيحة محترف محددة",
++      "warning": "تحذير أمان محدد أو سلسلة فارغة",
++      "checkpoint": "كيف تتأكد أن المرحلة صحيحة",
++      "minutes": 20,
++      "imagePrompt": "English visual description of this stage"
++    }
++  ],
++  "troubleshooting": [ { "problem": "...", "fix": "..." } ],
++  "upgrades": ["تطوير 1", "تطوير 2", "تطوير 3"],
++  "safety": { "ppe": "معدات الوقاية", "hazards": ["..."], "childNote": "ملاحظة للأطفال" },
++  "time": "المدة الكلية",
++  "difficulty": "سهل | متوسط | متقدم",
++  "cost": { "diyUsd": 0, "marketEquivalentUsd": 0 },
++  "results": "ماذا ستحصل عليه وكيف سيبدو ويعمل",
++  "engineering": {
++    "feasibilityScore": 0,
++    "durability": "العمر التشغيلي المتوقع",
++    "adhesive": "أفضل وسيلة ربط لهذه الخامات",
++    "cutting": "أفضل تقنية قص",
++    "safetyGear": "معدات الأمان المطلوبة"
++  },
++  "sustainability": { "co2SavedKg": 0, "wasteDivertedKg": 0, "explanation": "كيف حُسب الأثر" },
++  "visualBible": "English paragraph",
++  "heroImagePrompt": "English",
++  "assemblyImagePrompt": "English",
++  "lifestyleImagePrompt": "English"
++}`;
++
++  const user = `المواد المتوفرة:\n${materials}\n\nالفكرة المختارة:\n${JSON.stringify(concept, null, 2)}\n\nاكتب الدليل الكامل الآن.`;
++  return [{ role: 'system', content: system }, { role: 'user', content: user }];
++}
++
++/* ------------------------------------------------------------------ */
++/* Ranking + normalisation + validation                                 */
++/* ------------------------------------------------------------------ */
++
++const num = (v, d = 5) => {
++  const n = Number(v);
++  return Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : d;
++};
++
++export function scoreConcept(c) {
++  const s = c?.scores || {};
++  return num(s.wow) * 0.35 + num(s.novelty) * 0.25 + num(s.usefulness) * 0.2 + num(s.feasibility) * 0.2;
++}
++
++/** Highest-scoring concepts with different archetypes. */
++export function pickTopConcepts(concepts = [], n = 3) {
++  const valid = concepts.filter(c => c && c.name && c.pitch);
++  const ranked = [...valid].sort((a, b) => scoreConcept(b) - scoreConcept(a));
++  const picked = [];
++  const usedArchetypes = new Set();
++  for (const c of ranked) {
++    const a = String(c.archetype || '').toLowerCase().trim();
++    if (a && usedArchetypes.has(a)) continue;
++    picked.push({ ...c, rankScore: Number(scoreConcept(c).toFixed(2)) });
++    usedArchetypes.add(a);
++    if (picked.length === n) return picked;
++  }
++  for (const c of ranked) {
++    if (picked.length === n) break;
++    if (!picked.some(p => p.name === c.name)) picked.push({ ...c, rankScore: Number(scoreConcept(c).toFixed(2)) });
++  }
++  return picked;
++}
++
++const str = (v, d = '') => (typeof v === 'string' ? v.trim() : (v == null ? d : String(v)));
++const arr = v => (Array.isArray(v) ? v : (v ? [v] : []));
++
++/** Returns { project, problems }. problems.length > 0 means "needs repair". */
++export function normalizeDeveloped(raw) {
++  const problems = [];
++  const r = raw || {};
++
++  const steps = arr(r.steps).map((s, i) => {
++    const actions = arr(s?.actions).map(a => str(a)).filter(Boolean);
++    return {
++      title: str(s?.title, `المرحلة ${i + 1}`),
++      phase: str(s?.phase),
++      goal: str(s?.goal),
++      actions,
++      measurements: str(s?.measurements),
++      tip: str(s?.tip),
++      warning: str(s?.warning),
++      checkpoint: str(s?.checkpoint),
++      minutes: Math.max(1, Math.round(Number(s?.minutes) || 15)),
++      imagePrompt: str(s?.imagePrompt)
++    };
++  });
++
++  if (!str(r.name)) problems.push('name is missing');
++  if (steps.length < 5) problems.push(`only ${steps.length} steps; need 6 to 9`);
++  steps.forEach((s, i) => {
++    if (s.actions.length < 2) problems.push(`step ${i + 1} has fewer than 2 actions`);
++    if (!s.imagePrompt) problems.push(`step ${i + 1} is missing imagePrompt`);
++  });
++  if (arr(r.materialsList).length < 2) problems.push('materialsList needs at least 2 items');
++  if (!str(r.visualBible)) problems.push('visualBible is missing');
++  if (!str(r.heroImagePrompt)) problems.push('heroImagePrompt is missing');
++
++  const eng = r.engineering || {};
++  const sus = r.sustainability || {};
++  const safety = r.safety || {};
++  const cost = r.cost || {};
++
++  const project = {
++    name: str(r.name),
++    tagline: str(r.tagline),
++    story: str(r.story),
++    idea: str(r.idea),
++    principle: str(r.principle),
++    materialsList: arr(r.materialsList).map(m => ({
++      item: str(m?.item), quantity: str(m?.quantity), preparation: str(m?.preparation),
++      role: str(m?.role), supply: Boolean(m?.supply)
++    })).filter(m => m.item),
++    toolsList: arr(r.toolsList).map(t => ({
++      name: str(t?.name), purpose: str(t?.purpose), alternative: str(t?.alternative)
++    })).filter(t => t.name),
++    dimensions: str(r.dimensions),
++    steps,
++    troubleshooting: arr(r.troubleshooting).map(t => ({ problem: str(t?.problem), fix: str(t?.fix) })).filter(t => t.problem),
++    upgrades: arr(r.upgrades).map(u => str(u)).filter(Boolean),
++    safety: {
++      ppe: str(safety.ppe), hazards: arr(safety.hazards).map(h => str(h)).filter(Boolean), childNote: str(safety.childNote)
++    },
++    time: str(r.time),
++    difficulty: str(r.difficulty, 'متوسط'),
++    cost: { diyUsd: Number(cost.diyUsd) || 0, marketEquivalentUsd: Number(cost.marketEquivalentUsd) || 0 },
++    results: str(r.results),
++    engineering: {
++      feasibilityScore: Math.min(100, Math.max(0, Math.round(Number(eng.feasibilityScore) || 85))),
++      durability: str(eng.durability), adhesive: str(eng.adhesive),
++      cutting: str(eng.cutting), safetyGear: str(eng.safetyGear)
++    },
++    sustainability: {
++      co2SavedKg: Number(sus.co2SavedKg) || 0,
++      wasteDivertedKg: Number(sus.wasteDivertedKg) || 0,
++      explanation: str(sus.explanation)
++    },
++    visualBible: str(r.visualBible),
++    heroImagePrompt: str(r.heroImagePrompt),
++    assemblyImagePrompt: str(r.assemblyImagePrompt),
++    lifestyleImagePrompt: str(r.lifestyleImagePrompt)
++  };
++
++  return { project, problems };
++}
++
++/* ------------------------------------------------------------------ */
++/* Actions                                                             */
++/* ------------------------------------------------------------------ */
++
++const clip = (s, n) => String(s || '').slice(0, n);
++
++export async function ideate({ apiKey, config, materials, level, type, count = 8, avoid = [] }) {
++  const mats = clip(materials, 1500);
++  if (!mats.trim()) throw new Error('المواد مطلوبة');
++  const { text, model } = await chat({
++    apiKey, config, models: config.ideationModels,
++    messages: buildIdeationMessages({ materials: mats, level, type, count, avoid: avoid.slice(0, 12) }),
++    json: true, temperature: 1.0, maxTokens: 6000, timeoutMs: 80000
++  });
++  const data = extractJson(text);
++  const concepts = arr(data.concepts);
++  const top = pickTopConcepts(concepts, 3);
++  if (top.length === 0) throw new Error('لم يُنتج العصف الذهني أفكاراً صالحة');
++  return { top, all: concepts, model };
++}
++
++export async function develop({ apiKey, config, materials, concept, level, type }) {
++  const mats = clip(materials, 1500);
++  const messages = buildDevelopMessages({ materials: mats, concept, level, type });
++
++  const first = await chat({
++    apiKey, config, models: config.developModels, messages,
++    json: true, temperature: 0.7, maxTokens: 14000, timeoutMs: 120000
++  });
++
++  let parsed;
++  let outcome;
++  try {
++    parsed = extractJson(first.text);
++    outcome = normalizeDeveloped(parsed);
++  } catch (e) {
++    outcome = { project: null, problems: [`the output was not valid JSON (${e.message})`] };
++  }
++
++  if (outcome.problems.length === 0) return { project: outcome.project, model: first.model, repaired: false };
++
++  // One repair round: show the model exactly what failed.
++  const repair = await chat({
++    apiKey, config, models: [first.model, ...config.developModels.filter(m => m !== first.model)],
++    messages: [
++      ...messages,
++      { role: 'assistant', content: first.text.slice(0, 20000) },
++      { role: 'user', content: `Your JSON failed validation:\n- ${outcome.problems.join('\n- ')}\n\nReturn the COMPLETE corrected JSON object (same schema, nothing else).` }
++    ],
++    json: true, temperature: 0.5, maxTokens: 14000, timeoutMs: 120000
++  });
++  const fixed = normalizeDeveloped(extractJson(repair.text));
++  // Accept the repaired result if it is usable even if not perfect.
++  if (fixed.project.steps.length >= 4 && fixed.project.name) {
++    return { project: fixed.project, model: repair.model, repaired: true, remaining: fixed.problems };
++  }
++  throw new Error(`تعذر إنتاج مشروع مكتمل: ${fixed.problems.slice(0, 3).join('؛ ')}`);
++}
++
++const IMAGE_STYLE = {
++  hero: 'Professional product photograph, soft natural window light, clean neutral styled surface, shallow depth of field, 3/4 angle, magazine quality.',
++  assembly: 'Overhead flat-lay (knolling) photograph on a light workbench, parts and tools neatly arranged with even spacing, soft diffused light, sharp focus.',
++  lifestyle: 'Warm lifestyle photograph in a real, tasteful home interior, natural light, the object in everyday use.',
++  step: 'Clear instructional DIY photograph, 3/4 overhead angle, tidy wooden workbench, bright even daylight, sharp focus on the hands-on action, only hands visible (no faces).'
++};
++
++export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '' }) {
++  const style = IMAGE_STYLE[kind] || IMAGE_STYLE.step;
++  return clip(
++    `${style}\nThe project object (keep it IDENTICAL in every image): ${visualBible}\nShow exactly this: ${prompt}\nPhotorealistic. No text, no letters, no numbers, no logos, no watermarks, no borders.`,
++    3500
++  );
++}
++
++function pickImageUrl(message) {
++  const imgs = message?.images;
++  if (Array.isArray(imgs) && imgs.length) {
++    const u = imgs[0]?.image_url?.url || imgs[0]?.url;
++    if (u) return u;
++  }
++  if (Array.isArray(message?.content)) {
++    for (const part of message.content) {
++      const u = part?.image_url?.url;
++      if (u) return u;
++    }
++  }
++  return null;
++}
++
++export async function generateImage({ apiKey, config, kind, visualBible, prompt, aspect = '16:9' }) {
++  if (!apiKey) throw new Error('OPENROUTER_API_KEY غير مضبوط على الخادم');
++  const text = composeImagePrompt({ kind, visualBible, prompt });
++  let lastErr = null;
++
++  for (const model of config.imageModels) {
++    const base = {
++      model,
++      messages: [{ role: 'user', content: text }],
++      modalities: ['image', 'text']
++    };
++    for (const body of [{ ...base, image_config: { aspect_ratio: aspect } }, base]) {
++      let r;
++      try {
++        r = await postOpenRouter({ apiKey, config, body, timeoutMs: 90000 });
++      } catch (e) {
++        lastErr = new Error(`${model}: ${e.name === 'AbortError' ? 'انتهت المهلة' : e.message}`);
++        break;
++      }
++      if (r.ok) {
++        const url = pickImageUrl(r.data?.choices?.[0]?.message);
++        if (url) return { imageUrl: url, model };
++        lastErr = new Error(`${model}: لم يُرجع صورة`);
++        break;
++      }
++      lastErr = new Error(`${model}: ${errorMessage(r)}`);
++      if ((r.status === 400 || r.status === 422) && body.image_config) continue;
++      if (r.status === 401 || r.status === 402) throw lastErr;
++      break;
++    }
++  }
++  throw lastErr || new Error('تعذر توليد الصورة');
++}
++
++export async function chatReply({ apiKey, config, question, history = [], project = null }) {
++  let system = `أنت خبير واستشاري إعادة التدوير والاستدامة والهندسة الدائرية في منصة Smart Upcycling Platform.
++تحدث بالعربية الفصحى المبسطة بأسلوب مهني ودافئ. قدّم حلولاً عملية بأرقام وقياسات حقيقية، وحذّر من المخاطر الفعلية. اجعل الإجابة موجزة ومباشرة.`;
++  if (project) {
++    system += `\n\nالمستخدم يسأل عن مشروع "${clip(project.name, 120)}" المصنوع من (${clip(project.materials, 300)}). الفكرة: ${clip(project.idea, 500)}.`;
++  }
++  const messages = [
++    { role: 'system', content: system },
++    ...history.slice(-10).map(m => ({
++      role: m.role === 'assistant' ? 'assistant' : 'user',
++      content: clip(m.content, 2000)
++    })),
++    { role: 'user', content: clip(question, 2000) }
++  ];
++  const { text, model } = await chat({
++    apiKey, config, models: config.chatModels, messages,
++    temperature: 0.6, maxTokens: 1500, timeoutMs: 60000
++  });
++  return { reply: text, model };
++}
++
++/** Single entry used by both hosts. */
++export async function handleAction({ action, payload = {}, apiKey, env = {} }) {
++  const config = resolveConfig(env);
++  switch (action) {
++    case 'ideate': {
++      const r = await ideate({ apiKey, config, ...payload });
++      return { success: true, concepts: r.top, allConcepts: r.all, model: r.model };
++    }
++    case 'develop': {
++      if (!payload.concept) throw new Error('concept مطلوب');
++      const r = await develop({ apiKey, config, ...payload });
++      return { success: true, project: r.project, model: r.model, repaired: r.repaired };
++    }
++    case 'image': {
++      if (!payload.prompt) throw new Error('prompt مطلوب');
++      const r = await generateImage({ apiKey, config, ...payload });
++      return { success: true, imageUrl: r.imageUrl, model: r.model };
++    }
++    case 'chat': {
++      const r = await chatReply({ apiKey, config, ...payload });
++      return { success: true, reply: r.reply, model: r.model };
++    }
++    case 'health':
++      return { success: true, hasKey: Boolean(apiKey), models: {
++        ideation: config.ideationModels, develop: config.developModels, image: config.imageModels
++      } };
++    default:
++      throw new Error(`إجراء غير معروف: ${action}`);
++  }
++}
+diff --git a/supabase/functions/ai-gateway/index.ts b/supabase/functions/ai-gateway/index.ts
+new file mode 100644
+index 0000000..6b6a85e
+--- /dev/null
++++ b/supabase/functions/ai-gateway/index.ts
+@@ -0,0 +1,53 @@
++// Supabase Edge Function: ai-gateway
++// Keeps the OpenRouter key on the server. The browser only sends {action, payload}.
++//
++// Deploy:
++//   supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
++//   supabase functions deploy ai-gateway
++//
++// Optional secrets: OPENROUTER_IDEATION_MODEL, OPENROUTER_DEVELOP_MODEL,
++//                   OPENROUTER_CHAT_MODEL, OPENROUTER_IMAGE_MODEL (comma separated fallbacks)
++
++import { handleAction } from '../_shared/openrouterCore.js';
++
++const CORS = {
++  'Access-Control-Allow-Origin': '*',
++  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
++  'Access-Control-Allow-Methods': 'POST, OPTIONS'
++};
++
++const json = (body: unknown, status = 200) =>
++  new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
++
++// Best-effort per-IP limiter (resets when the instance recycles). The real spending
++// guard is the credit limit you set on the key inside OpenRouter.
++const hits = new Map<string, number[]>();
++function limited(ip: string, max = 40, windowMs = 60_000) {
++  const now = Date.now();
++  const recent = (hits.get(ip) || []).filter(t => now - t < windowMs);
++  recent.push(now);
++  hits.set(ip, recent);
++  return recent.length > max;
++}
++
++Deno.serve(async (req: Request) => {
++  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
++  if (req.method !== 'POST') return json({ success: false, error: 'POST only' }, 405);
++
++  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
++  if (limited(ip)) return json({ success: false, error: 'طلبات كثيرة، حاول بعد دقيقة' }, 429);
++
++  try {
++    const { action, payload } = await req.json();
++    const env = Deno.env.toObject();
++    const result = await handleAction({
++      action,
++      payload,
++      apiKey: env.OPENROUTER_API_KEY,
++      env
++    });
++    return json(result);
++  } catch (e) {
++    return json({ success: false, error: (e as Error).message || 'خطأ غير متوقع' }, 500);
++  }
++});
+diff --git a/vite.config.js b/vite.config.js
+index c021b0a..623b765 100644
+--- a/vite.config.js
++++ b/vite.config.js
+@@ -1,16 +1,52 @@
+ import react from '@vitejs/plugin-react'
+ import tailwindcss from '@tailwindcss/vite'
+-import { defineConfig } from 'vite'
++import { defineConfig, loadEnv } from 'vite'
++import { handleAction } from './supabase/functions/_shared/openrouterCore.js'
++
++/**
++ * Dev-only AI gateway.
++ * Serves POST /api/ai using the same core as the Supabase Edge Function, reading
++ * OPENROUTER_API_KEY from .env.local (NOT prefixed with VITE_, so it is never bundled).
++ */
++function aiGatewayDev(env) {
++  const handler = async (req, res, next) => {
++    if (!req.url?.startsWith('/api/ai')) return next()
++    const send = (status, body) => {
++      res.statusCode = status
++      res.setHeader('Content-Type', 'application/json')
++      res.end(JSON.stringify(body))
++    }
++    if (req.method !== 'POST') return send(405, { success: false, error: 'POST only' })
++
++    let raw = ''
++    for await (const chunk of req) raw += chunk
++    try {
++      const { action, payload } = JSON.parse(raw || '{}')
++      const result = await handleAction({ action, payload, apiKey: env.OPENROUTER_API_KEY, env })
++      send(200, result)
++    } catch (e) {
++      send(500, { success: false, error: e.message || 'خطأ غير متوقع' })
++    }
++  }
++  return {
++    name: 'ai-gateway-dev',
++    configureServer(server) { server.middlewares.use(handler) },
++    configurePreviewServer(server) { server.middlewares.use(handler) }
++  }
++}
+ 
+ // https://vite.dev/config/
+-export default defineConfig({
+-  plugins: [tailwindcss(), react()],
+-  server: {
+-    port: 3000,
+-    host: true
+-  },
+-  preview: {
+-    port: 3000,
+-    host: true
++export default defineConfig(({ mode }) => {
++  const env = loadEnv(mode, process.cwd(), '')
++  return {
++    plugins: [tailwindcss(), react(), aiGatewayDev(env)],
++    server: {
++      port: 3000,
++      host: true
++    },
++    preview: {
++      port: 3000,
++      host: true
++    }
+   }
+ })
+-- 
+2.43.0
+

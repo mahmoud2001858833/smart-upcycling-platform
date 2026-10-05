@@ -1,3 +1,4 @@
+import { stripHeavyImages } from './aiImageStore.js';
 import { supabase } from '../supabaseClient';
 
 /**
@@ -84,8 +85,9 @@ export async function getSavedProjects(userId) {
 }
 
 // 2. Save a project to Supabase & localStorage (Zero Duplicates Guaranteed)
-export async function saveProjectToCloud(userId, project) {
-  if (!project) return { success: false };
+export async function saveProjectToCloud(userId, rawProject) {
+  if (!rawProject) return { success: false };
+  const project = stripHeavyImages(rawProject);
 
   const projectTitle = (project.name || project.title || 'مشروع إعادة تدوير').trim();
   const normTitle = normalizeProjectTitle(projectTitle);
