@@ -204,36 +204,47 @@ export function setStoredGeminiApiKey(key) {
  * Direct Live Google Gemini 1.5 Flash API Caller
  */
 function buildProjectsPrompt({ materials, userLevel = 'adult', projectType = 'practical' }) {
-  return `أنت مهندس تصميم صناعي واستدامة بيئية ورائد في ابتكار مشاريع إعادة التدوير التصاعدي (Upcycling).
-المطلوب: ابتكار 3 مشاريع إعادة تدوير تصاعدي حصرية وجديدة تماماً ومصممة خصيصاً بالاعتماد المباشر على هذه المواد المدخلة:
-"${materials}"
-المستوى المستهدف: ${userLevel}
-نوع المشروع: ${projectType}
+  const levelAr = { child: 'طفل (6-12 سنة) - مشاريع آمنة بلا أدوات حادة', teen: 'مراهق (13-17 سنة)', adult: 'بالغ', all: 'كل المستويات' }[userLevel] || userLevel;
+  const typeAr = { practical: 'عملي ونفعي', scientific: 'علمي وتجريبي', artistic: 'فني وديكور', group: 'جماعي ومدرسي', all: 'متنوع' }[projectType] || projectType;
+  return `أنت مصمم منتجات ومهندس استدامة محترف متخصص في التدوير التصاعدي (Upcycling)، وتكتب لمنصة تعليمية عربية.
 
-أجب حصراً بصيغة JSON صالحة باللغة العربية دون أي نص إضافي أو علامات markdown codeblock.
-الهيكل المطلوب بدقة:
+المواد المتوفرة لدى المستخدم: "${materials}"
+المستوى: ${levelAr}
+نوع المشاريع المطلوب: ${typeAr}
+
+المطلوب: ابتكر 3 مشاريع **مختلفة جذرياً عن بعضها** (فكرة ووظيفة وشكل)، واقعية وقابلة للتنفيذ في البيت، وتستخدم المواد المذكورة فعلاً (لا تضف مواد غير ضرورية). تجنب الأفكار المبتذلة المتكررة (أصيص عادي، منظم أقلام عادي) واختر أفكاراً ذكية تدهش المستخدم ولها فائدة حقيقية. اجعل المشروع الأول الأسهل، والثاني متوسطاً، والثالث الأكثر إبداعاً.
+
+لكل مشروع:
+- اسم جذاب ومحدد (3-7 كلمات).
+- 5 إلى 6 خطوات تنفيذ، كل خطوة فعل واحد واضح (قص، ثقب، لصق، صنفرة، طلاء...) مع قياسات وكميات محددة بالسنتيمتر والدقائق.
+- لكل خطوة imagePrompt بالإنجليزية فقط: وصف تصوير قريب (close-up) لليدين وهما تنفذان هذه الخطوة تحديداً على المادة المحددة، مثل "close-up of hands cutting a plastic bottle in half with scissors along a marked line, workshop table, photorealistic".
+- imagePrompts للمشروع بالإنجليزية: finished (المنتج النهائي في بيئة جميلة)، assembly (مراحل التجميع)، inUse (يُستخدم في حياة واقعية).
+
+أجب بـ JSON صالح فقط (بدون markdown) وبالعربية لكل النصوص عدا imagePrompt:
 {
   "projects": [
     {
-      "name": "اسم المشروع المبتكر الخاص بالمواد المدخلة",
-      "idea": "شرح تفصيلي لفكرة المشروع والغرض النفعي والجمالي منه وكيف يدمج المواد معاً",
-      "materials": "قائمة الخامات المطلوبة بدقة مع لوازم التثبيت",
-      "tools": "قائمة الأدوات اللازمة للتنفيذ",
-      "steps": "الخطوة 1: [اسم المرحلة متضمناً فعل العمل مثل قص أو فرز]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة أمان أو دقة]\\n\\nالخطوة 2: [اسم المرحلة متضمناً فعل التجميع أو الربط]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة تقنية]\\n\\nالخطوة 3: [اسم المرحلة متضمناً فعل التشطيب أو الفحص]\\n- التفاصيل: [شرح تنفيذي خطوة بخطوة]\\n- نصيحة: [نصيحة فحص أداء]",
-      "principle": "المبدأ العلمي والبيئي والهندسي المستفاد",
-      "time": "المدة المقدرة للإنجاز (مثال: ساعتان)",
-      "difficulty": "مستوى الصعوبة (سهل / متوسط / متقدم)",
-      "safety": "إرشادات الأمان ومعدات الوقاية الشخصية PPE",
-      "results": "النتائج الجمالية والوظيفية والوفر المالي المقدر",
-      "development": "فكرة ذكية لتطوير المشروع مستقبلاً",
-      "sustainability": "الأثر البيئي وكمية الكربون المتجنبة"
+      "name": "",
+      "idea": "فقرة قصيرة: ما هو، لمن، وما الذي يميزه",
+      "wowFactor": "جملة واحدة تشرح لماذا الفكرة ذكية ومختلفة",
+      "materials": "المواد مع الكميات",
+      "tools": "الأدوات",
+      "stepsData": [
+        { "title": "عنوان قصير يتضمن الفعل", "detail": "شرح تنفيذي دقيق بالقياسات", "tip": "نصيحة أمان أو جودة", "imagePrompt": "English close-up prompt" }
+      ],
+      "principle": "المبدأ العلمي وراء الفكرة",
+      "time": "مثل: 90 دقيقة",
+      "difficulty": "سهل | متوسط | متقدم",
+      "cost": "التكلفة التقديرية للمواد الإضافية مقابل سعر المنتج الجاهز",
+      "safety": "احتياطات الأمان",
+      "results": "النتيجة النهائية والفائدة",
+      "development": "فكرة تطوير رئيسية",
+      "variations": ["تعديل 1 لتخصيص المشروع", "تعديل 2", "تعديل 3"],
+      "sustainability": "الأثر البيئي بأرقام تقريبية",
+      "imagePrompts": { "finished": "", "assembly": "", "inUse": "" }
     }
   ],
-  "followUpQuestions": [
-    "سؤال متابعة ذكي 1 يخص المواد",
-    "سؤال متابعة ذكي 2 يخص الأدوات",
-    "سؤال متابعة ذكي 3 يخص موقع الاستخدام"
-  ]
+  "followUpQuestions": ["سؤال ذكي 1", "سؤال ذكي 2", "سؤال ذكي 3"]
 }`;
 }
 
@@ -268,7 +279,7 @@ export async function fetchFromOpenRouter({ materials, userLevel, projectType, a
     body: JSON.stringify({
       model: OPENROUTER_MODEL,
       temperature: 0.9,
-      max_tokens: 6000,
+      max_tokens: 8000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: 'You are an expert upcycling engineer. Reply with valid JSON only.' },
@@ -398,13 +409,55 @@ function processEnrichedAiProjects(rawProjects, materials, followUpQuestions) {
     }
   }
 
+  const aiImageUrl = (prompt, seed, w = 960, h = 600) =>
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(`${prompt}, photorealistic, sharp focus, natural lighting, no text, no watermark`)}?width=${w}&height=${h}&nologo=true&seed=${seed}&model=flux`;
+
   const enrichedProjects = uniqueRawProjects.map((proj, idx) => {
-    const gallery = buildMultiImageGallery(proj.name, proj.idea, proj.materials || materials, idx);
+    const projMaterials = proj.materials || materials;
+    const gallery = buildMultiImageGallery(proj.name, proj.idea, projMaterials, idx);
+    const seed = Math.floor(Math.random() * 100000);
+
+    // The finished-product picture is generated from the AI's own English prompt (falls back to curated photo on error)
+    const prompts = proj.imagePrompts || {};
+    if (prompts.finished) {
+      gallery.fallbackFinished = gallery.finished;
+      gallery.finished = aiImageUrl(prompts.finished, seed);
+    }
+
     const metrics = deriveEngineeringMetrics(proj, materials || '');
-    const parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, proj.materials || materials);
+
+    let parsedSteps;
+    let stepsText = proj.steps;
+    if (Array.isArray(proj.stepsData) && proj.stepsData.length > 0) {
+      parsedSteps = proj.stepsData.map((st, i) => {
+        const title = st.title || `الخطوة ${i + 1}`;
+        const detail = st.detail || '';
+        const infographic = generateStepInfographic(i + 1, title, detail, {}, projMaterials);
+        const photo = st.imagePrompt
+          ? aiImageUrl(st.imagePrompt, seed + i + 1)
+          : getAiStepPhotoUrl(i + 1, title, detail, projMaterials, proj.name, i);
+        return {
+          id: i + 1,
+          title,
+          detail,
+          tip: st.tip || 'تأكد من ارتداء قفازات واقية وفحص ثبات الأجزاء.',
+          image: infographic,
+          infographicUrl: infographic,
+          photoUrl: photo,
+          aiImageUrl: photo,
+          completed: false
+        };
+      });
+      stepsText = proj.stepsData
+        .map((st, i) => `الخطوة ${i + 1}: ${st.title}\n- التفاصيل: ${st.detail}\n- نصيحة: ${st.tip || ''}`)
+        .join('\n\n');
+    } else {
+      parsedSteps = parseStepsToStructuredList(proj.steps, proj.name, projMaterials);
+    }
 
     const baseProj = {
       ...proj,
+      steps: stepsText,
       id: `proj-ai-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
       title: proj.name,
       gallery,
@@ -413,11 +466,13 @@ function processEnrichedAiProjects(rawProjects, materials, followUpQuestions) {
       multiAngleViews: gallery,
       activeGalleryView: 'finished',
       metrics,
-      parsedSteps,
-      steps: parsedSteps
+      parsedSteps
     };
+    // keep legacy contract: steps holds the parsed list for the UI
+    baseProj.steps = parsedSteps;
+    baseProj.stepsText = stepsText;
 
-    return orchestrateProjectSwarm(baseProj, proj.materials || materials);
+    return orchestrateProjectSwarm(baseProj, projMaterials);
   });
 
   return {

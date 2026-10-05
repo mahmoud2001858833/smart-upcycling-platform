@@ -368,6 +368,19 @@ export default function ProjectDedicatedPage({
                 {project.idea || project.description}
               </p>
 
+              {project.wowFactor && (
+                <p className="text-sm font-bold text-amber-200 max-w-3xl flex items-start gap-2">
+                  <span>✨</span><span>{project.wowFactor}</span>
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {project.time && <span className="px-3 py-1.5 rounded-xl bg-white/15 text-white border border-white/20 text-xs font-bold">⏱️ {project.time}</span>}
+                {project.difficulty && <span className="px-3 py-1.5 rounded-xl bg-white/15 text-white border border-white/20 text-xs font-bold">🎯 {project.difficulty}</span>}
+                {project.cost && <span className="px-3 py-1.5 rounded-xl bg-white/15 text-white border border-white/20 text-xs font-bold">💰 {project.cost}</span>}
+                {Array.isArray(project.parsedSteps) && <span className="px-3 py-1.5 rounded-xl bg-white/15 text-white border border-white/20 text-xs font-bold">🪜 {project.parsedSteps.length} خطوات</span>}
+              </div>
+
               {/* STEM Curriculum Tags */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="px-2.5 py-1 rounded-xl bg-white/15 text-emerald-200 border border-white/20 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs">
@@ -868,7 +881,7 @@ export default function ProjectDedicatedPage({
             );
 
             // Generative AI photo URL
-            const photoUrl = getAiStepPhotoUrl(
+            const photoUrl = (step.aiImageUrl && !seed) ? step.aiImageUrl : getAiStepPhotoUrl(
               activeStepTab + 1,
               step.title,
               step.detail || step.instruction || '',
@@ -1240,8 +1253,21 @@ export default function ProjectDedicatedPage({
             </div>
           )}
 
-          {/* 3 Upgrade Avenues */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          {/* Upgrade / customisation ideas: AI-written variations when available */}
+          {Array.isArray(project.variations) && project.variations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {project.variations.slice(0, 3).map((v, vi) => (
+                <div key={vi} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <span>تعديل مقترح {vi + 1}</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">{v}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <div className="flex items-center gap-2 text-cyan-800 font-bold">
                 <Zap className="w-4 h-4 text-cyan-600" />
@@ -1272,6 +1298,7 @@ export default function ProjectDedicatedPage({
               </p>
             </div>
           </div>
+          )}
         </div>
 
         {/* MATERIALS & TOOLS CHECKLIST */}
