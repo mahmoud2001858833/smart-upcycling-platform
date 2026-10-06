@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
-import { generateStepInfographic, getAiStepPhotoUrl } from '../utils/imageCatalog.js';
+import { generateStepInfographic, getAiStepPhotoUrl, generateSvgBlueprint } from '../utils/imageCatalog.js';
 import StudentLabReportModal from './StudentLabReportModal.jsx';
 import StudentRubricModal from './StudentRubricModal.jsx';
 import StudentQuizModal from './StudentQuizModal.jsx';
@@ -244,6 +244,8 @@ export default function ProjectDedicatedPage({
       return project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
     }
     if (aiHeroUrl) return aiHeroUrl;
+    // AI-developed projects never fall back to unrelated stock photos
+    if (project?.isAiDeveloped) return generateSvgBlueprint(project.name, project.materials, activeAngle);
     const gallery = project?.multiAngleViews || project?.gallery;
     if (gallery && gallery[activeAngle]) {
       return gallery[activeAngle];
@@ -587,16 +589,39 @@ export default function ProjectDedicatedPage({
           </div>
 
           {/* Hero Visual Display */}
-          <div className="relative rounded-2xl overflow-hidden aspect-video sm:aspect-[21/9] bg-slate-100 border border-slate-200 flex items-center justify-center">
+          <div className="relative rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[16/9] bg-slate-100 border border-slate-200 flex items-center justify-center">
             <img
               src={currentHeroImage}
               alt={project.title}
-              className="w-full h-full object-cover transition-all duration-300"
+              className={`w-full h-full object-cover transition-all duration-500 ${ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) !== 'error' ? 'opacity-0' : 'opacity-100'}`}
               onError={(e) => {
                 e.target.src = project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
               }}
             />
             
+            {ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) !== 'error' && (
+              <div className="ai-img-skeleton" role="status">
+                <span className="ai-img-skeleton-icon"><Sparkles size={22} /></span>
+                <span className="ai-img-skeleton-text">جاري رسم الصورة بالذكاء الاصطناعي…</span>
+              </div>
+            )}
+            {ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) === 'error' && (
+              <button type="button" className="ai-img-retry" onClick={() => ai.regenerateHero(activeAngle)}>
+                <RefreshCw size={13} />
+                <span>تعذر توليد الصورة — إعادة المحاولة</span>
+              </button>
+            )}
+            {ai.enabled && activeAngle !== 'blueprint' && aiHeroUrl && (
+              <button
+                type="button"
+                onClick={() => ai.regenerateHero(activeAngle)}
+                className="absolute top-3 left-3 p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 transition-all cursor-pointer shadow-xs"
+                title="إعادة رسم هذه الصورة"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+
             <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>

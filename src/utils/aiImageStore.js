@@ -63,6 +63,39 @@ async function idbPut(key, value) {
   try { db.transaction(STORE, 'readwrite').objectStore(STORE).put(value, key); } catch { /* quota etc. */ }
 }
 
+/* ---------------- image compression (browser only; passthrough elsewhere) ---------------- */
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = url;
+  });
+}
+
+/** Re-encode to JPEG at a sane size so IndexedDB and memory stay small. */
+export async function compressDataUrl(url, { maxSide = 1280, quality = 0.86, force = false } = {}) {
+  if (typeof document === 'undefined' || typeof url !== 'string' || !url.startsWith('data:image/')) return url;
+  try {
+    const img = await loadImage(url);
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', quality);
+    return force || out.length < url.length ? out : url;
+  } catch {
+    return url;
+  }
+}
+
 /* ---------------- memory cache + queue ---------------- */
 
 const memory = new Map();     // key -> dataUrl
@@ -95,42 +128,63 @@ export async function loadCachedImage(spec) {
  * Get (or generate) one image. Resolves to a data URL, rejects on failure.
  * spec: { kind: 'hero'|'assembly'|'lifestyle'|'step', visualBible, prompt }
  */
-export function requestImage(spec, { priority = 0, force = false } = {}) {
-  const key = imageKey(force ? { ...spec, prompt: spec.prompt + `#${Date.now()}` } : spec);
+export function requestImage(spec, { priority = 0, force = false, reference = null, stageLabel = '', isFinal = false } = {}) {
   const cacheKey = imageKey(spec);
+  const flightKey = force ? `${cacheKey}#force` : cacheKey;
 
   if (!force && memory.has(cacheKey)) return Promise.resolve(memory.get(cacheKey));
-  if (!force && inflight.has(cacheKey)) return inflight.get(cacheKey);
+  if (inflight.has(flightKey)) return inflight.get(flightKey);
 
-  const p = new Promise((resolve, reject) => {
-    waiting.push({
-      priority,
-      run: async () => {
-        try {
-          if (!force) {
-            const stored = await idbGet(cacheKey);
-            if (stored) { memory.set(cacheKey, stored); return resolve(stored); }
+  const p = (async () => {
+    // Resolve the style reference BEFORE taking a queue slot, otherwise step jobs could fill
+    // every slot while waiting for a hero job that is itself stuck in the queue.
+    if (!force) {
+      const stored = await idbGet(cacheKey);
+      if (stored) { memory.set(cacheKey, stored); return stored; }
+    }
+    let referenceImage = null;
+    try { referenceImage = typeof reference === 'function' ? await reference() : reference; } catch { referenceImage = null; }
+
+    return new Promise((resolve, reject) => {
+      waiting.push({
+        priority,
+        run: async () => {
+          try {
+            const res = await callAi('image', {
+              kind: spec.kind,
+              visualBible: spec.visualBible,
+              prompt: spec.prompt,
+              referenceImage: referenceImage || undefined,
+              stageLabel: stageLabel || undefined,
+              isFinal: isFinal || undefined
+            }, { timeoutMs: 110000 });
+            const packed = await compressDataUrl(res.imageUrl);
+            memory.set(cacheKey, packed);
+            idbPut(cacheKey, packed);
+            resolve(packed);
+          } catch (e) {
+            reject(e);
           }
-          const res = await callAi('image', {
-            kind: spec.kind,
-            visualBible: spec.visualBible,
-            prompt: spec.prompt
-          }, { timeoutMs: 100000 });
-          memory.set(cacheKey, res.imageUrl);
-          idbPut(cacheKey, res.imageUrl);
-          resolve(res.imageUrl);
-        } catch (e) {
-          reject(e);
-        } finally {
-          inflight.delete(key);
         }
-      }
+      });
+      pump();
     });
-    pump();
-  });
+  })().finally(() => inflight.delete(flightKey));
 
-  inflight.set(key, p);
+  inflight.set(flightKey, p);
   return p;
+}
+
+/**
+ * Small JPEG of the finished-object photo, used as the style reference for step images.
+ * Resolves to null if the hero image is unavailable (steps are then generated without it).
+ */
+export function heroReferenceFor(project) {
+  const spec = heroSpec(project, 'finished');
+  if (!spec) return Promise.resolve(null);
+  return requestImage(spec, { priority: 150 })
+    .then(url => compressDataUrl(url, { maxSide: 512, quality: 0.8, force: true }))
+    .catch(() => null);
 }
 
 /* ---------------- project helpers ---------------- */

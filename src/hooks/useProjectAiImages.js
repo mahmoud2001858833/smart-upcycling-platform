@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { heroSpec, stepSpec, loadCachedImage, requestImage } from '../utils/aiImageStore.js';
+import { heroSpec, stepSpec, loadCachedImage, requestImage, heroReferenceFor } from '../utils/aiImageStore.js';
 
 const HERO_VIEWS = ['finished', 'assembly', 'inUse'];
 
@@ -28,13 +28,20 @@ export function useProjectAiImages(project, activeStepIndex = 0) {
   const run = useCallback((bucket, id, spec, priority, force = false) => {
     if (!spec) return Promise.resolve();
     set(bucket, id, null, 'loading');
-    return requestImage(spec, { priority, force })
+    const extra = bucket === 'step'
+      ? {
+          reference: () => heroReferenceFor(project),
+          stageLabel: `${Number(id) + 1} of ${stepCount}`,
+          isFinal: Number(id) === stepCount - 1
+        }
+      : {};
+    return requestImage(spec, { priority, force, ...extra })
       .then(url => set(bucket, id, url, 'ready'))
       .catch(err => {
         console.warn(`AI image (${bucket}:${id}) failed:`, err.message);
         set(bucket, id, null, 'error');
       });
-  }, [set]);
+  }, [set, project, stepCount]);
 
   // reset + restore from cache whenever the project changes
   useEffect(() => {
@@ -104,4 +111,43 @@ export function useProjectAiImages(project, activeStepIndex = 0) {
     regenerateHero,
     retryStep
   };
+}
+
+/**
+ * Lightweight hook for list views (spotlight / cards / compare):
+ * resolves ONE hero view from cache or generates it, without touching step images.
+ */
+export function useAiHero(project, view = 'finished', { enabled = true } = {}) {
+  const spec = project?.isAiDeveloped ? heroSpec(project, view) : null;
+  const key = spec ? `${project.id}:${view}` : null;
+  const [entry, setEntry] = useState({ key: null, url: null, status: 'idle' });
+
+  useEffect(() => {
+    if (!spec) return undefined;
+    let alive = true;
+    (async () => {
+      const cached = await loadCachedImage(spec);
+      if (!alive) return;
+      if (cached) return setEntry({ key, url: cached, status: 'ready' });
+      if (!enabled) return setEntry({ key, url: null, status: 'idle' });
+      setEntry({ key, url: null, status: 'loading' });
+      requestImage(spec, { priority: view === 'finished' ? 100 : 60 })
+        .then(url => alive && setEntry({ key, url, status: 'ready' }))
+        .catch(() => alive && setEntry({ key, url: null, status: 'error' }));
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+
+  const retry = useCallback(() => {
+    if (!spec) return;
+    setEntry({ key, url: null, status: 'loading' });
+    requestImage(spec, { priority: 120, force: true })
+      .then(url => setEntry({ key, url, status: 'ready' }))
+      .catch(() => setEntry({ key, url: null, status: 'error' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const current = entry.key === key ? entry : { url: null, status: spec && enabled ? 'loading' : 'idle' };
+  return { url: current.url, status: current.status, retry, isAi: Boolean(spec) };
 }

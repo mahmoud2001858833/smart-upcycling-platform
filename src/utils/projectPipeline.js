@@ -154,7 +154,11 @@ export async function generateProjectsWithAi({ materials, userLevel, projectType
   const concepts = ideation.concepts || [];
   if (concepts.length === 0) throw new Error('لم تُنتج مرحلة العصف الذهني أفكاراً');
 
-  say('select', `تم اختيار أقوى ${concepts.length} أفكار: ${concepts.map(c => c.name).join(' • ')}`, { done: 0, total: concepts.length });
+  say('select', `تم اختيار أقوى ${concepts.length} أفكار: ${concepts.map(c => c.name).join(' • ')}`, {
+    done: 0,
+    total: concepts.length,
+    concepts: concepts.map(c => ({ name: c.name, archetype: c.archetype }))
+  });
 
   let finished = 0;
   const results = await Promise.allSettled(concepts.map(async (concept, index) => {

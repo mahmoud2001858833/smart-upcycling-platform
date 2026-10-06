@@ -49,7 +49,10 @@ import {
   normalizeProjectTitle
 } from './utils/supabaseSync.js';
 import { handleImageFallback, generateSvgBlueprint, preloadProjectImages } from './utils/imageCatalog.js';
+import { ProjectCover, ViewThumb } from './components/AiImage.jsx';
+import GenerationProgress from './components/GenerationProgress.jsx';
 import './index.css';
+import './polish.css';
 
 // Resilient check to see if a project is already saved in the user's list
 function isProjectSaved(list, p) {
@@ -61,6 +64,52 @@ function isProjectSaved(list, p) {
     const itemNorm = normalizeProjectTitle(item.title || item.name || '');
     return itemNorm && itemNorm === pNorm;
   });
+}
+
+const ARCHETYPE_AR = {
+  lighting: 'إضاءة', furniture: 'أثاث', garden: 'زراعة ذكية', kinetic: 'حركة وميكانيكا', sound: 'صوت',
+  storage: 'تخزين وتنظيم', wearable: 'إكسسوار', educational: 'تعليمي وعلمي'
+};
+
+function projectCo2(p) {
+  const v = p?.co2SavedKg ?? p?.lcaMetrics?.carbonSavedKg ?? p?.metrics?.co2SavedKg;
+  if (v == null || Number.isNaN(Number(v))) return null;
+  return String(Math.round(Number(v) * 10) / 10);
+}
+
+function bestProjectIndex(list) {
+  let best = -1;
+  let bestScore = -1;
+  list.forEach((p, i) => {
+    const sc = p?.aiConcept?.rankScore;
+    if (typeof sc === 'number' && sc > bestScore) { bestScore = sc; best = i; }
+  });
+  return best;
+}
+
+const SCORE_LABELS = [
+  ['wow', 'إبهار'],
+  ['novelty', 'ابتكار'],
+  ['usefulness', 'فائدة'],
+  ['feasibility', 'سهولة التنفيذ']
+];
+
+function ConceptMeters({ scores }) {
+  if (!scores) return null;
+  return (
+    <div className="concept-meters">
+      {SCORE_LABELS.map(([k, label]) => {
+        const v = Math.max(0, Math.min(10, Number(scores[k]) || 0));
+        return (
+          <div key={k} className="concept-meter">
+            <span className="concept-meter-label">{label}</span>
+            <span className="concept-meter-track"><span style={{ width: `${v * 10}%` }} /></span>
+            <span className="concept-meter-val">{v}/10</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function App() {
@@ -111,6 +160,8 @@ export default function App() {
   const [projectType, setProjectType] = useState('practical');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
+  const [genProgress, setGenProgress] = useState(null);
+  const resultsRef = useRef(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
 
   // Projects & UI states
@@ -321,6 +372,7 @@ export default function App() {
     }
 
     setIsLoading(true);
+    setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: allMaterials.join('، ') });
     setLoadingStep('جاري تحليل المواد وبدء العصف الذهني بالذكاء الاصطناعي...');
 
     try {
@@ -329,7 +381,7 @@ export default function App() {
         materials: materialsString,
         userLevel,
         projectType,
-        onProgress: (p) => setLoadingStep(p.message),
+        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); },
         onHeroReady: patchProjectHero
       });
       if (res.usedFallback) {
@@ -365,8 +417,18 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setLoadingStep('');
+      setGenProgress(null);
     }
   };
+
+  // Bring the results area into view when generation starts (so progress is visible) and when it ends
+  const wasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (isLoading && !wasLoadingRef.current) {
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    }
+    wasLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   // AI Auto-Pilot: The AI takes full autonomous steering and generates the optimal project!
   const handleAiAutoPilot = async () => {
@@ -382,13 +444,14 @@ export default function App() {
     showToast(`🤖 تولى الذكاء الاصطناعي القيادة الكاملة واختار: "${topScenario.title}"! جاري هندسة المشاريع...`, 'success');
     
     setIsLoading(true);
+    setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: topScenario.materials.join('، ') });
     setLoadingStep('الذكاء الاصطناعي يدير هندسة المشروع ويوزع المهام على الوكلاء الستة...');
     try {
       const res = await fetchAiProjects({
         materials: topScenario.materials.join('، '),
         userLevel: topScenario.difficulty || 'متوسط',
         projectType: topScenario.type || 'ديكور منزلي',
-        onProgress: (p) => setLoadingStep(p.message),
+        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); },
         onHeroReady: patchProjectHero
       });
       if (res.success && res.projects?.length > 0) {
@@ -416,6 +479,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setLoadingStep('');
+      setGenProgress(null);
     }
   };
 
@@ -934,7 +998,7 @@ export default function App() {
       <main className="official-main-content">
         {/* Navigation Tabs Header */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-          <div className="official-nav-tabs" style={{ maxWidth: '920px', width: '100%', justifyContent: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+          <div className="official-nav-tabs" style={{ maxWidth: '1180px', width: '100%', justifyContent: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
             <button
               className={`official-nav-btn ${activeTab === 'generator' ? 'active' : ''}`}
               onClick={() => setActiveTab('generator')}
@@ -1039,7 +1103,7 @@ export default function App() {
             TAB 1: GENERATOR TAB (INPUTS & DYNAMIC PROJECTS)
             ============================================================ */}
         {activeTab === 'generator' && (
-          <div className="intake-layout-grid">
+          <div className={`intake-layout-grid ${(projects.length > 0 || isLoading) ? 'has-results' : ''}`}>
             {/* Right Column: Inputs Section (RTL) */}
             <div className="intake-main-panel">
               <div className="panel-section-title">
@@ -1382,7 +1446,7 @@ export default function App() {
                 ) : (
                   <>
                     <Sparkles size={18} className="text-amber-300" />
-                    <span>🚀 ابتكار مشاريع ومعرض صور ثلاثي عبر طاقم الـ 6 وكلاء أذكياء</span>
+                    <span>ابتكار مشاريع بالذكاء الاصطناعي مع صورة لكل مرحلة</span>
                   </>
                 )}
               </button>
@@ -1390,16 +1454,17 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '0.65rem', fontSize: '0.75rem', color: '#64748b' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
                 <span>
-                  {hasGeminiKey 
-                    ? 'متصل بسحابة Google Gemini 1.5 Flash الحية • يولد مشاريع حية حصرية لكل طلب' 
-                    : 'محرك الذكاء الاصطناعي التوليدي نشط • ابتكار مشاريع حصرية مخصصة لخاماتك لكل طلب'}
+                  عصف ذهني لـ 8 أفكار ← اختيار أقوى 3 ← دليل تنفيذ بقياسات دقيقة ← صور واضحة لكل مرحلة
                 </span>
               </div>
             </div>
 
-            {/* Left Column: Generated Projects Display */}
-            <div>
-              {projects.length === 0 ? (
+            {/* Generated Projects Display (full width once there is something to show) */}
+            <div ref={resultsRef} className="results-studio">
+              {isLoading && (
+                <GenerationProgress progress={genProgress} materials={genProgress?.materials} />
+              )}
+              {projects.length === 0 && !isLoading ? (
                 <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '4rem 2rem', textAlign: 'center', boxShadow: 'var(--shadow-card)' }}>
                   <Recycle size={56} color="var(--border-strong)" style={{ margin: '0 auto 1.25rem' }} />
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
@@ -1409,8 +1474,8 @@ export default function App() {
                     اختر المواد أو اكتبها واضغط على زر الابتكار ليقوم الذكاء الاصطناعي بتوليد مشاريع حصرية لكل طلب مع 3 صور فنية عالية الدقة (المنتج المكتمل، مراحل التجميع، والاستخدام الواقعي).
                   </p>
                 </div>
-              ) : (
-                <div>
+              ) : projects.length === 0 ? null : (
+                <div className={isLoading ? 'results-refreshing' : ''}>
                   {/* Top Projects View Toolbar with 3 Display Modes */}
                   <div className="projects-view-toolbar">
                     <div className="projects-count-tag">
@@ -1477,7 +1542,6 @@ export default function App() {
                     const activeProj = projects[activeSpotlightIndex] || projects[0];
                     if (!activeProj) return null;
                     const activeView = activeProj.activeGalleryView || 'finished';
-                    const activeImageUrl = activeProj.gallery?.[activeView] || activeProj.generatedImage;
                     const isSaved = isProjectSaved(savedProjects, activeProj);
                     const stepsCount = activeProj.parsedSteps ? activeProj.parsedSteps.length : 0;
                     const materialsList = typeof activeProj.materials === 'string'
@@ -1486,14 +1550,14 @@ export default function App() {
 
                     return (
                       <div className="spotlight-showcase-card">
+                        <div className="spotlight-media-col">
                         {/* Media Container with multi-angle gallery */}
                         <div className="spotlight-media-container">
-                          <img
-                            src={activeImageUrl || generateSvgBlueprint(activeProj.name, activeProj.materials, activeView)}
-                            alt={activeProj.name}
-                            className="spotlight-hero-img"
-                            loading="lazy"
-                            onError={(e) => handleImageFallback(e, activeProj.name, activeProj.materials, activeView)}
+                          <ProjectCover
+                            project={activeProj}
+                            view={activeView}
+                            className="spotlight-hero-wrap"
+                            imgClassName="spotlight-hero-img"
                           />
 
                           {/* Top Badges */}
@@ -1531,39 +1595,36 @@ export default function App() {
                             </button>
                           </div>
 
-                          {/* 3-Angle Gallery Switcher Directly On Photo */}
-                          <div className="spotlight-angles-bar">
-                            <button
-                              type="button"
-                              className={`spotlight-angle-btn ${activeView === 'finished' ? 'active' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSwitchGalleryView(activeSpotlightIndex, 'finished');
-                              }}
-                            >
-                              ✨ المنتج النهائي
-                            </button>
-                            <button
-                              type="button"
-                              className={`spotlight-angle-btn ${activeView === 'assembly' ? 'active' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSwitchGalleryView(activeSpotlightIndex, 'assembly');
-                              }}
-                            >
-                              🔧 مراحل التجميع
-                            </button>
-                            <button
-                              type="button"
-                              className={`spotlight-angle-btn ${activeView === 'inUse' ? 'active' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSwitchGalleryView(activeSpotlightIndex, 'inUse');
-                              }}
-                            >
-                              🏡 بالاستخدام الواقعي
-                            </button>
-                          </div>
+                        </div>
+
+                        {/* Angle thumbnails */}
+                        <div className="spotlight-angle-thumbs">
+                          {['finished', 'assembly', 'inUse'].map(v => (
+                            <ViewThumb
+                              key={v}
+                              project={activeProj}
+                              view={v}
+                              active={activeView === v}
+                              onClick={() => handleSwitchGalleryView(activeSpotlightIndex, v)}
+                            />
+                          ))}
+                        </div>
+                        {Array.isArray(activeProj.parsedSteps) && activeProj.parsedSteps.length > 0 && activeProj.isAiDeveloped && (
+                            <div className="spotlight-steps-timeline">
+                              <span className="mats-label">مراحل التنفيذ:</span>
+                              <ol>
+                                {activeProj.parsedSteps.map((st, si) => (
+                                  <li key={si}>
+                                    <span className="tl-num">{si + 1}</span>
+                                    <span className="tl-title">{st.title}</span>
+                                    {st.minutes ? <span className="tl-min">{st.minutes} دقيقة</span> : null}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+
+
                         </div>
 
                         {/* Spotlight Content Body */}
@@ -1572,32 +1633,42 @@ export default function App() {
                             <div>
                               <span className="spotlight-mini-tag">المشروع رقم {activeSpotlightIndex + 1} من أصل {projects.length}</span>
                               <h2 className="spotlight-title">{activeProj.name}</h2>
+                              {activeProj.tagline && <p className="spotlight-tagline">{activeProj.tagline}</p>}
                             </div>
-                            <span className="spotlight-pts-pill">+35 نقطة بيئية 🌱</span>
+                            <div className="spotlight-pill-stack">
+                              {activeProj.aiConcept?.archetype && ARCHETYPE_AR[activeProj.aiConcept.archetype] && (
+                                <span className="spotlight-archetype-pill">{ARCHETYPE_AR[activeProj.aiConcept.archetype]}</span>
+                              )}
+                              {activeSpotlightIndex === bestProjectIndex(projects) && projects.length > 1 && (
+                                <span className="spotlight-best-pill">★ الأعلى تقييماً</span>
+                              )}
+                              <span className="spotlight-pts-pill">+35 نقطة بيئية 🌱</span>
+                            </div>
                           </div>
 
                           <p className="spotlight-description">{activeProj.idea}</p>
+                          {activeProj.story && <p className="spotlight-story">{activeProj.story}</p>}
 
                           {/* 4 Core KPI Tiles */}
                           <div className="spotlight-kpi-grid">
                             <div className="spotlight-kpi-tile emerald">
                               <Leaf size={20} />
                               <div>
-                                <span className="kpi-num">{activeProj.metrics?.co2SavedKg || '2.4'} كغ</span>
+                                <span className="kpi-num">{projectCo2(activeProj) ?? '—'} كغ</span>
                                 <span className="kpi-sub">وفر كربوني (CO₂)</span>
                               </div>
                             </div>
                             <div className="spotlight-kpi-tile cyan">
                               <Trophy size={20} />
                               <div>
-                                <span className="kpi-num">{activeProj.metrics?.estimatedSavings || '$25'}</span>
+                                <span className="kpi-num">{activeProj.metrics?.estimatedSavings || '—'}</span>
                                 <span className="kpi-sub">الوفر المالي التقديري</span>
                               </div>
                             </div>
                             <div className="spotlight-kpi-tile blue">
                               <Shield size={20} />
                               <div>
-                                <span className="kpi-num">{activeProj.metrics?.durabilityYears || '3+'} سنوات</span>
+                                <span className="kpi-num">{activeProj.metrics?.durabilityYears || '—'}</span>
                                 <span className="kpi-sub">العمر الافتراضي</span>
                               </div>
                             </div>
@@ -1625,10 +1696,19 @@ export default function App() {
                             </div>
                           )}
 
-                          {/* 6 AI Agents Swarm Verification Strip */}
-                          <div className="spotlight-swarm-strip">
-                            🤖 مصادق هندسياً من طاقم الـ 6 وكلاء: خبير الخامات • كبير المهندسين • مدقق السلامة • محلل دورة الحياة (LCA)
-                          </div>
+                          {activeProj.aiConcept?.scores ? (
+                            <div className="spotlight-concept-box">
+                              <span className="mats-label">لماذا اختارها الذكاء الاصطناعي؟</span>
+                              {activeProj.aiConcept.mechanism && (
+                                <p className="spotlight-mechanism">💡 {activeProj.aiConcept.mechanism}</p>
+                              )}
+                              <ConceptMeters scores={activeProj.aiConcept.scores} />
+                            </div>
+                          ) : (
+                            <div className="spotlight-swarm-strip">
+                              🤖 مصادق هندسياً من طاقم الـ 6 وكلاء: خبير الخامات • كبير المهندسين • مدقق السلامة • محلل دورة الحياة (LCA)
+                            </div>
+                          )}
 
                           {/* Action CTA Buttons */}
                           <div className="spotlight-cta-row">
@@ -1667,7 +1747,6 @@ export default function App() {
                     <div className="projects-showcase-grid">
                       {projects.map((project, index) => {
                         const activeView = project.activeGalleryView || 'finished';
-                        const activeImageUrl = project.gallery?.[activeView] || project.generatedImage;
                         const isSaved = isProjectSaved(savedProjects, project);
                         const stepsCount = project.parsedSteps ? project.parsedSteps.length : 0;
                         const materialsList = typeof project.materials === 'string'
@@ -1681,15 +1760,17 @@ export default function App() {
                             onClick={() => setSelectedProjectModal(project)}
                           >
                             <div className="project-card-cover-wrap">
-                              <img
-                                src={activeImageUrl || generateSvgBlueprint(project.name, project.materials, activeView)}
-                                alt={project.name}
-                                className="project-card-cover-img"
-                                loading="lazy"
-                                onError={(e) => handleImageFallback(e, project.name, project.materials, activeView)}
+                              <ProjectCover
+                                project={project}
+                                view={activeView}
+                                className="project-card-cover-ai"
+                                imgClassName="project-card-cover-img"
                               />
 
                               <div className="project-card-badges-overlay">
+                                {index === bestProjectIndex(projects) && projects.length > 1 && (
+                                  <span className="badge-best-card">★ الأعلى تقييماً</span>
+                                )}
                                 <span className="badge-difficulty-card">
                                   {project.difficulty || 'متوسط'}
                                 </span>
@@ -1742,6 +1823,7 @@ export default function App() {
                               </div>
 
                               <h3 className="project-card-headline">{project.name}</h3>
+                              {project.tagline && <p className="project-card-tagline">{project.tagline}</p>}
 
                               <p className="project-card-snippet">
                                 {project.idea}
@@ -1766,24 +1848,33 @@ export default function App() {
                                 <div className="project-card-metrics-strip">
                                   <div className="mini-kpi">
                                     <span className="kpi-label">الوفر المالي</span>
-                                    <span className="kpi-val">{project.metrics.estimatedSavings || '15-25$'}</span>
+                                    <span className="kpi-val">{project.metrics.estimatedSavings || '—'}</span>
                                   </div>
                                   <div className="mini-kpi">
                                     <span className="kpi-label">العمر الافتراضي</span>
-                                    <span className="kpi-val">{project.metrics.durabilityYears || 'سنتان'}</span>
+                                    <span className="kpi-val">{project.metrics.durabilityYears || '—'}</span>
                                   </div>
                                   <div className="mini-kpi">
                                     <span className="kpi-label">وفر الكربون</span>
-                                    <span className="kpi-val emerald">{project.metrics.co2SavedKg || '1.8'} كغ</span>
+                                    <span className="kpi-val emerald">{projectCo2(project) ?? '—'} كغ</span>
                                   </div>
                                 </div>
                               )}
 
-                              <div className="project-card-swarm-badge">
-                                <span className="swarm-badge-pill">
-                                  🤖 تدقيق ومصادقة 6 وكلاء أذكياء (المواد • الهندسة • الأثر)
-                                </span>
-                              </div>
+                              {project.aiConcept?.archetype ? (
+                                <div className="project-card-swarm-badge">
+                                  <span className="swarm-badge-pill">
+                                    💡 {ARCHETYPE_AR[project.aiConcept.archetype] || 'فكرة مبتكرة'}
+                                    {project.aiConcept.mechanism ? ` • ${project.aiConcept.mechanism}` : ''}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="project-card-swarm-badge">
+                                  <span className="swarm-badge-pill">
+                                    🤖 تدقيق ومصادقة 6 وكلاء أذكياء (المواد • الهندسة • الأثر)
+                                  </span>
+                                </div>
+                              )}
 
                               <div className="project-card-cta-row">
                                 <button
@@ -1826,13 +1917,42 @@ export default function App() {
                             <th>المعيار والمواصفة الفنية</th>
                             {projects.map((proj, idx) => (
                               <th key={proj.id || idx}>
+                                <div className="compare-th-thumb">
+                                  <ProjectCover project={proj} view="finished" />
+                                </div>
                                 <div className="compare-th-title">{proj.name}</div>
-                                <span className="compare-th-badge">خيار #{idx + 1}</span>
+                                <span className="compare-th-badge">
+                                  {idx === bestProjectIndex(projects) && projects.length > 1 ? '★ الأعلى تقييماً' : `خيار #${idx + 1}`}
+                                </span>
                               </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
+                          {projects.some(p => p.aiConcept?.archetype) && (
+                            <tr>
+                              <td className="compare-metric-label">نوع الفكرة</td>
+                              {projects.map((proj, idx) => (
+                                <td key={idx} className="compare-metric-val">{ARCHETYPE_AR[proj.aiConcept?.archetype] || '—'}</td>
+                              ))}
+                            </tr>
+                          )}
+                          {projects.some(p => p.aiConcept?.scores) && (
+                            <tr>
+                              <td className="compare-metric-label">تقييم الذكاء الاصطناعي</td>
+                              {projects.map((proj, idx) => (
+                                <td key={idx} className="compare-metric-val"><ConceptMeters scores={proj.aiConcept?.scores} /></td>
+                              ))}
+                            </tr>
+                          )}
+                          {projects.some(p => p.estimatedCost) && (
+                            <tr>
+                              <td className="compare-metric-label">تكلفة التنفيذ الفعلية</td>
+                              {projects.map((proj, idx) => (
+                                <td key={idx} className="compare-metric-val">{proj.estimatedCost || '—'}</td>
+                              ))}
+                            </tr>
+                          )}
                           <tr>
                             <td className="compare-metric-label">مستوى الصعوبة والتنفيذ</td>
                             {projects.map((proj, idx) => (
@@ -1848,25 +1968,25 @@ export default function App() {
                           <tr>
                             <td className="compare-metric-label">وفر الانبعاثات (CO₂)</td>
                             {projects.map((proj, idx) => (
-                              <td key={idx} className="compare-metric-val highlight">{proj.metrics?.co2SavedKg || '2.0'} كغ CO₂</td>
+                              <td key={idx} className="compare-metric-val highlight">{projectCo2(proj) ?? '—'} كغ CO₂</td>
                             ))}
                           </tr>
                           <tr>
                             <td className="compare-metric-label">الوفر المالي التقديري</td>
                             {projects.map((proj, idx) => (
-                              <td key={idx} className="compare-metric-val highlight">{proj.metrics?.estimatedSavings || '$20'}</td>
+                              <td key={idx} className="compare-metric-val highlight">{proj.metrics?.estimatedSavings || '—'}</td>
                             ))}
                           </tr>
                           <tr>
                             <td className="compare-metric-label">نسبة الجدوى الهندسية</td>
                             {projects.map((proj, idx) => (
-                              <td key={idx} className="compare-metric-val">{proj.metrics?.feasibilityScore || '90'}%</td>
+                              <td key={idx} className="compare-metric-val">{proj.metrics?.feasibilityScore ?? '—'}%</td>
                             ))}
                           </tr>
                           <tr>
                             <td className="compare-metric-label">العمر الافتراضي للمنتج</td>
                             {projects.map((proj, idx) => (
-                              <td key={idx} className="compare-metric-val">{proj.metrics?.durabilityYears || 'سنتان'}</td>
+                              <td key={idx} className="compare-metric-val">{proj.metrics?.durabilityYears || '—'}</td>
                             ))}
                           </tr>
                           <tr>
