@@ -103,12 +103,15 @@ body {
   color: var(--text-primary);
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  transition: all var(--transition-fast);
+/* In @layer base so Tailwind utilities (bg-*, border-*) on <button> are not overridden by this reset */
+@layer base {
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    transition: all var(--transition-fast);
+  }
 }
 
 input, textarea, select {

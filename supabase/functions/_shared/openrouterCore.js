@@ -211,8 +211,8 @@ QUALITY BAR
 - Numbers must be internally consistent (the parts you cut must add up to the finished dimensions you state).
 
 IMAGE PROMPTS (for an image model, written in ENGLISH)
-- "visualBible": ONE dense paragraph that describes the finished object precisely and permanently — shape, exact materials, colours, finish, approximate size, distinguishing details. It will be prepended to every image so the object looks identical in all pictures.
-- Each step "imagePrompt": describe ONLY what the camera sees at that stage: the partially built object in its current state, the specific tool in use, hands (no faces), the workbench, camera angle, what is highlighted. Be specific and visual. Never request text, labels, logos or watermarks inside the image.
+- "visualBible": ONE dense paragraph (60-100 words) that describes the finished object precisely and permanently — overall shape and proportions, each material and where it is used, exact colour names, finish (matte/gloss/raw), approximate size in cm, and 2-3 distinguishing details. It is prepended to every image so the object looks identical in all pictures, so be concrete, never vague.
+- Each step "imagePrompt": describe ONLY what the camera sees at that stage: the exact state of the partially built object (which parts exist, which are still loose), the one specific tool or material in use, the hands doing the action (no faces), and what the viewer should notice. 25-50 words, concrete and visual. The LAST step shows the completed object being tested. Never request text, labels, logos or watermarks inside the image.
 - "heroImagePrompt" (finished, beautiful, styled shot), "assemblyImagePrompt" (flat-lay / exploded layout of all parts and tools before assembly), "lifestyleImagePrompt" (the object in use in a real home setting).
 
 AUDIENCE: ${levelText(level)}
@@ -443,18 +443,33 @@ export async function develop({ apiKey, config, materials, concept, level, type 
 }
 
 const IMAGE_STYLE = {
-  hero: 'Professional product photograph, soft natural window light, clean neutral styled surface, shallow depth of field, 3/4 angle, magazine quality.',
-  assembly: 'Overhead flat-lay (knolling) photograph on a light workbench, parts and tools neatly arranged with even spacing, soft diffused light, sharp focus.',
-  lifestyle: 'Warm lifestyle photograph in a real, tasteful home interior, natural light, the object in everyday use.',
-  step: 'Clear instructional DIY photograph, 3/4 overhead angle, tidy wooden workbench, bright even daylight, sharp focus on the hands-on action, only hands visible (no faces).'
+  hero: 'High-end editorial product photograph, full-frame camera, 85mm lens, soft diffused window light from the left with gentle fill, subtle natural contact shadow, clean neutral styled surface (pale oak, light concrete or linen), 3/4 front angle, the object fills about 60% of the frame, crisp focus on material texture and edges, natural true-to-life colours, magazine quality.',
+  assembly: 'Top-down knolling flat-lay on a light workbench, every part and tool placed with even spacing and right angles, soft shadowless daylight, realistic relative scale, sharp focus across the whole frame, high detail.',
+  lifestyle: 'Warm lifestyle photograph in a real, tastefully styled home interior, natural daylight, shallow depth of field, the object in everyday use as the clear subject, no visible faces.',
+  step: 'Clear instructional how-to photograph, 3/4 overhead angle, tidy light-wood workbench, bright even daylight, sharp focus on the hands-on action with only hands visible (no faces); the work-in-progress object and the single tool in use are the heroes of the frame; clean uncluttered background.'
 };
 
-export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '' }) {
+const IMAGE_ASPECT = { hero: '4:3', assembly: '4:3', lifestyle: '4:3', step: '3:2' };
+
+const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
+
+export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '', stageLabel = '', isFinal = false, hasReference = false }) {
   const style = IMAGE_STYLE[kind] || IMAGE_STYLE.step;
-  return clip(
-    `${style}\nThe project object (keep it IDENTICAL in every image): ${visualBible}\nShow exactly this: ${prompt}\nPhotorealistic. No text, no letters, no numbers, no logos, no watermarks, no borders.`,
-    3500
-  );
+  const lines = [
+    style,
+    `The project object (keep it IDENTICAL in every image): ${visualBible}`
+  ];
+  if (hasReference) {
+    lines.push(
+      isFinal || kind !== 'step'
+        ? 'A reference photo of this exact project is attached: match its materials, colours, proportions and finish exactly.'
+        : 'A reference photo of the FINISHED project is attached. Use it ONLY to keep the same materials, colours, proportions and finish. Do NOT show the finished object: draw the partially built state described below.'
+    );
+  }
+  if (stageLabel) lines.push(`Build stage: ${stageLabel}.`);
+  lines.push(`Show exactly this: ${prompt}`);
+  lines.push('Photorealistic. ' + IMAGE_AVOID);
+  return clip(lines.join('\n'), 3500);
 }
 
 function pickImageUrl(message) {
@@ -472,18 +487,33 @@ function pickImageUrl(message) {
   return null;
 }
 
-export async function generateImage({ apiKey, config, kind, visualBible, prompt, aspect = '16:9' }) {
+const validReference = u => typeof u === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(u) && u.length < 1_500_000;
+
+export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal }) {
   if (!apiKey) throw new Error('OPENROUTER_API_KEY غير مضبوط على الخادم');
-  const text = composeImagePrompt({ kind, visualBible, prompt });
+  const useRef = validReference(referenceImage);
+  const ratio = aspect || IMAGE_ASPECT[kind] || '4:3';
   let lastErr = null;
 
   for (const model of config.imageModels) {
-    const base = {
-      model,
-      messages: [{ role: 'user', content: text }],
-      modalities: ['image', 'text']
-    };
-    for (const body of [{ ...base, image_config: { aspect_ratio: aspect } }, base]) {
+    // most capable request first, then progressively simpler ones
+    const variants = [];
+    if (useRef) variants.push({ ref: true, cfg: true }, { ref: true, cfg: false });
+    variants.push({ ref: false, cfg: true }, { ref: false, cfg: false });
+
+    for (const v of variants) {
+      const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: v.ref });
+      const body = {
+        model,
+        messages: [{
+          role: 'user',
+          content: v.ref
+            ? [{ type: 'text', text }, { type: 'image_url', image_url: { url: referenceImage } }]
+            : text
+        }],
+        modalities: ['image', 'text'],
+        ...(v.cfg ? { image_config: { aspect_ratio: ratio } } : {})
+      };
       let r;
       try {
         r = await postOpenRouter({ apiKey, config, body, timeoutMs: 90000 });
@@ -493,13 +523,13 @@ export async function generateImage({ apiKey, config, kind, visualBible, prompt,
       }
       if (r.ok) {
         const url = pickImageUrl(r.data?.choices?.[0]?.message);
-        if (url) return { imageUrl: url, model };
+        if (url) return { imageUrl: url, model, usedReference: v.ref };
         lastErr = new Error(`${model}: لم يُرجع صورة`);
         break;
       }
       lastErr = new Error(`${model}: ${errorMessage(r)}`);
-      if ((r.status === 400 || r.status === 422) && body.image_config) continue;
       if (r.status === 401 || r.status === 402) throw lastErr;
+      if (r.status === 400 || r.status === 422) continue; // try the simpler variant
       break;
     }
   }
