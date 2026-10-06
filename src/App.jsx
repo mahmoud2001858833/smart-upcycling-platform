@@ -1681,6 +1681,12 @@ export default function App() {
                             </div>
                           </div>
 
+                          {activeProj.wowFactor && (
+                            <div style={{ margin: '0.75rem 0', padding: '0.7rem 0.9rem', borderRadius: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '0.85rem', fontWeight: 700 }}>
+                              ✨ {activeProj.wowFactor}
+                            </div>
+                          )}
+
                           {/* Materials Preview Chips */}
                           {materialsList.length > 0 && (
                             <div className="spotlight-materials-preview">
@@ -1828,6 +1834,11 @@ export default function App() {
                               <p className="project-card-snippet">
                                 {project.idea}
                               </p>
+                              {project.wowFactor && (
+                                <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#047857', margin: '0.4rem 0 0' }}>
+                                  ✨ {project.wowFactor}
+                                </p>
+                              )}
 
                               {materialsList.length > 0 && (
                                 <div className="project-card-materials-chips">
