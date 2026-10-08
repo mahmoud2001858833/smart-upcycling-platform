@@ -963,7 +963,7 @@ export default function ProjectDedicatedPage({
                     <img
                       src={displayImage}
                       alt={step.title}
-                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi || aiPending ? 'opacity-40 blur-xs' : 'opacity-100'}`}
+                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi || aiPending || stepNeedsGenerate ? 'opacity-40 blur-xs' : 'opacity-100'}`}
                       onError={(e) => {
                         e.target.src = infographicUrl;
                       }}

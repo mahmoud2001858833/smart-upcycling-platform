@@ -143,6 +143,12 @@ export default function AdminDashboard() {
             : `الرصيد ${usd(runway.remainingUsd)} • كلفة المشروع ${usd(runway.perProjectUsd)}${runway.estimated ? ' (تقدير)' : ''} • صور ≈ ${runway.images == null ? '—' : nf.format(runway.images)}`}
           tone={runway.projects != null && runway.projects < 10 ? 'bad' : null}
         />
+        <Stat
+          icon={<Clock size={20} />}
+          label="كم مشروعاً تستطيع المنصة إنتاجه في الساعة"
+          value={nf.format(data.hourly.effective)}
+          hint={`براحة (3 لكل طلب): ${nf.format(data.hourly.comfortable)} • أقصى سقف بالحمل: ${nf.format(data.hourly.maxByLoad)} • بالرصيد: ${data.hourly.byCredit == null ? 'غير معروف' : nf.format(data.hourly.byCredit)} • أعلى ساعة فعلية: ${nf.format(data.hourly.last24hPeakPerHour || 0)}`}
+        />
         <Stat icon={<Activity size={20} />} label="حالة الضغط الآن" value={lvl.label} hint={`${nf.format(data.capacity.pressure)} عملية في آخر ${data.capacity.thresholds.windowSec} ثانية • المنتَج الآن ${data.capacity.projects} مشاريع${data.capacity.imagesAllowed ? '' : ' • الصور متوقفة'}`} tone={lvl.cls} />
         <Stat icon={<FolderOpen size={20} />} label="كل المشاريع المنتجة" value={nf.format(totals.projects)} hint={`${nf.format(totals.generations)} عملية توليد`} />
         <Stat icon={<Eye size={20} />} label="الزيارات (كلها)" value={nf.format(totals.visits)} hint={`آخر 24 ساعة: ${nf.format(stats.last24h.visits)} • 7 أيام: ${nf.format(s7.visits)}`} />

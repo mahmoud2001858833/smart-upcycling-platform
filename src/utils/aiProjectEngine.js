@@ -43,7 +43,7 @@ import {
 } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
 import { generateProjectsWithAi } from './projectPipeline.js';
-import { callAi, isLimitError } from './aiGateway.js';
+import { callAi } from './aiGateway.js';
 
 
 /**
@@ -267,17 +267,12 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
  * Invoke the live AI Recycling Advisor (Gemini) with full dynamic on-demand synthesis
  */
 export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null, onProgress }) {
-  // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway
-  let pipelineError = null;
+  // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway.
+  // On failure the error is shown to the person; canned template projects are never substituted because
+  // they ignore the entered materials and are not innovative.
+  const pipelineError = null;
   if (!imageBase64 && materials && materials.trim()) {
-    try {
-      return await generateProjectsWithAi({ materials, userLevel, projectType, onProgress });
-    } catch (pipelineErr) {
-      // load / credit / daily limits are real answers, not failures to paper over with canned projects
-      if (isLimitError(pipelineErr)) throw pipelineErr;
-      pipelineError = pipelineErr;
-      console.warn('OpenRouter pipeline failed, using legacy engines:', pipelineErr);
-    }
+    return generateProjectsWithAi({ materials, userLevel, projectType, onProgress });
   }
 
   const withFallbackNote = (result) => (

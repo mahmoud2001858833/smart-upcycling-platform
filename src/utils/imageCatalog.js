@@ -286,10 +286,12 @@ export function getProjectGallery(projectName = '', materialsStr = '', seedIndex
   const assemblyIdx = seedIndex % assemblyList.length;
   const inUseIdx = seedIndex % inUseList.length;
 
+  // Stock photos were unrelated to the actual project, so only drawn blueprints are used now.
+  void finishedList; void assemblyList; void inUseList; void finishedIdx; void assemblyIdx; void inUseIdx;
   return {
-    finished: finishedList[finishedIdx] || generateSvgBlueprint(projectName, materialsStr, 'finished'),
-    assembly: assemblyList[assemblyIdx] || generateSvgBlueprint(projectName, materialsStr, 'assembly'),
-    inUse: inUseList[inUseIdx] || generateSvgBlueprint(projectName, materialsStr, 'inUse'),
+    finished: generateSvgBlueprint(projectName, materialsStr, 'finished'),
+    assembly: generateSvgBlueprint(projectName, materialsStr, 'assembly'),
+    inUse: generateSvgBlueprint(projectName, materialsStr, 'inUse'),
     blueprint: generateSvgBlueprint(projectName, materialsStr, 'finished'),
     category
   };
@@ -298,18 +300,8 @@ export function getProjectGallery(projectName = '', materialsStr = '', seedIndex
 /**
  * Get next angle image for cycling
  */
-export function getNextAngleImage(materialsStr = '', projectName = '', viewType = 'finished', currentUrl = '') {
-  const category = detectMaterialCategory(materialsStr, projectName);
-  const catGallery = CURATED_MATERIAL_GALLERY[category] || CURATED_MATERIAL_GALLERY.general;
-  const list = catGallery[viewType] || CURATED_MATERIAL_GALLERY.general[viewType] || [];
-
-  if (list.length === 0) {
-    return generateSvgBlueprint(projectName, materialsStr, viewType);
-  }
-
-  const currentIdx = list.indexOf(currentUrl);
-  const nextIdx = (currentIdx + 1) % list.length;
-  return list[nextIdx] || generateSvgBlueprint(projectName, materialsStr, viewType);
+export function getNextAngleImage(materialsStr = '', projectName = '', viewType = 'finished') {
+  return generateSvgBlueprint(projectName, materialsStr, viewType);
 }
 
 /**
@@ -547,13 +539,8 @@ export function getStepImage(stepIndex = 1, stepTitle = '', stepDetail = '', mat
 /**
  * Get next step image for cycling / regenerating
  */
-export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '', projectName = '', currentUrl = '') {
-  const ctx = parseStepContext(stepIndex, stepTitle, '', materialsStr, projectName);
-  const matPhotos = CURATED_STEP_PHOTOS[ctx.material] || CURATED_STEP_PHOTOS.general;
-  const pool = Object.values(matPhotos);
-  const currentIdx = pool.indexOf(currentUrl);
-  const nextIdx = (currentIdx + 1) % pool.length;
-  return pool[nextIdx] || pool[0];
+export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '', projectName = '') {
+  return generateStepInfographic(stepIndex, stepTitle, '', {}, materialsStr || projectName);
 }
 
 /**
@@ -850,10 +837,9 @@ export function buildPreciseEnglishStepPrompt(stepNumber = 1, stepTitle = '', st
  * Generative AI Photorealistic Step Image URL (Prompt-based via Pollinations)
  * Uses high-precision English translation so Pollinations generates the EXACT step action.
  */
-export function getAiStepPhotoUrl(stepNumber = 1, stepTitle = '', stepDetail = '', projectMaterials = '', projectName = '', seedIndex = 0) {
-  const seed = (stepNumber * 43 + seedIndex * 23 + (projectName ? projectName.length * 7 : 17)) % 1000;
-  const prompt = buildPreciseEnglishStepPrompt(stepNumber, stepTitle, stepDetail, projectMaterials, projectName);
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=960&height=580&nologo=true&seed=${seed}&model=flux`;
+export function getAiStepPhotoUrl(stepNumber = 1, stepTitle = '', stepDetail = '', projectMaterials = '') {
+  // no remote "stock" or random-generator pictures: the drawn, step-specific schematic is the only non-AI visual
+  return generateStepInfographic(stepNumber, stepTitle, stepDetail, {}, projectMaterials);
 }
 
 /**

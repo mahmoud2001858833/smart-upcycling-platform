@@ -50,6 +50,15 @@ function hostOf(url = '') {
   try { return new URL(url).host.slice(0, 80); } catch { return ''; }
 }
 
+function cleanStage(st) {
+  if (!st || typeof st !== 'object') return null;
+  return {
+    title: clip(st.title, 160), goal: clip(st.goal, 300), measurements: clip(st.measurements, 300),
+    checkpoint: clip(st.checkpoint, 300),
+    actions: Array.isArray(st.actions) ? st.actions.slice(0, 8).map(a => clip(a, 300)) : []
+  };
+}
+
 const money = n => (Number.isFinite(n) ? Number(n.toFixed(6)) : null);
 
 /* ------------------------------------------------------------------ */
@@ -203,6 +212,24 @@ async function adminStats({ store, config, limits, apiKey, env, payload }) {
     images: remaining != null && perImage > 0 ? Math.max(0, Math.floor(remaining / perImage)) : null
   };
 
+  // How many projects can the platform make per hour? Two independent ceilings:
+  //  - by load: the busy/heavy/stop thresholds cap how many generations may start per window,
+  //    and each level hands out fewer projects (3 below busyAt, 2 below heavyAt, 1 below stopAt);
+  //  - by credit: remaining balance / average cost of a project.
+  const perHour = 3600 / limits.windowSec;
+  const perWindow = Math.min(limits.busyAt, limits.stopAt) * limits.maxProjects
+    + Math.max(0, Math.min(limits.heavyAt, limits.stopAt) - limits.busyAt) * Math.max(1, limits.maxProjects - 1)
+    + Math.max(0, limits.stopAt - limits.heavyAt) * 1;
+  const byLoadHour = Math.floor(perWindow * perHour);
+  const byLoadComfortable = Math.floor(limits.busyAt * limits.maxProjects * perHour);
+  const hourly = {
+    comfortable: byLoadComfortable,
+    maxByLoad: byLoadHour,
+    byCredit: runway.projects,
+    effective: runway.projects == null ? byLoadHour : Math.min(byLoadHour, runway.projects),
+    last24hPeakPerHour: stats.peakProjectsPerHour ?? null
+  };
+
   const launchEnv = env.PLATFORM_LAUNCH_AT && Date.parse(env.PLATFORM_LAUNCH_AT);
   const sinceMs = Number.isFinite(launchEnv) ? launchEnv : (first ? Date.parse(first) : now);
 
@@ -223,6 +250,7 @@ async function adminStats({ store, config, limits, apiKey, env, payload }) {
     totals: { projects: totalProjects, visits: totalVisits, generations: totalGenerations, images: totalImages },
     credit: capacity.credit,
     runway,
+    hourly,
     capacity: {
       ...capacity.cap,
       pressure: capacity.pressure,
@@ -414,7 +442,8 @@ const actions = {
         apiKey, config, meter, kind,
         visualBible: clip(payload?.visualBible, 1500), prompt,
         referenceImage: payload?.referenceImage, stageLabel: clip(payload?.stageLabel, 40),
-        isFinal: Boolean(payload?.isFinal), hd: payload?.hd !== false
+        isFinal: Boolean(payload?.isFinal), hd: payload?.hd !== false,
+        projectName: clip(payload?.projectName, 120), stage: cleanStage(payload?.stage)
       });
       await safeLog(store, viewer, {
         kind: 'image', model: r.model, cost: meter.cost, tokens: meter.tokens, durationMs: Date.now() - started,

@@ -23,8 +23,8 @@ export function hashKey(text) {
   return (h >>> 0).toString(36) + '-' + text.length.toString(36);
 }
 
-export function imageKey({ kind, visualBible = '', prompt = '' }) {
-  return hashKey(`${kind}|${visualBible}|${prompt}`);
+export function imageKey({ kind, visualBible = '', prompt = '', stage = null }) {
+  return hashKey(`${kind}|${visualBible}|${prompt}|${stage?.title || ''}|${(stage?.actions || []).join('~')}`);
 }
 
 /* ---------------- IndexedDB (fails soft) ---------------- */
@@ -162,6 +162,8 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
               kind: spec.kind,
               visualBible: spec.visualBible,
               prompt: spec.prompt,
+              projectName: spec.projectName || undefined,
+              stage: spec.stage || undefined,
               referenceImage: referenceImage || undefined,
               stageLabel: stageLabel || undefined,
               isFinal: isFinal || undefined
@@ -213,12 +215,22 @@ export function heroSpec(project, view = 'finished') {
   };
   const [kind, prompt] = map[view] || map.finished;
   if (!prompt) return null;
-  return { kind, visualBible: project.visualBible || '', prompt };
+  return { kind, visualBible: project.visualBible || '', prompt, projectName: project.name || '' };
 }
 
 export function stepSpec(project, step) {
   if (!step?.imagePrompt) return null;
-  return { kind: 'step', visualBible: project.visualBible || '', prompt: step.imagePrompt };
+  return {
+    kind: 'step',
+    visualBible: project.visualBible || '',
+    prompt: step.imagePrompt,
+    projectName: project.name || '',
+    // the written stage is sent along so the picture matches the explanation, not only the short visual prompt
+    stage: {
+      title: step.title || '', goal: step.goal || '', actions: step.actions || [],
+      measurements: step.measurements || '', checkpoint: step.checkpoint || ''
+    }
+  };
 }
 
 const isHeavy = v => typeof v === 'string' && v.startsWith('data:image/') && !v.startsWith('data:image/svg') && v.length > 2000;

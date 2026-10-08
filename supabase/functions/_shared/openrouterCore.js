@@ -192,13 +192,14 @@ export function buildIdeationMessages({ materials, level, type, count = 8, avoid
 TASK: Brainstorm ${count} genuinely distinct upcycling project concepts that use the user's materials.
 
 HARD RULES
-1. Every concept must be built mainly from the user's materials. List which ones it uses.
+1. Every concept must be built mainly from the user's materials. In "usesMaterials" copy the user's own wording for each material it really uses (never invent materials the user did not list; cheap supplies like glue or screws are not materials). A concept that ignores the user's materials is a failure.
 2. BAN the clichés unless radically elevated into something new: plain pencil holder, basic flower pot, generic organizer box, bottle-cap picture, plain lantern. If you use a familiar category, the twist must be obvious.
 3. Aim for "I would pay for this" perceived value: a result that looks like a designed product, not a school craft.
 4. Spread the ${count} concepts across DIFFERENT archetypes (examples: lighting, furniture, smart-garden / hydroponics, kinetic or science toy, sound / acoustic object, storage system, wearable / accessory, climate / water / energy helper, game / educational kit, wall art with function). No two concepts may share an archetype.
 5. Must be buildable at home with common tools in under 1 day. Respect the audience safety limits.
 6. Think about the CLEVER MECHANISM: a physical principle, a joint, a trick of the material that makes the idea feel inventive (e.g. capillary wicking, Helmholtz resonance, living hinges in PET, solar chimney, counterweights).
-7. Be honest in your scores. Do not give every concept 9s.
+7. INNOVATION TEST: before keeping a concept ask "have I seen this exact thing on a craft blog?". If yes, replace it with something that combines two of the user's materials in a way that creates a NEW function.
+8. Be honest in your scores. Do not give every concept 9s.
 
 AUDIENCE: ${levelText(level)}
 CATEGORY PREFERENCE: ${typeText(type)}
@@ -241,7 +242,7 @@ QUALITY BAR
 
 IMAGE PROMPTS (for an image model, written in ENGLISH)
 - "visualBible": ONE dense paragraph (60-100 words) that describes the finished object precisely and permanently — overall shape and proportions, each material and where it is used, exact colour names, finish (matte/gloss/raw), approximate size in cm, and 2-3 distinguishing details. It is prepended to every image so the object looks identical in all pictures, so be concrete, never vague.
-- Each step "imagePrompt": describe ONLY what the camera sees at that stage: the exact state of the partially built object (which parts exist, which are still loose), the one specific tool or material in use, the hands doing the action (no faces), and what the viewer should notice. 25-50 words, concrete and visual. The LAST step shows the completed object being tested. Never request text, labels, logos or watermarks inside the image.
+- Each step "imagePrompt": it MUST illustrate exactly what that step's "actions" tell the builder to do, so someone reading the step and looking at the picture sees the same thing. Name the real materials of this project (not generic words like "material"), the real tool, and one visible measurement or mark from the step. Describe ONLY what the camera sees at that stage: the exact state of the partially built object (which parts exist, which are still loose), the one specific tool or material in use, the hands doing the action (no faces), and what the viewer should notice. 40-70 words, concrete and visual. The LAST step shows the completed object being tested. Never request text, labels, logos or watermarks inside the image.
 - "heroImagePrompt" (finished, beautiful, styled shot), "assemblyImagePrompt" (flat-lay / exploded layout of all parts and tools before assembly), "lifestyleImagePrompt" (the object in use in a real home setting).
 
 AUDIENCE: ${levelText(level)}
@@ -418,6 +419,33 @@ export function normalizeDeveloped(raw) {
 
 const clip = (s, n) => String(s || '').slice(0, n);
 
+const normAr = t => String(t || '').toLowerCase()
+  .replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+
+/** Stem-ish tokens of the user's materials ("زجاجات بلاستيكية" -> زجاج, بلاستيك). */
+function materialTokens(materials) {
+  return [...new Set(
+    normAr(materials).split(/[^\p{L}\p{N}]+/u)
+      .map(w => w.replace(/^(ال|و)/, '').replace(/(ات|ون|ين|ان|ه|ي|ية)$/, ''))
+      .filter(w => w.length >= 3)
+  )];
+}
+
+/**
+ * Drop concepts that do not use any of the entered materials (the model sometimes drifts).
+ * Only filters when enough concepts remain, so a vague input never leaves the user with nothing.
+ */
+export function keepConceptsUsingMaterials(concepts, materials, need = 3) {
+  const tokens = materialTokens(materials);
+  if (!tokens.length) return concepts;
+  const uses = c => {
+    const text = normAr(`${(c.usesMaterials || []).join(' ')} ${c.pitch || ''} ${c.name || ''}`);
+    return tokens.filter(t => text.includes(t)).length;
+  };
+  const withUse = concepts.filter(c => (c.usesMaterials || []).length && uses(c) > 0);
+  return withUse.length >= need ? withUse : concepts;
+}
+
 export async function ideate({ apiKey, config, materials, level, type, count = 8, avoid = [], take = 3, meter = null }) {
   const mats = clip(materials, 1500);
   if (!mats.trim()) throw new Error('المواد مطلوبة');
@@ -427,7 +455,7 @@ export async function ideate({ apiKey, config, materials, level, type, count = 8
     json: true, temperature: 1.0, maxTokens: 6000, timeoutMs: 80000
   });
   const data = extractJson(text);
-  const concepts = arr(data.concepts);
+  const concepts = keepConceptsUsingMaterials(arr(data.concepts), mats, Math.max(1, Math.min(3, Number(take) || 3)));
   const top = pickTopConcepts(concepts, Math.max(1, Math.min(3, Number(take) || 3)));
   if (top.length === 0) throw new Error('لم يُنتج العصف الذهني أفكاراً صالحة');
   return { top, all: concepts, model };
@@ -482,7 +510,7 @@ const IMAGE_ASPECT = { hero: '4:3', assembly: '4:3', lifestyle: '4:3', step: '3:
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
 
-export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '', stageLabel = '', isFinal = false, hasReference = false }) {
+export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '', stageLabel = '', isFinal = false, hasReference = false, stage = null, projectName = '' }) {
   const style = IMAGE_STYLE[kind] || IMAGE_STYLE.step;
   const lines = [
     style,
@@ -495,7 +523,19 @@ export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '
         : 'A reference photo of the FINISHED project is attached. Use it ONLY to keep the same materials, colours, proportions and finish. Do NOT show the finished object: draw the partially built state described below.'
     );
   }
+  if (projectName) lines.push(`Project: ${projectName}.`);
   if (stageLabel) lines.push(`Build stage: ${stageLabel}.`);
+  if (stage && kind === 'step') {
+    // the written instructions are the source of truth: the picture must match them, not just the short visual prompt
+    const detail = [
+      stage.title && `Stage title (Arabic): ${stage.title}`,
+      stage.goal && `Goal: ${stage.goal}`,
+      stage.actions?.length && `What the builder does in this stage:\n${stage.actions.map(a => `- ${a}`).join('\n')}`,
+      stage.measurements && `Key measurements: ${stage.measurements}`,
+      stage.checkpoint && `The finished state of this stage looks like: ${stage.checkpoint}`
+    ].filter(Boolean).join('\n');
+    if (detail) lines.push(`STAGE INSTRUCTIONS THE PICTURE MUST MATCH EXACTLY (show the work being done in these actions, the parts and tool named in them, and nothing from later stages):\n${detail}`);
+  }
   lines.push(`Show exactly this: ${prompt}`);
   lines.push('Photorealistic. ' + IMAGE_AVOID);
   return clip(lines.join('\n'), 3500);
@@ -518,7 +558,7 @@ function pickImageUrl(message) {
 
 const validReference = u => typeof u === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(u) && u.length < 1_500_000;
 
-export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, meter = null }) {
+export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, stage = null, projectName = '', meter = null }) {
   if (!apiKey) throw new GatewayError('OPENROUTER_API_KEY غير مضبوط على الخادم', { status: 503, code: 'NO_KEY' });
   const useRef = validReference(referenceImage);
   const ratio = aspect || IMAGE_ASPECT[kind] || '4:3';
@@ -533,7 +573,7 @@ export async function generateImage({ apiKey, config, kind = 'step', visualBible
     variants.push({ ref: false, cfg: 'size' }, { ref: false, cfg: 'aspect' }, { ref: false, cfg: 'none' });
 
     for (const v of variants) {
-      const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: v.ref });
+      const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: v.ref, stage, projectName });
       const imageConfig = v.cfg === 'size'
         ? { aspect_ratio: ratio, image_size: size }
         : v.cfg === 'aspect' ? { aspect_ratio: ratio } : null;
