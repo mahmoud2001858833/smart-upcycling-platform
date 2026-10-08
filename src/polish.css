@@ -413,3 +413,59 @@ html, body { max-width: 100%; }
   .studio-tab-btn { min-width: 0; }
   .selection-studio-tabs { overflow-x: auto; }
 }
+
+/* ---------- on-demand image CTA ---------- */
+.gen-image-cta { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; padding: 1rem; text-align: center; background: linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.38)); }
+.gen-image-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .85rem 1.4rem; border-radius: 14px; border: 0; cursor: pointer; font-weight: 800; font-size: 1rem; color: #fff; background: linear-gradient(135deg, var(--emerald-primary), var(--emerald-600)); box-shadow: 0 10px 24px rgba(4,106,56,.35); transition: transform .15s ease, box-shadow .15s ease; }
+.gen-image-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(4,106,56,.4); }
+.gen-image-btn.is-small { padding: .6rem 1rem; font-size: .85rem; }
+.gen-image-note { margin: 0; max-width: 28rem; font-size: .78rem; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+
+/* ---------- capacity banner ---------- */
+.capacity-banner { display: flex; gap: .7rem; align-items: flex-start; padding: .85rem 1.1rem; margin-bottom: 1rem; border-radius: 14px; border: 1px solid var(--border-subtle); background: #fff; color: var(--text-secondary); font-size: .88rem; }
+.capacity-banner p { margin: .2rem 0 0; font-size: .8rem; color: var(--text-muted); }
+.capacity-banner.is-busy, .capacity-banner.is-heavy { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.capacity-banner.is-closed { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+/* ---------- admin dashboard ---------- */
+.adm-wrap { display: flex; flex-direction: column; gap: 1.25rem; }
+.adm-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.adm-head h2, .adm-head h3 { margin: 0; color: var(--text-primary); }
+.adm-muted { color: var(--text-muted); font-size: .8rem; margin: .2rem 0 0; }
+.adm-error { color: #b91c1c; font-weight: 700; }
+.adm-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border-radius: 10px; border: 1px solid var(--border-medium); background: #fff; color: var(--text-secondary); font-weight: 700; font-size: .82rem; cursor: pointer; }
+.adm-btn:disabled { opacity: .5; cursor: default; }
+.adm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .9rem; }
+.adm-stat { display: flex; gap: .8rem; align-items: flex-start; padding: 1rem 1.1rem; background: #fff; border: 1px solid var(--border-subtle); border-radius: 16px; box-shadow: var(--shadow-sm); }
+.adm-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--emerald-light); color: var(--emerald-primary); flex: none; }
+.adm-stat.is-warn .adm-stat-icon { background: #fffbeb; color: #b45309; }
+.adm-stat.is-bad .adm-stat-icon { background: #fef2f2; color: #b91c1c; }
+.adm-stat-value { font-size: 1.35rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+.adm-stat-label { font-size: .8rem; font-weight: 700; color: var(--text-secondary); margin-top: .15rem; }
+.adm-stat-hint { font-size: .72rem; color: var(--text-muted); margin-top: .25rem; }
+.adm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: .9rem; }
+.adm-chart { background: #fff; border: 1px solid var(--border-subtle); border-radius: 16px; padding: 1rem; }
+.adm-chart-title { font-weight: 800; font-size: .85rem; margin-bottom: .6rem; color: var(--text-secondary); }
+.adm-bars { display: flex; align-items: flex-end; gap: 4px; height: 130px; direction: ltr; }
+.adm-bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; min-width: 0; }
+.adm-bar { width: 100%; max-width: 22px; background: linear-gradient(180deg, var(--emerald-500), var(--emerald-primary)); border-radius: 5px 5px 2px 2px; }
+.adm-bar-num { font-size: .62rem; color: var(--text-muted); height: 12px; }
+.adm-bar-day { font-size: .62rem; color: var(--text-muted); }
+.adm-card { background: #fff; border: 1px solid var(--border-subtle); border-radius: 16px; padding: 1rem 1.1rem; }
+.adm-card h3 { margin: 0 0 .7rem; font-size: 1rem; color: var(--text-primary); }
+.adm-table-wrap { overflow-x: auto; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.adm-table th { text-align: right; padding: .5rem .6rem; color: var(--text-muted); font-weight: 700; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+.adm-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--bg-surface-soft); color: var(--text-secondary); vertical-align: top; }
+.adm-table tr.is-click { cursor: pointer; }
+.adm-table tr.is-click:hover td { background: var(--emerald-light); }
+.adm-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-search { display: flex; align-items: center; gap: .4rem; border: 1px solid var(--border-medium); border-radius: 10px; padding: .35rem .6rem; background: #fff; }
+.adm-search input { border: 0; outline: 0; font: inherit; font-size: .82rem; min-width: 10rem; background: transparent; }
+.adm-pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: .8rem; font-size: .8rem; }
+.adm-errors { margin: 0; padding-right: 1.1rem; font-size: .78rem; color: #991b1b; }
+.adm-modal-back { position: fixed; inset: 0; z-index: 80; background: rgba(15,23,42,.55); display: grid; place-items: center; padding: 1rem; }
+.adm-modal { position: relative; background: #fff; border-radius: 18px; max-width: 720px; width: 100%; max-height: 85vh; overflow: auto; padding: 1.4rem; font-size: .88rem; line-height: 1.7; }
+.adm-modal h3 { margin: 0 0 .3rem; }
+.adm-modal-x { position: absolute; top: .8rem; left: .8rem; border: 0; background: var(--bg-surface-soft); border-radius: 10px; padding: .35rem; cursor: pointer; }
+@media (max-width: 640px) { .adm-grid { grid-template-columns: 1fr; } .adm-search input { min-width: 6rem; } }

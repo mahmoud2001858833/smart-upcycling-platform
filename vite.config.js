@@ -1,14 +1,23 @@
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
-import { handleAction } from './supabase/functions/_shared/openrouterCore.js'
+import { handleRequest } from './supabase/functions/_shared/gateway.js'
 
 /**
  * Dev-only AI gateway.
- * Serves POST /api/ai using the same core as the Supabase Edge Function, reading
- * OPENROUTER_API_KEY from .env.local (NOT prefixed with VITE_, so it is never bundled).
+ * Serves POST /api/ai with the very same handler as the Supabase Edge Function (capacity, credit,
+ * caps, usage log, admin). Secrets come from .env.local and are NOT prefixed with VITE_, so they
+ * are never bundled. Without SUPABASE_SERVICE_ROLE_KEY the usage log lives in memory.
  */
 function aiGatewayDev(env) {
+  const gatewayEnv = {
+    ...env,
+    SUPABASE_URL: env.SUPABASE_URL || env.VITE_SUPABASE_URL,
+    SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY,
+    EXPOSE_ERRORS: env.EXPOSE_ERRORS ?? '1'
+  }
+  const MAX_BODY = 4_000_000
+
   const handler = async (req, res, next) => {
     if (!req.url?.startsWith('/api/ai')) return next()
     const send = (status, body) => {
@@ -19,14 +28,19 @@ function aiGatewayDev(env) {
     if (req.method !== 'POST') return send(405, { success: false, error: 'POST only' })
 
     let raw = ''
-    for await (const chunk of req) raw += chunk
-    try {
-      const { action, payload } = JSON.parse(raw || '{}')
-      const result = await handleAction({ action, payload, apiKey: env.OPENROUTER_API_KEY, env })
-      send(200, result)
-    } catch (e) {
-      send(500, { success: false, error: e.message || 'خطأ غير متوقع' })
+    for await (const chunk of req) {
+      raw += chunk
+      if (raw.length > MAX_BODY) return send(413, { success: false, code: 'TOO_LARGE', error: 'الطلب كبير جداً' })
     }
+    let body
+    try {
+      body = JSON.parse(raw || '{}')
+    } catch {
+      return send(400, { success: false, code: 'BAD_REQUEST', error: 'طلب غير صالح' })
+    }
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim()
+    const { status, body: out } = await handleRequest({ body, headers: req.headers, ip, env: gatewayEnv })
+    send(status, out)
   }
   return {
     name: 'ai-gateway-dev',

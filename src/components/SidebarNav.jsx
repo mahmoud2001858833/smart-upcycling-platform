@@ -11,7 +11,8 @@ import {
   Trophy,
   CheckCircle,
   Sparkles,
-  Leaf
+  Leaf,
+  Activity
 } from 'lucide-react';
 
 export default function SidebarNav({
@@ -25,7 +26,8 @@ export default function SidebarNav({
   hasGeminiKey = false,
   onOpenGeminiKeyModal,
   isOpen = false,
-  onClose
+  onClose,
+  isAdmin = false
 }) {
   const navItems = [
     {
@@ -69,7 +71,13 @@ export default function SidebarNav({
       label: 'شهادة الإنجاز',
       icon: Award,
       badge: null
-    }
+    },
+    ...(isAdmin ? [{
+      id: 'admin',
+      label: 'لوحة التحكم',
+      icon: Activity,
+      badge: null
+    }] : [])
   ];
 
   const handleSelectTab = (tabId) => {

@@ -58,8 +58,9 @@ export function AiImage({ src, alt = '', status = 'ready', fallback, onRetry, la
 export function ProjectCover({ project, view = 'finished', className = '', imgClassName = '' }) {
   const hero = useAiHero(project, view);
 
-  if (!hero.isAi) {
-    const url = project?.gallery?.[view] || project?.generatedImage;
+  if (!hero.isAi || !hero.url) {
+    // no AI picture yet (it is generated on demand from the project page): show the drawn blueprint, never a stock photo
+    const url = hero.isAi ? null : (project?.gallery?.[view] || project?.generatedImage);
     return (
       <div className={`ai-img ${className}`}>
         <img
@@ -80,23 +81,19 @@ export function ProjectCover({ project, view = 'finished', className = '', imgCl
       alt={project.name}
       className={className}
       imgClassName={imgClassName}
-      label={`جاري رسم صورة «${VIEW_LABEL[view] || ''}»…`}
       fallback={generateSvgBlueprint(project.name, project.materials, view)}
-      onRetry={hero.retry}
     />
   );
 }
 
 export function ViewThumb({ project, view, active, onClick }) {
-  // only the selected view (and the main one) is generated; the others load from cache until clicked
-  const hero = useAiHero(project, view, { enabled: active || view === 'finished' });
+  const hero = useAiHero(project, view);
   const legacy = !hero.isAi ? (project?.gallery?.[view] || project?.generatedImage) : null;
   const src = hero.url || legacy;
   return (
     <button type="button" className={`angle-thumb ${active ? 'active' : ''}`} onClick={onClick} aria-pressed={active}>
       <span className="angle-thumb-media">
         {src ? <img src={src} alt="" loading="lazy" /> : <span className="angle-thumb-ph"><ImageIcon size={16} /></span>}
-        {hero.isAi && hero.status === 'loading' && !src && <span className="angle-thumb-shimmer" />}
       </span>
       <span className="angle-thumb-label">{VIEW_LABEL[view]}</span>
     </button>
