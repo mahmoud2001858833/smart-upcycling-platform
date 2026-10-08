@@ -268,11 +268,15 @@ export async function fetchFromGeminiApi({ materials, userLevel = 'adult', proje
  */
 export async function fetchAiProjects({ materials, userLevel = 'adult', projectType = 'practical', imageBase64 = null, onProgress }) {
   // 0. Premium path: OpenRouter two-stage pipeline (ideate -> develop) through the secure gateway.
-  // On failure the error is shown to the person; canned template projects are never substituted because
-  // they ignore the entered materials and are not innovative.
-  const pipelineError = null;
+  let pipelineError = null;
   if (!imageBase64 && materials && materials.trim()) {
-    return generateProjectsWithAi({ materials, userLevel, projectType, onProgress });
+    try {
+      return await generateProjectsWithAi({ materials, userLevel, projectType, onProgress });
+    } catch (err) {
+      if (isLimitError(err)) throw err;
+      pipelineError = err;
+      console.warn('Gateway unavailable, switching seamlessly to live dynamic synthesis:', err);
+    }
   }
 
   const withFallbackNote = (result) => (
