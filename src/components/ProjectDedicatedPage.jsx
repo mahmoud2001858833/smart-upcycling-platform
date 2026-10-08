@@ -5,7 +5,7 @@ import {
   ChevronRight, Wrench, Layers, Leaf, Droplets, Zap, 
   DollarSign, CheckSquare, Square, Eye, MessageCircle,
   Lightbulb, Bot, RefreshCw, Maximize2, X,
-  Play, Pause, RotateCcw, Timer, FileText, GraduationCap
+  Play, Pause, RotateCcw, Timer, FileText, GraduationCap, Download
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
@@ -237,6 +237,9 @@ export default function ProjectDedicatedPage({
   // Real AI pictures (cached in IndexedDB, generated on demand through the secure gateway)
   const ai = useProjectAiImages(project, activeStepTab);
   const aiHeroUrl = activeAngle === 'blueprint' ? null : ai.heroUrl(activeAngle);
+  const heroLoading = ai.enabled && activeAngle !== 'blueprint' && ai.heroState(activeAngle) === 'loading';
+  const heroNeedsGenerate = ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl;
+  const heroErr = activeAngle === 'blueprint' ? null : ai.heroError(activeAngle);
 
   // Multi-angle image resolver
   const currentHeroImage = useMemo(() => {
@@ -593,33 +596,52 @@ export default function ProjectDedicatedPage({
             <img
               src={currentHeroImage}
               alt={project.title}
-              className={`w-full h-full object-cover transition-all duration-500 ${ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) !== 'error' ? 'opacity-0' : 'opacity-100'}`}
+              className={`w-full h-full object-cover transition-all duration-500 ${heroLoading ? 'opacity-40 blur-xs' : 'opacity-100'}`}
               onError={(e) => {
                 e.target.src = project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
               }}
             />
-            
-            {ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) !== 'error' && (
+
+            {heroLoading && (
               <div className="ai-img-skeleton" role="status">
                 <span className="ai-img-skeleton-icon"><Sparkles size={22} /></span>
-                <span className="ai-img-skeleton-text">جاري رسم الصورة بالذكاء الاصطناعي…</span>
+                <span className="ai-img-skeleton-text">جاري رسم الصورة بدقة عالية… قد يستغرق ذلك دقيقة</span>
               </div>
             )}
-            {ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl && ai.heroState(activeAngle) === 'error' && (
-              <button type="button" className="ai-img-retry" onClick={() => ai.regenerateHero(activeAngle)}>
-                <RefreshCw size={13} />
-                <span>تعذر توليد الصورة — إعادة المحاولة</span>
-              </button>
+            {heroNeedsGenerate && !heroLoading && (
+              <div className="gen-image-cta">
+                <button type="button" className="gen-image-btn" onClick={() => ai.generateHero(activeAngle)} data-testid="generate-hero">
+                  <Sparkles className="w-5 h-5" />
+                  <span>{activeAngle === 'finished' ? 'توليد صورة المشروع بدقة عالية' : 'توليد هذه الصورة بدقة عالية'}</span>
+                </button>
+                <p className="gen-image-note">
+                  {heroErr
+                    ? (heroErr.code === 'IMAGES_PAUSED' || heroErr.code === 'DAILY_LIMIT' || heroErr.code === 'NO_CREDIT' || heroErr.code === 'CAPACITY_CLOSED'
+                        ? heroErr.message
+                        : 'تعذر توليد الصورة، حاول مرة أخرى.')
+                    : 'لا تُنشأ الصورة تلقائياً — اضغط عندما تريدها.'}
+                </p>
+              </div>
             )}
             {ai.enabled && activeAngle !== 'blueprint' && aiHeroUrl && (
-              <button
-                type="button"
-                onClick={() => ai.regenerateHero(activeAngle)}
-                className="absolute top-3 left-3 p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 transition-all cursor-pointer shadow-xs"
-                title="إعادة رسم هذه الصورة"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              <div className="absolute top-3 left-3 flex gap-1.5">
+                <a
+                  href={aiHeroUrl}
+                  download={`${(project.name || 'project').slice(0, 40)}-${activeAngle}.jpg`}
+                  className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 transition-all cursor-pointer shadow-xs"
+                  title="تحميل الصورة"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => ai.regenerateHero(activeAngle)}
+                  className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 transition-all cursor-pointer shadow-xs"
+                  title="إعادة رسم هذه الصورة"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
             )}
 
             <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-2">
@@ -925,7 +947,9 @@ export default function ProjectDedicatedPage({
 
             const aiStepUrl = ai.enabled ? ai.stepUrl(activeStepTab) : null;
             const aiStepState = ai.enabled ? ai.stepState(activeStepTab) : null;
-            const aiPending = ai.enabled && viewMode === 'photo' && !aiStepUrl && aiStepState !== 'error';
+            const aiPending = ai.enabled && viewMode === 'photo' && aiStepState === 'loading';
+            const stepNeedsGenerate = ai.enabled && viewMode === 'photo' && !aiStepUrl && aiStepState !== 'loading';
+            const stepErr = ai.enabled ? ai.stepError(activeStepTab) : null;
             const displayImage = viewMode === 'infographic'
               ? infographicUrl
               : (aiStepUrl || (ai.enabled ? infographicUrl : photoUrl));
@@ -951,14 +975,19 @@ export default function ProjectDedicatedPage({
                         <span className="text-xs font-bold bg-white/90 px-3 py-1 rounded-full border border-slate-200">جاري رسم صورة هذه المرحلة بالذكاء الاصطناعي…</span>
                       </div>
                     )}
-                    {ai.enabled && aiStepState === 'error' && viewMode === 'photo' && (
-                      <button
-                        type="button"
-                        onClick={() => ai.regenerateStep(activeStepTab)}
-                        className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold cursor-pointer shadow-md"
-                      >
-                        تعذر توليد الصورة — إعادة المحاولة
-                      </button>
+                    {stepNeedsGenerate && (
+                      <div className="gen-image-cta">
+                        <button type="button" className="gen-image-btn is-small" onClick={() => ai.generateStep(activeStepTab)} data-testid="generate-step">
+                          <Sparkles className="w-4 h-4" />
+                          <span>توليد صورة هذه المرحلة</span>
+                        </button>
+                        {stepErr && <p className="gen-image-note">{['IMAGES_PAUSED', 'DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'].includes(stepErr.code) ? stepErr.message : 'تعذر توليد الصورة، حاول مرة أخرى.'}</p>}
+                      </div>
+                    )}
+                    {ai.enabled && aiStepUrl && viewMode === 'photo' && (
+                      <a href={aiStepUrl} download={`step-${activeStepTab + 1}.jpg`} className="absolute bottom-3 left-3 p-1.5 rounded-xl bg-white/95 border border-slate-200 text-slate-700 hover:text-emerald-700 shadow-xs" title="تحميل الصورة">
+                        <Download className="w-4 h-4" />
+                      </a>
                     )}
 
                     {/* Mode Toggle Pills (Infographic with explanation vs Realistic AI Photo) */}

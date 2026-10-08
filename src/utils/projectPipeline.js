@@ -8,7 +8,6 @@
 import { callAi } from './aiGateway.js';
 import { getProjectGallery } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
-import { requestImage, heroSpec } from './aiImageStore.js';
 
 const joinNonEmpty = (parts, sep) => parts.filter(Boolean).join(sep);
 
@@ -144,13 +143,13 @@ function toAppProject({ dev, concept, index, userMaterials }) {
 }
 
 /**
- * @param {{materials:string,userLevel:string,projectType:string,onProgress?:(p:{phase:string,message:string,done?:number,total?:number})=>void,onHeroReady?:(projectId:string,view:string,url:string)=>void}} opts
+ * @param {{materials:string,userLevel:string,projectType:string,onProgress?:(p:{phase:string,message:string,done?:number,total?:number})=>void}} opts
  */
-export async function generateProjectsWithAi({ materials, userLevel, projectType, onProgress, onHeroReady }) {
+export async function generateProjectsWithAi({ materials, userLevel, projectType, onProgress }) {
   const say = (phase, message, extra = {}) => onProgress?.({ phase, message, ...extra });
 
   say('ideate', 'عصف ذهني: ابتكار 8 أفكار مختلفة وتقييم كل فكرة…');
-  const ideation = await callAi('ideate', { materials, level: userLevel, type: projectType, count: 8 }, { timeoutMs: 100000 });
+  const ideation = await callAi('ideate', { materials, level: userLevel, type: projectType, take: 3 }, { timeoutMs: 100000 });
   const concepts = ideation.concepts || [];
   if (concepts.length === 0) throw new Error('لم تُنتج مرحلة العصف الذهني أفكاراً');
 
@@ -174,20 +173,13 @@ export async function generateProjectsWithAi({ materials, userLevel, projectType
     throw new Error(reason?.message || 'تعذر تطوير الأفكار إلى مشاريع كاملة');
   }
 
-  // Warm the hero pictures in the background; the UI patches itself when each one lands.
-  say('images', 'بدء توليد الصور الرئيسية للمشاريع…');
-  projects.forEach((p, i) => {
-    const spec = heroSpec(p, 'finished');
-    if (!spec) return;
-    requestImage(spec, { priority: 100 - i })
-      .then(url => onHeroReady?.(p.id, 'finished', url))
-      .catch(err => console.warn('hero image failed:', err.message));
-  });
-
   return {
     success: true,
     projects,
     failedCount: results.length - projects.length,
+    // set when load or remaining credit made the server grant fewer than the usual 3
+    notice: ideation.capacity && ideation.capacity.granted < 3 ? ideation.capacity.message || '' : '',
+    capacity: ideation.capacity || null,
     followUpQuestions: [
       `ما الأدوات المتوفرة لديك فعلاً من هذه القائمة: ${(projects[0].toolsList || []).slice(0, 3).map(t => t.name).join('، ') || 'أدوات القص والتثبيت'}؟`,
       'هل تريد نسخة أبسط أو أسرع من أحد هذه المشاريع؟',

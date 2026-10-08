@@ -9,7 +9,31 @@
  * It must never be shipped to the browser.
  */
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API = 'https://openrouter.ai/api/v1';
+const OPENROUTER_URL = `${OPENROUTER_API}/chat/completions`;
+
+/** Error with a machine-readable code and HTTP status, mapped by the hosts. */
+export class GatewayError extends Error {
+  constructor(message, { status = 500, code = 'ERROR' } = {}) {
+    super(message);
+    this.name = 'GatewayError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Accumulates what a request cost, so the platform can log it. */
+export const newMeter = () => ({ cost: 0, tokens: 0, calls: 0 });
+
+export function addUsage(meter, data) {
+  if (!meter) return;
+  meter.calls += 1;
+  const u = data?.usage;
+  if (!u) return;
+  const c = Number(u.cost);
+  if (Number.isFinite(c)) meter.cost += c;
+  meter.tokens += Number(u.total_tokens) || ((Number(u.prompt_tokens) || 0) + (Number(u.completion_tokens) || 0));
+}
 
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
@@ -39,7 +63,10 @@ export function resolveConfig(env = {}) {
     imageModels: list(env.OPENROUTER_IMAGE_MODEL, [
       'google/gemini-2.5-flash-image'
     ]),
-    baseUrl: env.OPENROUTER_BASE_URL || OPENROUTER_URL,
+    apiBase: env.OPENROUTER_API_BASE || OPENROUTER_API,
+    baseUrl: env.OPENROUTER_BASE_URL || (env.OPENROUTER_API_BASE ? `${env.OPENROUTER_API_BASE}/chat/completions` : OPENROUTER_URL),
+    // Resolution for the main pictures. 2K/4K only apply to image models that support them.
+    imageSize: env.OPENROUTER_IMAGE_SIZE || '2K',
     siteUrl: env.OPENROUTER_SITE_URL || 'https://smart-upcycling-platform.local',
     siteName: env.OPENROUTER_SITE_NAME || 'Smart Upcycling Platform'
   };
@@ -78,14 +105,14 @@ function errorMessage(r) {
 }
 
 export async function chat({
-  apiKey, config, models, messages,
+  apiKey, config, models, messages, meter = null,
   json = false, temperature = 0.8, maxTokens = 8000, timeoutMs = 100000
 }) {
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY غير مضبوط على الخادم');
+  if (!apiKey) throw new GatewayError('OPENROUTER_API_KEY غير مضبوط على الخادم', { status: 503, code: 'NO_KEY' });
   let lastErr = null;
 
   for (const model of models) {
-    const base = { model, messages, temperature, max_tokens: maxTokens };
+    const base = { model, messages, temperature, max_tokens: maxTokens, usage: { include: true } };
     const attempts = json ? [{ ...base, response_format: { type: 'json_object' } }, base] : [base];
 
     for (const body of attempts) {
@@ -101,6 +128,7 @@ export async function chat({
         const text = Array.isArray(content)
           ? content.map(p => p?.text || '').join('')
           : (content || '');
+        addUsage(meter, r.data);
         if (text) return { text, model };
         lastErr = new Error(`${model}: استجابة فارغة`);
         break;
@@ -109,7 +137,8 @@ export async function chat({
       // 400/422 usually means response_format unsupported -> retry same model without it
       if ((r.status === 400 || r.status === 422) && body.response_format) continue;
       // Auth / credit problems will not be fixed by another model
-      if (r.status === 401 || r.status === 402) throw lastErr;
+      if (r.status === 402) throw new GatewayError('رصيد الذكاء الاصطناعي انتهى', { status: 503, code: 'NO_CREDIT' });
+      if (r.status === 401) throw new GatewayError('مفتاح الذكاء الاصطناعي على الخادم غير صالح', { status: 503, code: 'BAD_KEY' });
       break;
     }
   }
@@ -389,27 +418,27 @@ export function normalizeDeveloped(raw) {
 
 const clip = (s, n) => String(s || '').slice(0, n);
 
-export async function ideate({ apiKey, config, materials, level, type, count = 8, avoid = [] }) {
+export async function ideate({ apiKey, config, materials, level, type, count = 8, avoid = [], take = 3, meter = null }) {
   const mats = clip(materials, 1500);
   if (!mats.trim()) throw new Error('المواد مطلوبة');
   const { text, model } = await chat({
-    apiKey, config, models: config.ideationModels,
+    apiKey, config, meter, models: config.ideationModels,
     messages: buildIdeationMessages({ materials: mats, level, type, count, avoid: avoid.slice(0, 12) }),
     json: true, temperature: 1.0, maxTokens: 6000, timeoutMs: 80000
   });
   const data = extractJson(text);
   const concepts = arr(data.concepts);
-  const top = pickTopConcepts(concepts, 3);
+  const top = pickTopConcepts(concepts, Math.max(1, Math.min(3, Number(take) || 3)));
   if (top.length === 0) throw new Error('لم يُنتج العصف الذهني أفكاراً صالحة');
   return { top, all: concepts, model };
 }
 
-export async function develop({ apiKey, config, materials, concept, level, type }) {
+export async function develop({ apiKey, config, materials, concept, level, type, meter = null }) {
   const mats = clip(materials, 1500);
   const messages = buildDevelopMessages({ materials: mats, concept, level, type });
 
   const first = await chat({
-    apiKey, config, models: config.developModels, messages,
+    apiKey, config, meter, models: config.developModels, messages,
     json: true, temperature: 0.7, maxTokens: 14000, timeoutMs: 120000
   });
 
@@ -426,7 +455,7 @@ export async function develop({ apiKey, config, materials, concept, level, type 
 
   // One repair round: show the model exactly what failed.
   const repair = await chat({
-    apiKey, config, models: [first.model, ...config.developModels.filter(m => m !== first.model)],
+    apiKey, config, meter, models: [first.model, ...config.developModels.filter(m => m !== first.model)],
     messages: [
       ...messages,
       { role: 'assistant', content: first.text.slice(0, 20000) },
@@ -489,20 +518,25 @@ function pickImageUrl(message) {
 
 const validReference = u => typeof u === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(u) && u.length < 1_500_000;
 
-export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal }) {
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY غير مضبوط على الخادم');
+export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, meter = null }) {
+  if (!apiKey) throw new GatewayError('OPENROUTER_API_KEY غير مضبوط على الخادم', { status: 503, code: 'NO_KEY' });
   const useRef = validReference(referenceImage);
   const ratio = aspect || IMAGE_ASPECT[kind] || '4:3';
+  // main pictures in high resolution; per-step pictures stay at 1K to keep costs sane
+  const size = hd && kind !== 'step' ? config.imageSize : '1K';
   let lastErr = null;
 
   for (const model of config.imageModels) {
     // most capable request first, then progressively simpler ones
     const variants = [];
-    if (useRef) variants.push({ ref: true, cfg: true }, { ref: true, cfg: false });
-    variants.push({ ref: false, cfg: true }, { ref: false, cfg: false });
+    if (useRef) variants.push({ ref: true, cfg: 'size' }, { ref: true, cfg: 'aspect' });
+    variants.push({ ref: false, cfg: 'size' }, { ref: false, cfg: 'aspect' }, { ref: false, cfg: 'none' });
 
     for (const v of variants) {
       const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: v.ref });
+      const imageConfig = v.cfg === 'size'
+        ? { aspect_ratio: ratio, image_size: size }
+        : v.cfg === 'aspect' ? { aspect_ratio: ratio } : null;
       const body = {
         model,
         messages: [{
@@ -512,23 +546,26 @@ export async function generateImage({ apiKey, config, kind = 'step', visualBible
             : text
         }],
         modalities: ['image', 'text'],
-        ...(v.cfg ? { image_config: { aspect_ratio: ratio } } : {})
+        usage: { include: true },
+        ...(imageConfig ? { image_config: imageConfig } : {})
       };
       let r;
       try {
-        r = await postOpenRouter({ apiKey, config, body, timeoutMs: 90000 });
+        r = await postOpenRouter({ apiKey, config, body, timeoutMs: 120000 });
       } catch (e) {
         lastErr = new Error(`${model}: ${e.name === 'AbortError' ? 'انتهت المهلة' : e.message}`);
         break;
       }
       if (r.ok) {
+        addUsage(meter, r.data);
         const url = pickImageUrl(r.data?.choices?.[0]?.message);
-        if (url) return { imageUrl: url, model, usedReference: v.ref };
+        if (url) return { imageUrl: url, model, usedReference: v.ref, size: v.cfg === 'size' ? size : null };
         lastErr = new Error(`${model}: لم يُرجع صورة`);
         break;
       }
       lastErr = new Error(`${model}: ${errorMessage(r)}`);
-      if (r.status === 401 || r.status === 402) throw lastErr;
+      if (r.status === 402) throw new GatewayError('رصيد الذكاء الاصطناعي انتهى', { status: 503, code: 'NO_CREDIT' });
+      if (r.status === 401) throw new GatewayError('مفتاح الذكاء الاصطناعي على الخادم غير صالح', { status: 503, code: 'BAD_KEY' });
       if (r.status === 400 || r.status === 422) continue; // try the simpler variant
       break;
     }
@@ -536,7 +573,7 @@ export async function generateImage({ apiKey, config, kind = 'step', visualBible
   throw lastErr || new Error('تعذر توليد الصورة');
 }
 
-export async function chatReply({ apiKey, config, question, history = [], project = null }) {
+export async function chatReply({ apiKey, config, question, history = [], project = null, meter = null }) {
   let system = `أنت خبير واستشاري إعادة التدوير والاستدامة والهندسة الدائرية في منصة Smart Upcycling Platform.
 تحدث بالعربية الفصحى المبسطة بأسلوب مهني ودافئ. قدّم حلولاً عملية بأرقام وقياسات حقيقية، وحذّر من المخاطر الفعلية. اجعل الإجابة موجزة ومباشرة.`;
   if (project) {
@@ -551,7 +588,7 @@ export async function chatReply({ apiKey, config, question, history = [], projec
     { role: 'user', content: clip(question, 2000) }
   ];
   const { text, model } = await chat({
-    apiKey, config, models: config.chatModels, messages,
+    apiKey, config, meter, models: config.chatModels, messages,
     temperature: 0.6, maxTokens: 1500, timeoutMs: 60000
   });
   return { reply: text, model };

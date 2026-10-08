@@ -112,6 +112,14 @@ function pump() {
   }
 }
 
+const listeners = new Set();
+/** Lets list covers refresh the moment a picture is generated elsewhere (e.g. on the project page). */
+export function subscribeImages(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+const announce = key => listeners.forEach(fn => { try { fn(key); } catch { /* ignore */ } });
+
 export function peekImage(spec) {
   return memory.get(imageKey(spec)) || null;
 }
@@ -161,6 +169,7 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
             const packed = await compressDataUrl(res.imageUrl);
             memory.set(cacheKey, packed);
             idbPut(cacheKey, packed);
+            announce(cacheKey);
             resolve(packed);
           } catch (e) {
             reject(e);
@@ -182,9 +191,15 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
 export function heroReferenceFor(project) {
   const spec = heroSpec(project, 'finished');
   if (!spec) return Promise.resolve(null);
-  return requestImage(spec, { priority: 150 })
-    .then(url => compressDataUrl(url, { maxSide: 512, quality: 0.8, force: true }))
+  // nothing is generated just to serve as a reference: use the main picture only if the person already made it
+  return loadCachedImage(spec)
+    .then(url => (url ? compressDataUrl(url, { maxSide: 512, quality: 0.8, force: true }) : null))
     .catch(() => null);
+}
+
+/** Whether a picture for this spec is already stored (memory or IndexedDB). */
+export async function hasImage(spec) {
+  return Boolean(spec && await loadCachedImage(spec));
 }
 
 /* ---------------- project helpers ---------------- */

@@ -8,7 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Plus, Wand2, Bot, Download,
-  Grid, Eye, BarChart2, GraduationCap
+  Grid, Eye, BarChart2, GraduationCap, Activity
 } from 'lucide-react';
 import {
   COMMON_MATERIALS,
@@ -51,6 +51,10 @@ import {
 import { handleImageFallback, generateSvgBlueprint, preloadProjectImages } from './utils/imageCatalog.js';
 import { ProjectCover, ViewThumb } from './components/AiImage.jsx';
 import GenerationProgress from './components/GenerationProgress.jsx';
+import CapacityBanner from './components/CapacityBanner.jsx';
+import AdminDashboard from './components/AdminDashboard.jsx';
+import { isLimitError } from './utils/aiGateway.js';
+import { usePlatformStatus } from './hooks/usePlatformStatus.js';
 import './index.css';
 import './polish.css';
 
@@ -113,7 +117,7 @@ function ConceptMeters({ scores }) {
 }
 
 export default function App() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedProjectModal, setSelectedProjectModal] = useState(null);
@@ -142,6 +146,9 @@ export default function App() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isUserDropdownOpen]);
+
+  // Server-verified platform state: capacity banner + whether this viewer is the admin
+  const platform = usePlatformStatus(session?.access_token || null);
 
   // Main navigation tab: 'generator' | 'calculator' | 'directory' | 'saved' | 'chat' | 'certificate'
   const [activeTab, setActiveTab] = useState('generator');
@@ -381,9 +388,9 @@ export default function App() {
         materials: materialsString,
         userLevel,
         projectType,
-        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); },
-        onHeroReady: patchProjectHero
+        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); }
       });
+      if (res.notice) showToast(res.notice, 'info');
       if (res.usedFallback) {
         showToast('تعذر الوصول لمحرك الذكاء الاصطناعي المتقدم فاستُخدم المولّد البديل: ' + (res.fallbackReason || ''), 'info');
       }
@@ -413,7 +420,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error generating AI projects:', err);
-      showToast('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''), 'error');
+      showToast(isLimitError(err) ? err.message : 'حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''), isLimitError(err) ? 'info' : 'error');
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -451,8 +458,7 @@ export default function App() {
         materials: topScenario.materials.join('، '),
         userLevel: topScenario.difficulty || 'متوسط',
         projectType: topScenario.type || 'ديكور منزلي',
-        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); },
-        onHeroReady: patchProjectHero
+        onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); }
       });
       if (res.success && res.projects?.length > 0) {
         setProjects(res.projects);
@@ -475,7 +481,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      showToast('حدث خطأ أثناء التوجيه الذاتي للذكاء الاصطناعي', 'error');
+      showToast(isLimitError(err) ? err.message : 'حدث خطأ أثناء التوجيه الذاتي للذكاء الاصطناعي', isLimitError(err) ? 'info' : 'error');
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -1061,6 +1067,18 @@ export default function App() {
               <Award size={16} />
               <span>الشهادة المعتمدة</span>
             </button>
+
+            {platform.isAdmin && (
+              <button
+                className={`official-nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
+                onClick={() => setActiveTab('admin')}
+                style={{ flex: '1 1 auto', justifyContent: 'center' }}
+                data-testid="admin-tab"
+              >
+                <Activity size={16} />
+                <span>لوحة التحكم</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1431,6 +1449,8 @@ export default function App() {
                 </div>
               </div>
 
+              <CapacityBanner capacity={platform.capacity} />
+
               {/* Generate Projects CTA */}
               <button
                 type="button"
@@ -1446,7 +1466,7 @@ export default function App() {
                 ) : (
                   <>
                     <Sparkles size={18} className="text-amber-300" />
-                    <span>ابتكار مشاريع بالذكاء الاصطناعي مع صورة لكل مرحلة</span>
+                    <span>ابتكار مشاريع بالذكاء الاصطناعي</span>
                   </>
                 )}
               </button>
@@ -2089,6 +2109,8 @@ export default function App() {
         {/* ============================================================
             TAB: STUDENT & ACADEMIC HUB (بوابة الطلاب والمدارس)
             ============================================================ */}
+        {activeTab === 'admin' && platform.isAdmin && <AdminDashboard />}
+
         {activeTab === 'students' && (
           <StudentPortalSection
             onSelectProject={(project) => {

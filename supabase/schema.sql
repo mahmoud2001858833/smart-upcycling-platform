@@ -92,3 +92,58 @@ CREATE POLICY "Users can view and manage their certificates"
   ON public.certificates FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- ==============================================================================
+-- 4. PLATFORM ANALYTICS (visits, usage, cost, every generated project)
+--    Written and read ONLY by the `ai-gateway` Edge Function with the service role key.
+--    RLS is enabled and there are deliberately NO policies, and anon/authenticated are revoked,
+--    so nobody can read or write these tables from the browser. The admin dashboard is served
+--    by the Edge Function after it verifies the caller's Supabase token against ADMIN_EMAIL.
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.usage_events (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  kind TEXT NOT NULL,                     -- visit | gen_start | ideate | develop | image | chat
+  status TEXT NOT NULL DEFAULT 'ok',      -- ok | error | throttled
+  user_id UUID,                           -- verified Supabase user, if signed in
+  user_email TEXT,
+  visitor_id TEXT,                        -- random id kept in the visitor's browser
+  ip_hash TEXT,                           -- salted hash; raw IP addresses are never stored
+  model TEXT,
+  cost_usd NUMERIC(12, 6),                -- real cost reported by OpenRouter
+  tokens INTEGER,
+  duration_ms INTEGER,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS usage_events_created_idx ON public.usage_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS usage_events_kind_idx ON public.usage_events (kind, created_at DESC);
+CREATE INDEX IF NOT EXISTS usage_events_ip_idx ON public.usage_events (ip_hash, kind, created_at DESC);
+CREATE INDEX IF NOT EXISTS usage_events_user_idx ON public.usage_events (user_id, kind, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.generated_projects (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_id UUID,
+  user_email TEXT,
+  visitor_id TEXT,
+  ip_hash TEXT,
+  materials TEXT,
+  level TEXT,
+  project_type TEXT,
+  name TEXT,
+  model TEXT,
+  cost_usd NUMERIC(12, 6),
+  project JSONB NOT NULL                  -- the full generated project
+);
+
+CREATE INDEX IF NOT EXISTS generated_projects_created_idx ON public.generated_projects (created_at DESC);
+
+ALTER TABLE public.usage_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.generated_projects ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.usage_events FROM anon, authenticated;
+REVOKE ALL ON TABLE public.generated_projects FROM anon, authenticated;
+
+-- Optional housekeeping: keep the raw event log for 12 months.
+-- DELETE FROM public.usage_events WHERE created_at < NOW() - INTERVAL '12 months';
