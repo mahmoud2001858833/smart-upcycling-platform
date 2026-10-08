@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, Printer, Download, Award, CheckCircle, FileText, 
-  School, User, Calendar, BookOpen, Sparkles, Leaf, Calculator
+  School, User, Calendar, BookOpen, Sparkles, Leaf, Calculator, Layers
 } from 'lucide-react';
 
 export default function StudentLabReportModal({ isOpen, onClose, project, user }) {

@@ -8,7 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
-  AlertCircle, RotateCcw, Activity, Bot
+  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
