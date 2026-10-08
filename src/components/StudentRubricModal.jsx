@@ -63,10 +63,10 @@ export default function StudentRubricModal({ isOpen, onClose, project, user }) {
             </span>
             <div>
               <h3 className="font-black text-slate-900 text-base sm:text-lg">
-                استمارة تقييم المعلم الرسمية لمشروع التدوير (Evaluation Rubric)
+                استمارة تقييم المعلم لمشروع التدوير (Evaluation Rubric)
               </h3>
               <p className="text-xs text-slate-500">
-                معايير تحكيم أكاديمية معتمدة من 100 درجة للمدارس والمعارض العلمية
+                معايير تحكيم أكاديمية من 100 درجة للمدارس والمعارض العلمية
               </p>
             </div>
           </div>

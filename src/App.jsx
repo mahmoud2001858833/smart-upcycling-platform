@@ -8,8 +8,11 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Plus, Wand2, Bot, Download,
-  Grid, Eye, BarChart2, GraduationCap
+  Grid, Eye, BarChart2, GraduationCap, Menu,
+  AlertCircle, RotateCcw
 } from 'lucide-react';
+import SidebarNav from './components/SidebarNav.jsx';
+import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
 import {
   COMMON_MATERIALS,
   USER_LEVELS,
@@ -124,6 +127,7 @@ export default function App() {
   const [activeQuizProject, setActiveQuizProject] = useState(null);
   const [isGeminiKeyModalOpen, setIsGeminiKeyModalOpen] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(() => Boolean(getStoredGeminiApiKey()));
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
 
@@ -161,6 +165,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [genProgress, setGenProgress] = useState(null);
+  const [generationError, setGenerationError] = useState(null);
   const resultsRef = useRef(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
 
@@ -265,13 +270,13 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
-      content: 'أهلاً بك! أنا خبير إعادة التدوير والاستدامة البيئية الذكي V3. يمكنني مساعدتك في تحليل أي خامات، واقتراح طرق الربط والقص الآمنة، وابتكار تصاميم متعددة الصور لكل فكرة.'
+      content: 'أهلاً بك! أنا المساعد البيئي الذكي لمنصة مُدام. يمكنني مساعدتك في تحليل أي خامات، واقتراح طرق الربط والقص الآمنة، وتطوير أفكار مبتكرة لكل مشروع.'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  // Selected Project for Official Certificate
+  // Selected Project for Eco Certificate
   const [certificateProject, setCertificateProject] = useState(null);
 
   // Certificate metadata - fixed state prevents React purity warnings
@@ -340,7 +345,6 @@ export default function App() {
   }, [completedProjects]);
 
 
-  // Generate Projects with Live AI Engine
   // Patch a project's hero picture when the AI image finishes (kept in memory only, never saved)
   const patchProjectHero = (projectId, view, url) => {
     const apply = (p) => {
@@ -359,6 +363,7 @@ export default function App() {
     setSelectedProjectModal(prev => (prev ? apply(prev) : prev));
   };
 
+  // Generate Projects with Live AI Engine (with 60-second timeout & safe retry)
   const handleGenerateProjects = async () => {
     const allMaterials = [...selectedMaterials];
     if (materials.trim()) {
@@ -373,28 +378,43 @@ export default function App() {
 
     setIsLoading(true);
     setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: allMaterials.join('، ') });
-    setLoadingStep('جاري تحليل المواد وبدء العصف الذهني بالذكاء الاصطناعي...');
+    setGenerationError(null);
+    setLoadingStep('تحليل بنية المواد والخواص الفيزيائية وتوزيع المهام...');
+
+    // 60-second timeout controller
+    let timeoutId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error('TIMEOUT_60S'));
+      }, 60000);
+    });
 
     try {
       const materialsString = allMaterials.join('، ');
-      const res = await fetchAiProjects({
+      const fetchPromise = fetchAiProjects({
         materials: materialsString,
         userLevel,
         projectType,
         onProgress: (p) => { setLoadingStep(p.message); setGenProgress(prev => ({ ...(prev || {}), ...p })); },
         onHeroReady: patchProjectHero
       });
-      if (res.usedFallback) {
+
+      // Race between API call and 60-second timeout
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (res && res.usedFallback) {
         showToast('تعذر الوصول لمحرك الذكاء الاصطناعي المتقدم فاستُخدم المولّد البديل: ' + (res.fallbackReason || ''), 'info');
       }
 
-      if (res.success && res.projects?.length > 0) {
+      if (res && res.success && res.projects?.length > 0) {
         setProjects(res.projects);
         setActiveSpotlightIndex(0);
         res.projects.forEach(p => preloadProjectImages(p));
         setFollowUpQuestions(res.followUpQuestions || []);
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
+        setGenerationError(null);
 
         // Auto-save all generated projects to Saved Projects list safely
         try {
@@ -409,11 +429,19 @@ export default function App() {
 
         showToast(`✨ تم ابتكار ${res.projects.length} مشاريع وحفظها تلقائياً في قائمة المحفوظات!`);
       } else {
+        setGenerationError('تعذّر التوليد، يرجى المحاولة مرة أخرى.');
         showToast('تعذر توليد المشاريع، يرجى المحاولة مجدداً', 'error');
       }
     } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
       console.error('Error generating AI projects:', err);
-      showToast('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي: ' + (err.message || ''), 'error');
+      if (err.message === 'TIMEOUT_60S') {
+        setGenerationError('استغرقت العملية أكثر من 60 ثانية نظراً للضغط على محرك الذكاء الاصطناعي. موادك وخياراتك ما زالت محفوظة، اضغط أدناه لإعادة المحاولة.');
+        showToast('تعذّر التوليد، تجاوزت العملية المهلة المحددة (60 ثانية)', 'error');
+      } else {
+        setGenerationError('تعذّر التوليد، حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: ' + (err.message || 'حاول مرة أخرى'));
+        showToast('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي', 'error');
+      }
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -806,23 +834,38 @@ export default function App() {
         <div className="top-bar-notice">
           <div className="notice-right">
             <Shield size={14} color="#34d399" />
-            <span>المنظومة الوطنية الرسمية لإعادة التدوير • معتمد وفق مواصفة ISO 14044 وبروتوكول GHG العالمي</span>
+            <span>يستند إلى منهجية ISO 14044 وبروتوكول GHG لتقييم دورة الحياة</span>
           </div>
           <div className="notice-left">
-            <span>SMART UPCYCLING EXPERT V3 • MULTI-IMAGE AI SUITE</span>
+            <span>مُدام • منصة التدوير الذكي</span>
           </div>
         </div>
 
         {/* Main Header Row */}
         <div className="top-bar-main">
-          {/* Logo & Seal */}
-          <div className="official-brand" onClick={() => setActiveTab('generator')}>
-            <div className="brand-emblem-box">
-              <Recycle size={26} strokeWidth={2.4} />
-            </div>
-            <div className="brand-titles">
-              <h1>خبير إعادة التدوير والاستدامة الذكي</h1>
-              <p>Smart Recycling Project Advisor V3 • ذكاء اصطناعي تفاعلي متعدد المشاهد</p>
+          {/* Mobile Sidebar Toggle & Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              className="sidebar-mobile-toggle-btn"
+              onClick={() => setIsMobileSidebarOpen(prev => !prev)}
+              aria-label="فتح القائمة الجانبية"
+              title="فتح القائمة الجانبية"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div className="official-brand" onClick={() => setActiveTab('generator')}>
+              <img 
+                src="/mudam-logo.png" 
+                alt="شعار مُدام" 
+                className="h-10 w-10 rounded-lg object-contain shadow-sm"
+                style={{ height: '40px', width: '40px', borderRadius: '8px', objectFit: 'contain' }}
+              />
+              <div className="brand-titles">
+                <h1>مُدام</h1>
+                <p>منصة التدوير الذكي والاستدامة البيئية</p>
+              </div>
             </div>
           </div>
 
@@ -882,7 +925,7 @@ export default function App() {
                         {user.user_metadata?.full_name || user.email?.split('@')[0]}
                       </span>
                       <span className="user-role-badge">
-                        {user.user_metadata?.is_guest ? 'حساب تجريبي' : 'عضو معتمد'}
+                        {user.user_metadata?.is_guest ? 'حساب تجريبي' : 'عضو نشط'}
                       </span>
                     </div>
                     <ChevronDown size={14} className={`user-dropdown-arrow ${isUserDropdownOpen ? 'rotated' : ''}`} />
@@ -956,7 +999,7 @@ export default function App() {
                           }}
                         >
                           <Award size={16} />
-                          <span>الشهادة البيئية المعتمدة</span>
+                          <span>شهادة الإنجاز البيئي</span>
                         </button>
                       </div>
 
@@ -993,76 +1036,27 @@ export default function App() {
       </header>
 
       {/* ============================================================
-          MAIN BODY CONTAINER
+          MUDAM APP SIDEBAR & MAIN VIEWPORT LAYOUT
           ============================================================ */}
-      <main className="official-main-content">
-        {/* Navigation Tabs Header */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-          <div className="official-nav-tabs" style={{ maxWidth: '1180px', width: '100%', justifyContent: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-            <button
-              className={`official-nav-btn ${activeTab === 'generator' ? 'active' : ''}`}
-              onClick={() => setActiveTab('generator')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Lightbulb size={16} />
-              <span>مولد المشاريع</span>
-            </button>
+      <div className="mudam-layout-wrapper">
+        {/* Modern Vertical Sidebar Navigation */}
+        <SidebarNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          savedProjectsCount={savedProjects.length}
+          projectContextForChat={projectContextForChat}
+          environmentalPoints={environmentalPoints}
+          completedProjects={completedProjects}
+          impactCo2={impact.co2Saved}
+          hasGeminiKey={hasGeminiKey}
+          onOpenGeminiKeyModal={() => setIsGeminiKeyModalOpen(true)}
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+        />
 
-            <button
-              className={`official-nav-btn ${activeTab === 'students' ? 'active' : ''}`}
-              onClick={() => setActiveTab('students')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <GraduationCap size={16} />
-              <span>بوابة الطلاب والمدارس 🎓</span>
-            </button>
-
-            <button
-              className={`official-nav-btn ${activeTab === 'calculator' ? 'active' : ''}`}
-              onClick={() => setActiveTab('calculator')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Calculator size={16} />
-              <span>حاسبة الأثر (LCA)</span>
-            </button>
-
-            <button
-              className={`official-nav-btn ${activeTab === 'directory' ? 'active' : ''}`}
-              onClick={() => setActiveTab('directory')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Database size={16} />
-              <span>دليل الـ 150 مصدراً</span>
-            </button>
-
-            <button
-              className={`official-nav-btn ${activeTab === 'saved' ? 'active' : ''}`}
-              onClick={() => setActiveTab('saved')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Star size={16} />
-              <span>المحفوظة ({savedProjects.length})</span>
-            </button>
-
-            <button
-              className={`official-nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chat')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Send size={16} />
-              <span>اسأل الخبير {projectContextForChat ? '🎯' : ''}</span>
-            </button>
-
-            <button
-              className={`official-nav-btn ${activeTab === 'certificate' ? 'active' : ''}`}
-              onClick={() => setActiveTab('certificate')}
-              style={{ flex: '1 1 auto', justifyContent: 'center' }}
-            >
-              <Award size={16} />
-              <span>الشهادة المعتمدة</span>
-            </button>
-          </div>
-        </div>
+        {/* Main Viewport Container */}
+        <div className="mudam-main-viewport">
+          <main className="official-main-content">
 
         {/* Environmental Impact Counter Banner */}
         {completedProjects > 0 && (
@@ -1313,7 +1307,7 @@ export default function App() {
                         />
                         <div style={{ textAlign: 'right' }}>
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع المعتمدة</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع البيئية</span>
                         </div>
                       </div>
                       <button 
@@ -1459,12 +1453,31 @@ export default function App() {
               </div>
             </div>
 
-            {/* Generated Projects Display (full width once there is something to show) */}
-            <div ref={resultsRef} className="results-studio">
-              {isLoading && (
-                <GenerationProgress progress={genProgress} materials={genProgress?.materials} />
-              )}
-              {projects.length === 0 && !isLoading ? (
+            {/* Left Column: Generated Projects Display */}
+            <div>
+              {isLoading ? (
+                <GenerationProgressPanel onCancel={() => setIsLoading(false)} />
+              ) : generationError ? (
+                <div className="generation-error-card" dir="rtl">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 border border-amber-300 text-amber-700 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                    <AlertCircle className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 mb-2">
+                    تعذّر التوليد، حاول مرة أخرى
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed mb-4">
+                    {generationError}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-retry-generation"
+                    onClick={handleGenerateProjects}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>إعادة المحاولة بنفس المواد والخيارات</span>
+                  </button>
+                </div>
+              ) : projects.length === 0 ? (
                 <div style={{ background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '4rem 2rem', textAlign: 'center', boxShadow: 'var(--shadow-card)' }}>
                   <Recycle size={56} color="var(--border-strong)" style={{ margin: '0 auto 1.25rem' }} />
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
@@ -1562,7 +1575,7 @@ export default function App() {
 
                           {/* Top Badges */}
                           <div className="spotlight-badges-tag">
-                            <span className="spotlight-badge cert">تدوير معتمد ISO 14044</span>
+                            <span className="spotlight-badge cert">منهجية ISO 14044</span>
                             <span className="spotlight-badge diff">{activeProj.difficulty || 'متوسط'}</span>
                             {activeProj.metrics?.feasibilityScore && (
                               <span className="spotlight-badge score">⭐ {activeProj.metrics.feasibilityScore}% جدوى</span>
@@ -1740,7 +1753,7 @@ export default function App() {
                               onClick={() => setActiveCertModalProject(activeProj)}
                             >
                               <Award size={16} />
-                              <span>الشهادة المعتمدة</span>
+                              <span>شهادة الإنجاز</span>
                             </button>
                           </div>
                         </div>
@@ -1823,7 +1836,7 @@ export default function App() {
                               <div className="project-card-category-strip">
                                 <span className="project-card-eco-pill">
                                   <Leaf size={12} />
-                                  <span>تدوير معتمد ISO 14044</span>
+                                  <span>منهجية ISO 14044</span>
                                 </span>
                                 <span className="project-card-points-tag">+30 نقطة 🌱</span>
                               </div>
@@ -2003,7 +2016,7 @@ export default function App() {
                           <tr>
                             <td className="compare-metric-label">مراحل التنفيذ المصورة</td>
                             {projects.map((proj, idx) => (
-                              <td key={idx} className="compare-metric-val">{proj.parsedSteps ? proj.parsedSteps.length : 0} مراحل معتمدة</td>
+                              <td key={idx} className="compare-metric-val">{proj.parsedSteps ? proj.parsedSteps.length : 0} مراحل تنفيذية</td>
                             ))}
                           </tr>
                           <tr>
@@ -2303,8 +2316,8 @@ export default function App() {
             {/* Top Certificate Actions */}
             <div className="cert-action-bar-top">
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>وثيقة الاعتماد البيئي والوفر الكربوني الرسمي</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>شهادة رقمية رسمية معتمدة وفق المعايير البيئية الدولية ISO 14044</p>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>وثيقة إنجاز بيئي وحساب الوفر الكربوني</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>شهادة إنجاز بيئي رقمية تستند إلى مبادئ تقييم دورة الحياة (LCA)</p>
               </div>
 
               <button 
@@ -2315,7 +2328,7 @@ export default function App() {
                 }}
               >
                 <Printer size={18} />
-                <span>طباعة الوثيقة الرسمية (Print / PDF)</span>
+                <span>طباعة شهادة الإنجاز (Print / PDF)</span>
               </button>
             </div>
 
@@ -2328,18 +2341,18 @@ export default function App() {
                 <div className="cert-emblem-seal">
                   <Shield size={36} />
                 </div>
-                <h2>شهادة اعتماد الوفر الكربوني والتحويل المستدام</h2>
-                <span className="cert-subtitle-en">OFFICIAL CERTIFICATE OF CARBON OFFSET & CIRCULAR UPCYCLING</span>
+                <h2>شهادة إنجاز بيئي وحساب الوفر الكربوني</h2>
+                <span className="cert-subtitle-en">DIGITAL CERTIFICATE OF CARBON OFFSET & CIRCULAR UPCYCLING</span>
               </div>
 
               <div className="cert-body-text">
-                تشهد المنظومة الوطنية لإعادة التدوير والاستدامة البيئية الذكية بأن المشارك{user?.user_metadata?.full_name ? ` (${user.user_metadata.full_name})` : user?.email ? ` (${user.email})` : ''} قد أنجز بنجاح
+                تشهد منصة مُدام للتدوير الذكي والاستدامة البيئية بأن المشارك{user?.user_metadata?.full_name ? ` (${user.user_metadata.full_name})` : user?.email ? ` (${user.email})` : ''} قد أنجز بنجاح
                 مشروع إعادة التدوير المبتكر بالذكاء الاصطناعي:
                 <br />
                 <strong style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', display: 'block', margin: '0.75rem 0' }}>
                   {certificateProject ? (certificateProject.name || certificateProject.title) : 'مشروع إعادة تدوير بيئي متعدد الخامات'}
                 </strong>
-                والذي تم تصميمه وتنفيذه وفق مواصفات الاقتصاد الدائري المعتمدة عالمياً.
+                والذي تم تصميمه وتنفيذه وفق مبادئ الاقتصاد الدائري وتقييم دورة الحياة.
               </div>
 
               {/* Certificate Image Feature if Available */}
@@ -2352,7 +2365,7 @@ export default function App() {
                     onError={(e) => handleImageFallback(e, certificateProject.name, certificateProject.materials, 'finished')}
                   />
                   <div style={{ background: '#f8fafc', padding: '0.4rem', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    التوثيق البصري الرسمي للمنتج المنجز
+                    التوثيق البصري للمنتج المنجز
                   </div>
                 </div>
               )}
@@ -2360,7 +2373,7 @@ export default function App() {
               {/* Impact Verified Table */}
               <div className="cert-impact-table">
                 <div className="cert-impact-cell">
-                  <span>إجمالي الوفر الكربوني المعتمد</span>
+                  <span>إجمالي الوفر الكربوني المحسوب</span>
                   <h4>{impact.co2Saved.toFixed(2)} كغ CO₂</h4>
                   <small>مكافئ غازات الاحتباس الحراري</small>
                 </div>
@@ -2394,8 +2407,13 @@ export default function App() {
                 <div className="cert-qr-box">
                   <QrCode size={48} color="var(--navy-primary)" />
                   <span className="cert-serial-code">{certId}</span>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>تاريخ الاعتماد: {currentDate}</span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>تاريخ الإصدار: {currentDate}</span>
                 </div>
+              </div>
+
+              {/* Motivational Disclaimer Note */}
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', paddingTop: '0.75rem', marginTop: '1rem' }}>
+                شهادة تحفيزية صادرة عن منصة مُدام، وليست شهادة رسمية معتمدة
               </div>
             </div>
           </div>
@@ -2586,8 +2604,8 @@ export default function App() {
       <footer className="official-app-footer">
         <div className="footer-inner-content">
           <div>
-            <strong>خبير إعادة التدوير الذكي V3 • المنظومة الوطنية المعتمدة</strong>
-            <p style={{ margin: '0.25rem 0 0' }}>جميع الحقوق محفوظة للمملكة © 2026</p>
+            <strong>مُدام • منصة التدوير الذكي والاستدامة البيئية</strong>
+            <p style={{ margin: '0.25rem 0 0' }}>جميع الحقوق محفوظة © 2026</p>
           </div>
 
           <div className="footer-compliance-badges">
@@ -2598,6 +2616,8 @@ export default function App() {
           </div>
         </div>
       </footer>
+        </div> {/* End mudam-main-viewport */}
+      </div>   {/* End mudam-layout-wrapper */}
     </div>
   );
 }

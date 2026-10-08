@@ -368,7 +368,7 @@ export default function ProjectDedicatedPage({
 
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md flex items-center gap-1.5">
                   <Award className="w-3.5 h-3.5 text-amber-300" />
-                  معتمد ISO 14044 LCA
+                  وفق منهجية ISO 14044 LCA
                 </span>
               </div>
 
@@ -495,7 +495,7 @@ export default function ProjectDedicatedPage({
             <div>
               <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
                 <span>الأدوات الأكاديمية والمدرسية (Student Academic Suite)</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">معتمد للمدارس</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">ملائم للمدارس</span>
               </h3>
               <p className="text-xs text-slate-500">
                 توثيق أكاديمي فوري متوافق مع مناهج العلوم ومعارض الابتكار المدرسي
@@ -1487,8 +1487,8 @@ export default function ProjectDedicatedPage({
         {/* BOTTOM PRINTABLE POSTER FOOTER */}
         <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            <div className="text-slate-900 font-bold text-sm">منصة إعادة التدوير الذكية • الإصدار المعتمد 2026</div>
-            <div>معتمد لتقييم دورة الحياة وفق المواصفة ISO 14044 • جميع الحقوق محفوظة</div>
+            <div className="text-slate-900 font-bold text-sm">مُدام • منصة التدوير الذكي والاستدامة البيئية</div>
+            <div>يستند إلى منهجية تقييم دورة الحياة ISO 14044 • جميع الحقوق محفوظة</div>
           </div>
 
           <div className="flex items-center gap-3">

@@ -82,7 +82,7 @@ export default function StudentLabReportModal({ isOpen, onClose, project, user }
                 تقرير التجربة والمشروع البيئي التطبيقي
               </h1>
               <p className="text-xs text-slate-500">
-                مشروع معتمد لمنهج STEM وفق معايير الاستدامة وإعادة التدوير الذكي (ISO 14044)
+                مشروع تطبيقي لمنهج STEM يستند إلى معايير الاستدامة وتقييم دورة الحياة (ISO 14044)
               </p>
             </div>
 
@@ -130,7 +130,7 @@ export default function StudentLabReportModal({ isOpen, onClose, project, user }
               <span>1. مشكلة البحث والفرضية العلمية (Research Hypothesis):</span>
             </h3>
             <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs space-y-2 text-slate-800">
-              <p><strong>عنوان المشروع المعتمد:</strong> {project.name || project.title}</p>
+              <p><strong>عنوان المشروع المنفّذ:</strong> {project.name || project.title}</p>
               <p><strong>فكرة المشروع:</strong> {project.idea || project.description}</p>
               <div>
                 <strong>الفرضية المقترحة:</strong>
@@ -236,7 +236,7 @@ export default function StudentLabReportModal({ isOpen, onClose, project, user }
           <div className="border-t border-slate-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs">
             <div className="space-y-1 text-slate-600 text-center sm:text-right">
               <div><strong>خاتمة الطالب:</strong> أثبتت التجربة نجاح الفرضية مع انعدام الانبعاثات الناتجة.</div>
-              <div><strong>ساعات التطوع البيئي المعتمدة:</strong> ساعتان عمل تطوعي مدرسي معتمد.</div>
+              <div><strong>ساعات التطوع البيئي المقترحة:</strong> ساعتان عمل تطوعي مدرسي.</div>
             </div>
 
             <div className="flex items-center gap-8 text-center">

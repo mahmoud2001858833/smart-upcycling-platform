@@ -463,7 +463,7 @@ export default function ProjectDetailModal({
                 {progressPercent === 100 && (
                   <div className="steps-completed-celebration-banner">
                     <CheckCircle size={20} color="#059669" />
-                    <span>رائع جداً! تم إكمال جميع خطوات المشروع بنجاح. يمكنك الآن تأكيد الإنجاز الرسمي ونيل +30 نقطة بيئية!</span>
+                    <span>رائع جداً! تم إكمال جميع خطوات المشروع بنجاح. يمكنك الآن تأكيد إنجاز المشروع ونيل +30 نقطة بيئية!</span>
                   </div>
                 )}
               </div>
@@ -669,7 +669,7 @@ export default function ProjectDetailModal({
                     <Award size={28} color="var(--emerald-primary)" />
                     <div>
                       <h4>هل أكملت أو تنوي تنفيذ هذا المشروع؟</h4>
-                      <p>يمكنك استخراج وتوليد الشهادة البيئية المعتمدة رسمياً لهذا المشروع مع الباركود الموثق ورقم الاعتماد البيئي.</p>
+                      <p>يمكنك استخراج وتوليد شهادة الإنجاز البيئي الرقمية لهذا المشروع مع الباركود الموثق وحساب الوفر الكربوني.</p>
                     </div>
                   </div>
                   <button
@@ -681,7 +681,7 @@ export default function ProjectDetailModal({
                     }}
                   >
                     <Award size={16} />
-                    <span>إصدار الشهادة البيئية فوراً</span>
+                    <span>إصدار شهادة الإنجاز فوراً</span>
                   </button>
                 </div>
               </div>
@@ -748,7 +748,7 @@ export default function ProjectDetailModal({
               }}
             >
               <Award size={16} />
-              <span>الشهادة المعتمدة</span>
+              <span>شهادة الإنجاز</span>
             </button>
           </div>
 
@@ -759,7 +759,7 @@ export default function ProjectDetailModal({
               onClick={() => onMarkCompleted(project)}
             >
               <CheckCircle size={17} />
-              <span>تأكيد الإنجاز الرسمي (+30 نقطة)</span>
+              <span>تأكيد الإنجاز (+30 نقطة)</span>
             </button>
           </div>
         </footer>

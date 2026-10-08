@@ -463,7 +463,7 @@ export async function generateProjectImageAi({ projectName, projectIdea, project
  * Direct Live Google Gemini 1.5 Flash Chat API Caller
  */
 export async function sendChatToGeminiApi({ question, conversationHistory = [], projectContext = null, apiKey }) {
-  let systemPrompt = `أنت خبير واستشاري الذكاء الاصطناعي لإعادة التدوير والاستدامة البيئية والهندسة الدائرية في منصة Smart Upcycling Platform.
+  let systemPrompt = `أنت خبير واستشاري الذكاء الاصطناعي لإعادة التدوير والاستدامة البيئية والهندسة الدائرية في منصة مُدام (MUDAM).
 تحدث باللغة العربية بأسلوب راقٍ، مهني، علمي، وملهم. قدم حلولاً عملية لربط وقص وتشكيل المواد ومعايير الأمان وحسابات الكربون LCA.`;
 
   if (projectContext) {
@@ -519,6 +519,30 @@ export async function sendChatMessageToAi({ question, conversationHistory = [], 
     if (out.reply) return out.reply;
   } catch (gatewayErr) {
     console.warn('AI gateway chat unavailable, falling back:', gatewayErr.message);
+  }
+
+  // Fallback to client OpenRouter if direct key is present
+  const orKey = getOpenRouterKey();
+  if (orKey) {
+    try {
+      const msgs = [
+        { role: 'system', content: `أنت خبير إعادة التدوير والاستدامة في منصة مُدام (MUDAM). أجب بالعربية بأسلوب مهني وعملي ومختصر.${projectContext ? ` المشروع الحالي: "${projectContext.name}" من (${projectContext.materials}).` : ''}` },
+        ...conversationHistory.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+        { role: 'user', content: question }
+      ];
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orKey}` },
+        body: JSON.stringify({ model: OPENROUTER_MODEL, messages: msgs, max_tokens: 1200 })
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const t = j.choices?.[0]?.message?.content;
+        if (t) return t;
+      }
+    } catch (e) {
+      console.warn('OpenRouter chat failed:', e);
+    }
   }
 
   // 1. Try Direct Gemini API if configured

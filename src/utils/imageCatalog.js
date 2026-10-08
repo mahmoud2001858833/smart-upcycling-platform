@@ -220,7 +220,7 @@ export function generateSvgBlueprint(projectName = 'مشروع إعادة تدو
     <rect x="0" y="0" width="800" height="42" fill="#132338" rx="6" stroke="#1e3a5f" stroke-width="1" />
     <circle cx="24" cy="21" r="9" fill="#10b981" opacity="0.2"/>
     <circle cx="24" cy="21" r="5" fill="#10b981" />
-    <text x="44" y="26" fill="#38bdf8" font-family="system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">SMART UPCYCLING PLATFORM • ISO 14044 LCA SCHEMATIC</text>
+    <text x="44" y="26" fill="#38bdf8" font-family="system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">MUDAM PLATFORM • ISO 14044 LCA SCHEMATIC</text>
     <text x="780" y="26" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" text-anchor="end" font-weight="600">${currentView.en}</text>
   </g>
 

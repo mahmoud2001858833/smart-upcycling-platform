@@ -279,7 +279,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
           <p className="auth-modal-subtitle">
             {mode === 'signin' && 'سجّل دخولك لمزامنة مشاريعك سحابياً، وحساب أثر الكربون، وإصدار الشهادات.'}
-            {mode === 'signup' && 'أنشئ حسابك البيئي المعتمد واستفد من جميع أدوات التدوير الذكي والـ LCA.'}
+            {mode === 'signup' && 'أنشئ حسابك البيئي الشخصي واستفد من جميع أدوات التدوير الذكي والـ LCA.'}
             {mode === 'forgot' && 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً مشفراً لتعيين كلمة مرور جديدة.'}
           </p>
         </div>
@@ -399,7 +399,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
           {/* Email Address */}
           <div className="auth-input-group">
-            <label htmlFor="auth-email">البريد الإلكتروني المعتمد</label>
+            <label htmlFor="auth-email">البريد الإلكتروني</label>
             <div className="auth-input-wrapper">
               <Mail size={18} className="auth-field-icon" />
               <input

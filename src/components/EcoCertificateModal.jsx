@@ -58,7 +58,7 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
               <Award className="w-4 h-4" />
             </span>
             <span className="text-xs sm:text-sm font-black">
-              وثيقة الاعتماد البيئي المصدّقة رسمياً • معيار ISO 14040/14044
+              شهادة إنجاز بيئي رقمية • تستند إلى معايير تقييم دورة الحياة (LCA)
             </span>
           </div>
 
@@ -92,22 +92,22 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 shadow-sm mt-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>شهادة موثقة لتقييم دورة الحياة (LCA Verification)</span>
+                <span>شهادة رقمية لتقييم دورة الحياة (LCA Verification)</span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
-                شهادة اعتماد الوفر الكربوني والتدوير المستدام
+                شهادة إنجاز بيئي وحساب الوفر الكربوني
               </h2>
 
               <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-                تشهد المنظومة الذكية لإعادة التدوير بأن المشروع المنفذ قد حقق تحويلاً ملموساً للمخلفات الصلبة عن المكبات، وسجل خفضاً موثقاً في انبعاثات غازات الاحتباس الحراري.
+                تشهد منصة مُدام للتدوير الذكي بأن المشروع المنفذ قد حقق تحويلاً ملموساً للمخلفات عن المكبات، وسجل خفضاً محسوباً في انبعاثات غازات الاحتباس الحراري.
               </p>
             </div>
 
             {/* Project Highlight Box */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 text-slate-800 text-sm flex items-center justify-between flex-wrap gap-2 text-right">
               <div>
-                <span className="text-xs text-slate-500 block mb-0.5 font-bold">اسم المشروع المعتمد:</span>
+                <span className="text-xs text-slate-500 block mb-0.5 font-bold">اسم المشروع المنجز:</span>
                 <strong className="text-emerald-700 text-base font-black">
                   {projectName || 'مشروع إعادة التدوير المبتكر'}
                 </strong>
@@ -116,7 +116,7 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center gap-1">
                   <CheckCircle className="w-3.5 h-3.5" />
-                  <span>معتمد كلياً</span>
+                  <span>مكتمل بنجاح</span>
                 </span>
               </div>
             </div>
@@ -191,9 +191,14 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <div className="p-2 bg-white rounded-xl border border-slate-300 shadow-sm flex flex-col items-center">
                   <QrCode className="w-12 h-12 text-slate-900" />
-                  <span className="text-[9px] font-mono text-slate-500 mt-1">ISO-VALIDATED</span>
+                  <span className="text-[9px] font-mono text-slate-500 mt-1">LCA-VERIFIED</span>
                 </div>
               </div>
+            </div>
+
+            {/* Motivational Disclaimer Note */}
+            <div className="text-[11px] text-slate-500 font-medium text-center pt-3 border-t border-slate-200">
+              شهادة تحفيزية صادرة عن منصة مُدام، وليست شهادة رسمية معتمدة
             </div>
           </div>
         </div>
@@ -202,7 +207,7 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
         <div className="p-4 sm:px-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-600 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>الشهادة صالحة للاستخدام في ملفات المشاريع البيئية وطلبات الدعم الأخضر.</span>
+            <span>شهادة إنجاز بيئي رقمية لتوثيق وتكريم جهود إعادة التدوير للطلاب.</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -220,7 +225,7 @@ export default function EcoCertificateModal({ isOpen, onClose, lcaResults, proje
               onClick={handlePrint}
             >
               <Printer className="w-4 h-4" />
-              <span>طباعة وتصدير الشهادة الرسمية (PDF)</span>
+              <span>طباعة وتصدير شهادة الإنجاز (PDF)</span>
             </button>
           </div>
         </div>

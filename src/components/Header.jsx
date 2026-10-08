@@ -31,12 +31,15 @@ export default function Header({
       <div className="header-container">
         {/* Logo and Brand */}
         <div className="logo-section" onClick={() => setActiveTab('scanner')}>
-          <div className="logo-icon-box">
-            <Recycle size={26} strokeWidth={2.2} />
-          </div>
+          <img 
+            src="/mudam-logo.png" 
+            alt="شعار مُدام" 
+            className="h-10 w-10 rounded-lg object-contain"
+            style={{ height: '40px', width: '40px', borderRadius: '8px', objectFit: 'contain' }}
+          />
           <div className="logo-text">
-            <h1>خبير إعادة التدوير الذكي</h1>
-            <p>Smart Upcycling & Carbon Offset Engine</p>
+            <h1>مُدام</h1>
+            <p>منصة التدوير الذكي والاستدامة البيئية</p>
           </div>
         </div>
 
