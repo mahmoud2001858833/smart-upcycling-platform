@@ -8,7 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
-  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download
+  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
@@ -41,6 +41,7 @@ import StudentLabReportModal from './components/StudentLabReportModal.jsx';
 import StudentRubricModal from './components/StudentRubricModal.jsx';
 import StudentQuizModal from './components/StudentQuizModal.jsx';
 import GeminiApiKeyModal from './components/GeminiApiKeyModal.jsx';
+import PlatformTourModal from './components/PlatformTourModal.jsx';
 
 import {
   getSavedProjects,
@@ -131,6 +132,7 @@ export default function App() {
   const [isGeminiKeyModalOpen, setIsGeminiKeyModalOpen] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(() => Boolean(getStoredGeminiApiKey()));
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isTourModalOpen, setIsTourModalOpen] = useState(false);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
 
@@ -878,6 +880,16 @@ export default function App() {
 
           {/* Points & Completed Projects Badges */}
           <div className="points-badges-row">
+            <button
+              type="button"
+              onClick={() => setIsTourModalOpen(true)}
+              className="btn-platform-tour-trigger"
+              title="جولة تعريفية بالمنصة وفيديو العرض التقديمي"
+            >
+              <Play size={13} fill="currentColor" />
+              <span>جولة في مُدام 🎬</span>
+            </button>
+
             <span className="eco-point-badge">
               <Trophy size={15} />
               <span>{environmentalPoints} نقطة بيئية</span>
@@ -1044,6 +1056,7 @@ export default function App() {
           isOpen={isMobileSidebarOpen}
           onClose={() => setIsMobileSidebarOpen(false)}
           isAdmin={platform.isAdmin}
+          onOpenTour={() => setIsTourModalOpen(true)}
         />
 
         {/* Main Viewport Container */}
@@ -2546,14 +2559,14 @@ export default function App() {
       />
 
       {/* ============================================================
-          GOOGLE GEMINI DIRECT AI API KEY MODAL
+          LUXURY PLATFORM TOUR & PRESENTATION MODAL
           ============================================================ */}
-      <GeminiApiKeyModal
-        isOpen={isGeminiKeyModalOpen}
-        onClose={() => setIsGeminiKeyModalOpen(false)}
-        onKeySaved={(k) => {
-          setHasGeminiKey(Boolean(k));
-          showToast(k ? 'تم تفعيل وربط Google Gemini 1.5 Flash السحابي بنجاح! 🚀' : 'تم العودة للمحرك التوليدي الحي الفوري الداخلي ⚡', 'success');
+      <PlatformTourModal
+        isOpen={isTourModalOpen}
+        onClose={() => setIsTourModalOpen(false)}
+        onStartExploring={() => {
+          setIsTourModalOpen(false);
+          setActiveTab('generator');
         }}
       />
 

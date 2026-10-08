@@ -12,7 +12,8 @@ import {
   CheckCircle,
   Sparkles,
   Leaf,
-  Activity
+  Activity,
+  Compass
 } from 'lucide-react';
 
 export default function SidebarNav({
@@ -27,9 +28,16 @@ export default function SidebarNav({
   onOpenGeminiKeyModal,
   isOpen = false,
   onClose,
-  isAdmin = false
+  isAdmin = false,
+  onOpenTour
 }) {
   const navItems = [
+    {
+      id: 'tour',
+      label: 'عن مُدام (الجولة التعريفية 🎬)',
+      icon: Compass,
+      badge: 'جديد'
+    },
     {
       id: 'generator',
       label: 'مولد المشاريع',
@@ -81,6 +89,11 @@ export default function SidebarNav({
   ];
 
   const handleSelectTab = (tabId) => {
+    if (tabId === 'tour') {
+      if (onOpenTour) onOpenTour();
+      if (onClose) onClose();
+      return;
+    }
     setActiveTab(tabId);
     if (onClose) onClose();
   };
