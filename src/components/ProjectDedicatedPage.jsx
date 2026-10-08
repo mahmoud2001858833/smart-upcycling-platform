@@ -5,7 +5,7 @@ import {
   ChevronRight, Wrench, Layers, Leaf, Droplets, Zap, 
   DollarSign, CheckSquare, Square, Eye, MessageCircle,
   Lightbulb, Bot, RefreshCw, Maximize2, X,
-  Play, Pause, RotateCcw, Timer, FileText, GraduationCap, Download
+  Play, Pause, RotateCcw, Timer, FileText, GraduationCap, Download, ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
@@ -28,7 +28,7 @@ export default function ProjectDedicatedPage({
   const [viewModes, setViewModes] = useState({}); // stepIndex -> 'infographic' | 'photo'
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [workshopMode, setWorkshopMode] = useState(false);
-  const [activeAgentTab, setActiveAgentTab] = useState(0);
+  const [showSwarmDetails, setShowSwarmDetails] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeStepAiTool, setActiveStepAiTool] = useState(null); // 'alternative' | 'safety' | null
   const [stepSeeds, setStepSeeds] = useState({});
@@ -656,67 +656,89 @@ export default function ProjectDedicatedPage({
           </div>
         </div>
 
-        {/* 6-AGENTS SWARM COLLABORATIVE INTELLIGENCE */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+        {/* UNIFIED MULTI-DISCIPLINARY AI ANALYSIS (تحليلات ومصادقات فريق الوكلاء الذكي) */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 flex items-center gap-1">
                   <Bot className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>طاقم الوكلاء الستة</span>
+                  <span>نظام التحليل المتعدد</span>
                 </span>
                 <h3 className="text-lg sm:text-xl font-black text-slate-900">
                   تحليلات ومصادقات فريق الوكلاء الذكي (AI Swarm Team)
                 </h3>
               </div>
               <p className="text-xs text-slate-500">
-                كل جانب في هذا المشروع تم تدقيقه هندسياً، بيئياً، واقتصادياً بواسطة 6 وكلاء ذكاء اصطناعي متخصصين
+                تدقيق هندسي، بيئي، واقتصادي متكامل للمشروع لضمان السلامة والاستدامة والجدوى
               </p>
+            </div>
+
+            {/* زر إظهار / إخفاء التحليلات */}
+            <button
+              type="button"
+              onClick={() => setShowSwarmDetails(!showSwarmDetails)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 transition-all cursor-pointer shadow-xs"
+            >
+              <Eye className="w-4 h-4 text-emerald-700" />
+              <span>{showSwarmDetails ? 'إخفاء التحليلات التفصيلية' : 'إظهار التحليلات'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showSwarmDetails ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {/* الملخص التنفيذي الموحد (يظهر دائماً) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+              <span className="text-[11px] text-emerald-700 font-bold block mb-1">🧪 التوافق الكيميائي</span>
+              <div className="text-lg font-black text-emerald-900">{swarm.materialsSpecialist?.compatibilityScore || 92}%</div>
+              <p className="text-[10px] text-emerald-700 mt-0.5">ترابط آمن للخامات</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-cyan-50/60 border border-cyan-100">
+              <span className="text-[11px] text-cyan-700 font-bold block mb-1">📐 الاستقرار الإنشائي</span>
+              <div className="text-lg font-black text-cyan-900">94 / 100</div>
+              <p className="text-[10px] text-cyan-700 mt-0.5">توزيع متوازن للأحمال</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-green-50/60 border border-green-100">
+              <span className="text-[11px] text-green-700 font-bold block mb-1">🌍 وفر الكربون المحقق</span>
+              <div className="text-lg font-black text-green-900">{lca.carbonSavedKg} كجم</div>
+              <p className="text-[10px] text-green-700 mt-0.5">معتمد وفق ISO 14044</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100">
+              <span className="text-[11px] text-amber-700 font-bold block mb-1">📊 الجدوى والتوفير</span>
+              <div className="text-lg font-black text-amber-900">+${economics.moneySavedUsd}</div>
+              <p className="text-[10px] text-amber-700 mt-0.5">وفر مالي ملحوظ</p>
             </div>
           </div>
 
-          {/* Swarm Agents Horizontal Selector */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {SWARM_AGENTS.map((agent, index) => {
-              const isSelected = activeAgentTab === index;
-              return (
-                <button
-                  key={agent.id}
-                  onClick={() => setActiveAgentTab(index)}
-                  className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm scale-[1.02]'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl">{agent.avatar}</span>
-                    {isSelected && <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />}
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{agent.name}</h4>
-                    <p className="text-[10px] text-slate-500 line-clamp-1">{agent.role}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {/* التقرير الشامل والموحد بكافة المحاور (يظهر عند النقر على إظهار التحليلات) */}
+          {showSwarmDetails && (
+            <div className="mt-4 p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-5 animate-in fade-in duration-200">
+              <div className="pb-3 border-b border-slate-200">
+                <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <span>📑</span>
+                  <span>التقرير التحليلي الشامل والمصادقة الهندسية والبيئية</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  تم إجراء فحص متعدد المحاور للخامات وطريقة البناء والأثر الكربوني ومعدات السلامة المطلوبة:
+                </p>
+              </div>
 
-          {/* Active Agent Output Card */}
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-            {activeAgentTab === 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+              {/* المحور الأول: الخامات والربط الكيميائي */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
                   <span>🧪</span>
-                  <span>تقرير د. ليلى المهدي (هندسة المواد والربط الكيميائي)</span>
+                  <span>محور هندسة المواد والربط الكيميائي</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-1">درجة التوافق الكيميائي:</div>
-                    <div className="text-xl font-black text-emerald-700">{swarm.materialsSpecialist?.compatibilityScore || 92}% ({swarm.materialsSpecialist?.compatibilityRating || 'ممتاز'})</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1">التوافق الكيميائي:</div>
+                    <div className="text-base font-black text-emerald-700">{swarm.materialsSpecialist?.compatibilityScore || 92}% ({swarm.materialsSpecialist?.compatibilityRating || 'ممتاز'})</div>
                     <p className="text-[11px] text-slate-500 mt-1">{swarm.materialsSpecialist?.notes || 'توافق تام بين الخامات يمنع التآكل والتشقق'}</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
                     <div className="font-bold text-slate-700 mb-1">اللواصق والمثبتات الموصى بها:</div>
                     <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-700">
                       {(swarm.materialsSpecialist?.recommendedAdhesives || ['غراء بولي يوريثان أو مسامير غاطسة']).map((adh, i) => (
@@ -724,136 +746,89 @@ export default function ProjectDedicatedPage({
                       ))}
                     </ul>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
                     <div className="font-bold text-slate-700 mb-1">العمر الافتراضي والمقاومة:</div>
-                    <div className="text-lg font-bold text-slate-900">{swarm.materialsSpecialist?.lifespanYears || 8} سنوات من الاستخدام المستمر</div>
+                    <div className="text-sm font-bold text-slate-900">{swarm.materialsSpecialist?.lifespanYears || 8} سنوات من الاستخدام المستمر</div>
                     <p className="text-[11px] text-slate-500 mt-1">{swarm.materialsSpecialist?.weatherResistance || 'مقاوم للرطوبة والعوامل الداخلية'}</p>
                   </div>
                 </div>
               </div>
-            )}
 
-            {activeAgentTab === 1 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-cyan-800 font-bold text-sm">
+              {/* المحور الثاني: التصميم الصناعي وبيئة الاستخدام */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-cyan-800 font-bold text-xs">
                   <span>📐</span>
-                  <span>تقرير م. كريم سامي (التصميم الصناعي وبيئة الاستخدام Ergonomics)</span>
+                  <span>محور التصميم الإنشائي وبيئة الاستخدام (Ergonomics)</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-1">معايير التناسب الإنساني:</div>
-                    <p className="text-[11px] text-slate-500">خلوص مقابض 40 ملم، وزاوية رؤية مريحة 120 درجة، متوافقة مع الحركة الطبيعية للجسم.</p>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1">التناسب الإنساني:</div>
+                    <p className="text-[11px] text-slate-500">خلوص مقابض 40 ملم وزاوية رؤية مريحة 120 درجة متوافقة مع الحركة الطبيعية للجسم.</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-1">مؤشر الاستقرار الإنشائي:</div>
-                    <div className="text-xl font-black text-cyan-700">94 / 100</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1">الاستقرار الإنشائي:</div>
+                    <div className="text-base font-black text-cyan-700">94 / 100</div>
                     <p className="text-[11px] text-slate-500 mt-1">مركز ثقل سفلي يمنع الانقلاب أو الاهتزاز مع الأحمال.</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-1">النمط الجمالي المقترح:</div>
-                    <div className="text-sm font-bold text-slate-900">{swarm.industrialArchitect?.recommendedFinish || 'Modern Industrial (صناعي عصري)'}</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1">التشطيب المقترح:</div>
+                    <div className="text-xs font-bold text-slate-900">{swarm.industrialArchitect?.recommendedFinish || 'Modern Industrial (صناعي عصري)'}</div>
                     <p className="text-[11px] text-slate-500 mt-1">حواف مشطوفة بنصف قطر 3 ملم لملمس ناعم وآمن.</p>
                   </div>
                 </div>
               </div>
-            )}
 
-            {activeAgentTab === 2 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+              {/* المحور الثالث: البصمة البيئية ودورة الحياة LCA */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
                   <span>🌍</span>
-                  <span>تقرير د. طارق البيئة (مدقق دورة الحياة والبصمة البيئية LCA)</span>
+                  <span>محور تقييم دورة الحياة والبصمة البيئية (LCA)</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
                     <div className="font-bold text-slate-600 mb-1">انبعاثات CO₂ المحيدة:</div>
-                    <div className="text-xl font-black text-emerald-700">{lca.carbonSavedKg} كجم CO₂e</div>
+                    <div className="text-base font-black text-emerald-700">{lca.carbonSavedKg} كجم</div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">المياه الافتراضية الموفرة:</div>
-                    <div className="text-xl font-black text-cyan-700">{lca.waterSavedLiters} لتر</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-600 mb-1">المياه الافتراضية:</div>
+                    <div className="text-base font-black text-cyan-700">{lca.waterSavedLiters} لتر</div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">وفر الطاقة الكهربائية:</div>
-                    <div className="text-xl font-black text-amber-700">{lca.energySavedKwh} kWh</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-600 mb-1">وفر الكهرباء:</div>
+                    <div className="text-base font-black text-amber-700">{lca.energySavedKwh} kWh</div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">مؤشر الدائرية (Circularity):</div>
-                    <div className="text-xl font-black text-emerald-700">{lca.circularityScore || 94}%</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeAgentTab === 3 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
-                  <span>📊</span>
-                  <span>تقرير سارة المستشار (الجدوى الاقتصادية والوفر المالي)</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">تكلفة التنفيذ الذاتي (DIY):</div>
-                    <div className="text-xl font-black text-slate-900">${economics.diyCostUsd} دولار</div>
-                    <p className="text-[11px] text-slate-500 mt-1">تقتصر على بعض المسامير أو الغراء البسيط.</p>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">سعر المنتج التجاري البديل:</div>
-                    <div className="text-xl font-black text-slate-600">${economics.marketEquivalentUsd} دولار</div>
-                    <p className="text-[11px] text-slate-500 mt-1">متوسط أسعار المتاجر العالمية لمنتج بنفس الوظيفة.</p>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-600 mb-1">صافي التوفير المالي المحقق:</div>
-                    <div className="text-xl font-black text-amber-700">${economics.moneySavedUsd} دولار (+{economics.savingPercentage}%)</div>
-                    <p className="text-[11px] text-slate-500 mt-1">عائد استثماري فائق وتوفير فوري لميزانيتك.</p>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-600 mb-1">مؤشر الدائرية:</div>
+                    <div className="text-base font-black text-emerald-700">{lca.circularityScore || 94}%</div>
                   </div>
                 </div>
               </div>
-            )}
 
-            {activeAgentTab === 4 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
+              {/* المحور الرابع: الجدوى الاقتصادية وإدارة السلامة */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
                   <span>🛡️</span>
-                  <span>تقرير كابتن رامي الأمان (إدارة السلامة المهنية ومخاطر الورشة)</span>
+                  <span>محور الجدوى الاقتصادية والسلامة المهنية</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-2">معدات الوقاية الشخصية الإلزامية (PPE):</div>
-                    <div className="space-y-1.5 text-[11px] text-slate-700">
-                      <div>🥽 <strong>نظارات حماية شفافة:</strong> واقية من الشظايا أثناء القص والتثبيت.</div>
-                      <div>🧤 <strong>قفازات مبطنة ضد القطع:</strong> حماية اليدين من حواف الخامات.</div>
-                      <div>😷 <strong>كمامة غبار:</strong> لمنع تنفس جزيئات الصنفرة الدقيقة.</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1.5">الجدوى المالية:</div>
+                    <div className="space-y-1 text-[11px] text-slate-600">
+                      <div>تكلفة التنفيذ الذاتي: <strong>${economics.diyCostUsd}</strong> مقارنة بمنتج تجاري قيمته <strong>${economics.marketEquivalentUsd}</strong>.</div>
+                      <div className="text-emerald-700 font-bold">صافي الوفر المحقق: ${economics.moneySavedUsd} (+{economics.savingPercentage}%).</div>
                     </div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs">
-                    <div className="font-bold text-slate-700 mb-2">تعليمات سلامة الورشة:</div>
-                    <div className="space-y-1.5 text-[11px] text-slate-500">
-                      <div>• تثبيت القطع بإحكام بملزمة قبل القص لتفادي الانزلاق.</div>
-                      <div>• العمل في مكان جيد الإضاءة والتهوية، بعيداً عن مصادر اللهب المكشوف.</div>
-                      <div>• تصنيف أمان الأطفال: {swarm.safetyDirector?.childSafetyRating || 'آمن بمرافقة وإشراف الكبار'}.</div>
+                  <div className="p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="font-bold text-slate-700 mb-1.5">إرشادات السلامة والوقاية:</div>
+                    <div className="space-y-1 text-[11px] text-slate-600">
+                      <div>• ارتداء نظارات حماية وقفازات واقية من الحواف الحادة.</div>
+                      <div>• تصنيف أمان الفئات العمرية: {swarm.safetyDirector?.childSafetyRating || 'آمن بمرافقة وإشراف الكبار'}.</div>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-
-            {activeAgentTab === 5 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-purple-800 font-bold text-sm">
-                  <span>🎨</span>
-                  <span>تقرير نور الدين جرافيك (مخرج الإنفوجرافيك الهندسي)</span>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  تم تصميم إنفوجرافيك مدمج لكل خطوة تنفيذية يشمل الشرح الكتابي والبياني، محاور القياس، ونقاط التثبيت الحساسة (Pins A & B) مباشرة على الصورة، مما يضمن دقة التنفيذ دون أي لبس.
-                </p>
-                <div className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-600 flex items-center justify-between shadow-xs">
-                  <span>يمكنك التبديل بين صورة الواقع والإنفوجرافيك التوضيحي في قسم الخطوات أدناه ⬇️</span>
-                  <span className="text-emerald-700 font-bold">100% بدون تأخير تحميل</span>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* STEP-BY-STEP ANNOTATED INFOGRAPHIC GUIDE (دليل الخطوات التفاعلي والشرح بالذكاء الاصطناعي) */}

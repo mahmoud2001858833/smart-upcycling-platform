@@ -98,6 +98,8 @@ export async function callAi(action, payload = {}, { timeoutMs = 150000 } = {}) 
   const res = await postJson(url, { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, ...userHeaders }, body, timeoutMs);
   let data = null;
   try { data = await res.json(); } catch { /* handled below */ }
-  if (!res.ok && !data) throw new Error(`فشل الاتصال بالبوابة (${res.status})`);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `فشل الاتصال بالبوابة (${res.status})`);
+  }
   return unwrap(data);
 }

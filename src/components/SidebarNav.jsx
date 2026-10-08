@@ -190,17 +190,6 @@ export default function SidebarNav({
               </div>
             )}
           </div>
-
-          {/* Gemini AI Status Button */}
-          <button
-            type="button"
-            onClick={onOpenGeminiKeyModal}
-            className={`sidebar-gemini-btn ${hasGeminiKey ? 'connected' : ''}`}
-            title="إعدادات محرك الذكاء الاصطناعي"
-          >
-            <Sparkles size={15} />
-            <span>{hasGeminiKey ? 'Gemini AI متصل 🟢' : 'ربط مفتاح Gemini AI'}</span>
-          </button>
         </div>
       </aside>
     </>

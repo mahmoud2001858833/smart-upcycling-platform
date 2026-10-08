@@ -182,7 +182,7 @@ export default function App() {
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
   const [regeneratingStepId, setRegeneratingStepId] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const [materialSelectTab, setMaterialSelectTab] = useState('packs'); // 'packs' | 'grid' | 'custom'
+  const [materialSelectTab, setMaterialSelectTab] = useState('grid'); // 'grid' | 'custom' | 'packs'
   const [projectsViewMode, setProjectsViewMode] = useState('spotlight'); // 'spotlight' | 'grid' | 'compare'
   const [activeSpotlightIndex, setActiveSpotlightIndex] = useState(0);
 
@@ -888,22 +888,6 @@ export default function App() {
               <span>{completedProjects} مشروع منجز</span>
             </span>
 
-            <button
-              type="button"
-              onClick={() => setIsGeminiKeyModalOpen(true)}
-              className="eco-point-badge"
-              title="إعدادات محرك Google Gemini AI المباشر"
-              style={{
-                cursor: 'pointer',
-                backgroundColor: hasGeminiKey ? '#ecfdf5' : '#f8fafc',
-                borderColor: hasGeminiKey ? '#a7f3d0' : '#e2e8f0',
-                color: hasGeminiKey ? '#065f46' : '#475569'
-              }}
-            >
-              <Sparkles size={14} color={hasGeminiKey ? '#059669' : '#64748b'} />
-              <span>{hasGeminiKey ? 'Gemini AI متصل 🟢' : 'محرك Gemini AI ⚡'}</span>
-            </button>
-
             {impact.co2Saved > 0 && (
               <span className="official-live-badge">
                 <Leaf size={14} />
@@ -1156,16 +1140,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Modern Selection Studio Tabs (أرقى وأسهل تجربة اختيار) */}
+              {/* Modern Selection Studio Tabs (ترتيب الخيارات: المكتبة أولاً ثم إدخال حر ثم حزم أفكار) */}
               <div className="selection-studio-tabs">
-                <button
-                  type="button"
-                  className={`studio-tab-btn ${materialSelectTab === 'packs' ? 'active' : ''}`}
-                  onClick={() => setMaterialSelectTab('packs')}
-                >
-                  <Sparkles size={15} />
-                  <span>حزم أفكار جاهزة (Packs)</span>
-                </button>
                 <button
                   type="button"
                   className={`studio-tab-btn ${materialSelectTab === 'grid' ? 'active' : ''}`}
@@ -1181,6 +1157,14 @@ export default function App() {
                 >
                   <Camera size={15} />
                   <span>إدخال حر ومسح بالكاميرا</span>
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab-btn ${materialSelectTab === 'packs' ? 'active' : ''}`}
+                  onClick={() => setMaterialSelectTab('packs')}
+                >
+                  <Sparkles size={15} />
+                  <span>حزم أفكار جاهزة (Packs)</span>
                 </button>
               </div>
 
@@ -2255,7 +2239,7 @@ export default function App() {
                 <Recycle size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>اسأل خبير الاستدامة الذكي (Gemini AI Advisor)</h3>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>اسأل خبير الاستدامة والتدوير الذكي</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {projectContextForChat ? (
                     <span style={{ color: 'var(--emerald-primary)', fontWeight: 700 }}>
@@ -2623,7 +2607,7 @@ export default function App() {
           <div className="footer-compliance-badges">
             <span className="std-tag">ISO 14044 LCA Compliant</span>
             <span className="std-tag">GHG Protocol Scope 3</span>
-            <span className="std-tag">Gemini AI Engine Powered</span>
+            <span className="std-tag">Multi-AI Smart Engine</span>
             <span className="std-tag">Multi-Image Visual Suite</span>
           </div>
         </div>
