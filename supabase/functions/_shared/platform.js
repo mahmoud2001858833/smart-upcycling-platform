@@ -420,6 +420,17 @@ export function aggregateStats(events = [], { now = Date.now(), days = 14, tzOff
     }
   }
 
+  // busiest clock hour (last 7 days) by finished projects
+  const perHourCount = new Map();
+  for (const e of events) {
+    const ts = Date.parse(e.created_at);
+    if (e.kind === 'develop' && e.status === 'ok' && ts >= windows.d7) {
+      const h = Math.floor(ts / 3_600_000);
+      perHourCount.set(h, (perHourCount.get(h) || 0) + 1);
+    }
+  }
+  const peakProjectsPerHour = perHourCount.size ? Math.max(...perHourCount.values()) : 0;
+
   const fin = a => ({ ...a, visitors: a.visitors.size });
   // Per-project cost = writing it + its share of the brainstorm (one brainstorm feeds up to 3 projects).
   const ideateShare = projectCount ? (ideateCostSum / Math.max(1, ideateOk)) / Math.max(1, projectCount / Math.max(1, ideateOk)) : 0;
@@ -430,6 +441,7 @@ export function aggregateStats(events = [], { now = Date.now(), days = 14, tzOff
     last7d: fin(acc.d7),
     last30d: fin(acc.d30),
     series: [...series.values()].map(({ _v, ...d }) => ({ ...d, visitors: _v.size, cost: Number(d.cost.toFixed(4)) })),
+    peakProjectsPerHour,
     avgProjectCostUsd,
     avgImageCostUsd: imageCount && imageCostSum > 0 ? imageCostSum / imageCount : null,
     sampled: events.length
