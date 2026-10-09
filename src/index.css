@@ -7450,6 +7450,634 @@ img {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
+/* ==========================================================================
+   OFFICIAL MUDAM TOUR PAGE STYLES (الصفحة التعريفية الرسمية - هوية بيضاء وخضراء)
+   ========================================================================== */
+.official-tour-page {
+  width: 100%;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--text-primary);
+  background: transparent;
+}
+
+/* 1. Hero Block */
+.tour-hero-block {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 28px;
+  padding: 3.5rem 2.5rem 3rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.tour-hero-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%);
+}
+
+.tour-hero-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tour-official-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1.25rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #065f46;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);
+}
+
+.badge-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.tour-main-heading {
+  font-size: 2.35rem;
+  font-weight: 900;
+  line-height: 1.4;
+  color: #0f172a;
+  margin: 0 0 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.text-emerald-highlight {
+  color: #059669;
+  position: relative;
+  display: inline-block;
+}
+
+.tour-main-desc {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #475569;
+  max-width: 760px;
+  margin: 0 auto 2.25rem;
+}
+
+.tour-hero-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+}
+
+.btn-tour-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.95rem 2.2rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-tour-cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.42);
+}
+
+.btn-tour-cta-primary.large {
+  padding: 1.15rem 2.8rem;
+  font-size: 1.1rem;
+}
+
+.btn-tour-cta-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.95rem 1.8rem;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-tour-cta-outline:hover {
+  background: #f8fafc;
+  border-color: #10b981;
+  color: #059669;
+  transform: translateY(-2px);
+}
+
+/* Metrics Grid */
+.tour-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  padding-top: 2rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.tour-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.2rem;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  text-align: right;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.tour-metric-card:hover {
+  transform: translateY(-3px);
+  border-color: #a7f3d0;
+  background: #ffffff;
+}
+
+.metric-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-text-box strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.15rem;
+}
+
+.metric-text-box span {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* 2. Content Sections */
+.tour-content-section {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 28px;
+  padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 2.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.tour-content-section.bg-soft-tint {
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.tour-section-header {
+  text-align: center;
+  max-width: 660px;
+  margin: 0 auto 2.5rem;
+}
+
+.tour-category-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  margin-bottom: 0.6rem;
+}
+
+.tour-section-title {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.tour-section-subtitle {
+  font-size: 0.92rem;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+/* Video Card (White Theme) */
+.tour-video-card {
+  max-width: 820px;
+  margin: 0 auto;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #000000;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+
+.tour-video-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.tour-video-placeholder:hover .video-play-orb {
+  transform: scale(1.1);
+  background: #10b981;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+}
+
+.video-play-orb {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #059669;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease;
+  margin-bottom: 1.5rem;
+}
+
+.video-placeholder-caption {
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.video-tag-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: inline-block;
+  margin-bottom: 0.6rem;
+}
+
+.video-placeholder-caption h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.35rem;
+}
+
+.video-placeholder-caption p {
+  font-size: 0.85rem;
+  color: #a7f3d0;
+  margin: 0;
+}
+
+.tour-html-video {
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+}
+
+/* Features Grid */
+.tour-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.tour-feature-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1.8rem 1.6rem;
+  transition: all 0.25s ease;
+}
+
+.tour-feature-card:hover {
+  transform: translateY(-4px);
+  border-color: #10b981;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.08);
+}
+
+.feature-icon-wrapper {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.feature-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.6rem;
+}
+
+.feature-card-desc {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Standards Grid */
+.tour-standards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.tour-standard-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 1.5rem 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.tour-standard-card:hover {
+  border-color: #10b981;
+  transform: translateY(-2px);
+}
+
+.standard-check-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.standard-card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.4rem;
+}
+
+.standard-card-desc {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Workflow Steps */
+.tour-workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.25rem;
+}
+
+.workflow-step-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1.75rem 1.25rem;
+  text-align: right;
+  transition: all 0.2s ease;
+}
+
+.workflow-step-box:hover {
+  background: #ffffff;
+  border-color: #10b981;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.workflow-number {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #059669;
+  font-family: 'Outfit', sans-serif;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.workflow-step-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.45rem;
+}
+
+.workflow-step-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Team Section */
+.team-cards-flex {
+  display: flex;
+  justify-content: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.official-team-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  padding: 1.75rem;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.official-team-card:hover {
+  border-color: #10b981;
+  transform: translateY(-3px);
+}
+
+.team-avatar-icon {
+  font-size: 2.4rem;
+  background: #f8fafc;
+  padding: 0.5rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.team-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 0.35rem;
+}
+
+.team-role-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  margin-bottom: 0.75rem;
+}
+
+.team-bio {
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* FAQ Section */
+.tour-faqs-container {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tour-faq-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-faq-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.tour-faq-item.open {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08);
+}
+
+.tour-faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tour-faq-question h4 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.faq-arrow {
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.faq-arrow.rotate {
+  transform: rotate(180deg);
+  color: #059669;
+}
+
+.tour-faq-answer {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.tour-faq-answer p {
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Bottom CTA */
+.tour-bottom-cta {
+  background: linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%);
+  border-radius: 28px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  color: #ffffff;
+  box-shadow: 0 15px 35px rgba(6, 95, 70, 0.25);
+  margin-bottom: 2rem;
+}
+
+.cta-title {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0 0 0.75rem;
+}
+
+.cta-desc {
+  font-size: 1rem;
+  color: #a7f3d0;
+  max-width: 600px;
+  margin: 0 auto 2.25rem;
+  line-height: 1.7;
+}
+
+
 
 
 

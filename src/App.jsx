@@ -40,8 +40,7 @@ import StudentPortalSection from './components/StudentPortalSection.jsx';
 import StudentLabReportModal from './components/StudentLabReportModal.jsx';
 import StudentRubricModal from './components/StudentRubricModal.jsx';
 import StudentQuizModal from './components/StudentQuizModal.jsx';
-import GeminiApiKeyModal from './components/GeminiApiKeyModal.jsx';
-import PlatformTourModal from './components/PlatformTourModal.jsx';
+import PlatformTourPage from './components/PlatformTourPage.jsx';
 
 import {
   getSavedProjects,
@@ -882,12 +881,12 @@ export default function App() {
           <div className="points-badges-row">
             <button
               type="button"
-              onClick={() => setIsTourModalOpen(true)}
+              onClick={() => setActiveTab('tour')}
               className="btn-platform-tour-trigger"
               title="جولة تعريفية بالمنصة وفيديو العرض التقديمي"
             >
               <Play size={13} fill="currentColor" />
-              <span>جولة في مُدام 🎬</span>
+              <span>عن مُدام (الجولة 🎬)</span>
             </button>
 
             <span className="eco-point-badge">
@@ -1056,7 +1055,7 @@ export default function App() {
           isOpen={isMobileSidebarOpen}
           onClose={() => setIsMobileSidebarOpen(false)}
           isAdmin={platform.isAdmin}
-          onOpenTour={() => setIsTourModalOpen(true)}
+          onOpenTour={() => setActiveTab('tour')}
         />
 
         {/* Main Viewport Container */}
@@ -1096,6 +1095,13 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ============================================================
+            TAB: OFFICIAL PLATFORM TOUR & PRESENTATION SHOWCASE (عن مُدام)
+            ============================================================ */}
+        {activeTab === 'tour' && (
+          <PlatformTourPage onStartExploring={() => setActiveTab('generator')} />
         )}
 
         {/* ============================================================
@@ -2558,17 +2564,6 @@ export default function App() {
         onApplyMaterials={handleApplyLibraryMaterials}
       />
 
-      {/* ============================================================
-          LUXURY PLATFORM TOUR & PRESENTATION MODAL
-          ============================================================ */}
-      <PlatformTourModal
-        isOpen={isTourModalOpen}
-        onClose={() => setIsTourModalOpen(false)}
-        onStartExploring={() => {
-          setIsTourModalOpen(false);
-          setActiveTab('generator');
-        }}
-      />
 
       {/* ============================================================
           SUPABASE AUTHENTICATION MODAL
