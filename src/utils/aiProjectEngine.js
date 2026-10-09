@@ -43,7 +43,7 @@ import {
 } from './imageCatalog.js';
 import { orchestrateProjectSwarm } from './multiAgentSwarm.js';
 import { generateProjectsWithAi } from './projectPipeline.js';
-import { callAi } from './aiGateway.js';
+import { callAi, isLimitError } from './aiGateway.js';
 
 
 /**
@@ -753,6 +753,14 @@ function synthesizeArchitecturalDecorProject({ primaryMat, secondaryMat, tertiar
  * Procedural Generative Synthesis Engine V4
  * Dynamically synthesizes 3 bespoke, non-hardcoded projects for ANY entered materials on the fly.
  */
+/** Coarse material family used by the offline template engine ('wood' | 'metal' | 'general'). */
+function detectPrimaryMaterialCategory(materialsStr = '') {
+  const t = String(materialsStr).toLowerCase();
+  if (/خشب|wood|كرتون خشب|mdf|بالت/.test(t)) return 'wood';
+  if (/معدن|ألمنيوم|المنيوم|صاج|حديد|metal|alumin|steel|can/.test(t)) return 'metal';
+  return 'general';
+}
+
 export function synthesizeDynamicBespokeProjects(materialsStr, userLevel = 'adult', projectType = 'practical') {
   const mats = materialsStr
     ? materialsStr.split(/[،,\n++]+/).map(m => m.trim()).filter(Boolean)
