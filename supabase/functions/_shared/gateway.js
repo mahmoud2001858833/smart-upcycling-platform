@@ -121,9 +121,16 @@ async function enforceDaily({ store, limits, viewer, kind }) {
   if (!spec) return;
   const base = limits[spec.limit];
   const max = viewer.userId ? base : base * limits.anonMultiplier;
-  const used = await store.countEvents({
-    kinds: [kind], status: 'ok', sinceMs: Date.now() - DAY, ...viewerFilter(viewer)
-  });
+  let used = 0;
+  try {
+    used = await store.countEvents({
+      kinds: [kind], status: 'ok', sinceMs: Date.now() - DAY, ...viewerFilter(viewer)
+    });
+  } catch (err) {
+    // usage tables missing / database hiccup: do not take generation down with it
+    console.warn('[usage] daily cap check skipped:', err.message);
+    return;
+  }
   if (used >= max) {
     throw new GatewayError(
       `وصلت إلى الحد اليومي في ${spec.what}. يتجدد الحد خلال 24 ساعة، فجرّب لاحقاً.`,
