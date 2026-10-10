@@ -16,7 +16,8 @@ import {
   Compass,
   Wifi,
   WifiOff,
-  Smartphone
+  Smartphone,
+  TrendingUp
 } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
