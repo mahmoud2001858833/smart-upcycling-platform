@@ -1199,43 +1199,6 @@ export default function App() {
                 اختر من قائمة المواد الشائعة أو أدخل أي مواد يدوياً ليقوم الذكاء الاصطناعي بابتكار مشاريع وتوليد 3 صور لكل مشروع:
               </p>
 
-              {/* AI Autonomous Mission Director Banner (الموجّه الذكي الفعّال للمنظومة) */}
-              <div className="ai-mission-director-banner">
-                <div className="ai-mission-director-content">
-                  <div className="ai-mission-avatar-pulse">
-                    <Bot size={22} />
-                  </div>
-                  <div className="ai-mission-text-block">
-                    <div className="ai-mission-badge-row">
-                      <span className="ai-mission-pill">الموجّه الذكي الفعّال • AI Autonomous Director</span>
-                      <span className="ai-mission-status-dot">6 وكلاء متخصصين بتنسيق حي</span>
-                    </div>
-                    <h4 className="ai-mission-headline">
-                      {selectedMaterials.length === 0
-                        ? 'دع الذكاء الاصطناعي يتولى القيادة الكاملة ويختار الخامات ويصنع المشروع الأمثل لك'
-                        : `يتابع فريق الوكلاء اختيارك لـ (${selectedMaterials.length} خامات). انقر للتوجيه الذاتي أو تابع التخصيص.`}
-                    </h4>
-                    <p className="ai-mission-sub">
-                      {selectedMaterials.length === 0
-                        ? 'يقوم منسق الوكلاء باختيار التوليفة الهندسية الأعلى جدوى والأنسب لبيئتك ويدير عملية التصنيع والتوثيق فورياً.'
-                        : 'تم تدقيق التوافق الميكانيكي للخامات، وفريق التصميم مستعد لإطلاق استوديو التوليد المتكامل.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="ai-mission-action-wrap">
-                  <button
-                    type="button"
-                    onClick={handleAiAutoPilot}
-                    disabled={isLoading}
-                    className="btn-ai-autopilot"
-                    title="الذكاء الاصطناعي يختار التوليفة والإعدادات ويولد المشروع فوراً بنقرة واحدة"
-                  >
-                    <Wand2 size={16} />
-                    <span>التوجيه الذاتي الكامل (1-Click Auto-Pilot)</span>
-                  </button>
-                </div>
-              </div>
 
               {/* Modern Selection Studio Tabs (ترتيب الخيارات: المكتبة أولاً ثم إدخال حر ثم حزم أفكار) */}
               <div className="selection-studio-tabs">
