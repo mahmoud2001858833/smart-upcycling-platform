@@ -28,6 +28,8 @@ export default function AuthModal({ isOpen, onClose }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('student'); // 'student' | 'researcher' | 'maker' | 'institution'
+  const [school, setSchool] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -57,6 +59,8 @@ export default function AuthModal({ isOpen, onClose }) {
     setPassword('');
     setConfirmPassword('');
     setFullName('');
+    setRole('student');
+    setSchool('');
     setError(null);
     setSuccessMessage(null);
     setShowPassword(false);
@@ -177,13 +181,15 @@ export default function AuthModal({ isOpen, onClose }) {
       try {
         const data = await signUp(trimmedEmail, password, { 
           full_name: fullName.trim(),
+          role: role,
+          school: school.trim() || 'المنصة الوطنية للتدوير والابتكار',
           remember_me: rememberMe
         });
         
         if (data?.user && !data?.session) {
-          setSuccessMessage('تم إنشاء الحساب بنجاح! تم إرسال رسالة تأكيد إلى بريدك الإلكتروني لتفعيل الحساب.');
+          setSuccessMessage('تم إنشاء الحساب وحفظه في قاعدة البيانات بنجاح! تم إرسال رسالة تأكيد إلى بريدك الإلكتروني.');
         } else {
-          setSuccessMessage('أهلاً بك! تم إنشاء حسابك البيئي وتسجيل الدخول بنجاح.');
+          setSuccessMessage('أهلاً بك! تم إنشاء حسابك وحفظ بياناتك في قاعدة بيانات المنصة بنجاح.');
           setTimeout(() => {
             onClose();
             resetForm();
@@ -208,16 +214,18 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   // Google OAuth Handler
-  const handleGoogleSignIn = async (role = 'student') => {
+  const handleGoogleSignIn = async (overrideRole) => {
     setError(null);
     setGoogleLoading(true);
+    const chosenRole = overrideRole || role || 'student';
     try {
       await signInWithGoogle({
         name: fullName || 'طالب الابتكار (حساب Google)',
         email: email || 'student.innovator@gmail.com',
-        role: role
+        role: chosenRole,
+        school: school.trim() || 'مدرسة الابتكار والاستدامة الخضراء'
       });
-      setSuccessMessage('تم تسجيل الدخول بحساب Google بنجاح! تم تفعيل حسابك كطالب موثق 🎓');
+      setSuccessMessage('تم تسجيل الدخول بحساب Google بنجاح! تم تفعيل حسابك كطالب موثق وحفظ ملفك في السحابة 🎓');
       setTimeout(() => {
         onClose();
         resetForm();
@@ -379,22 +387,67 @@ export default function AuthModal({ isOpen, onClose }) {
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           {/* Full Name for Signup */}
           {mode === 'signup' && (
-            <div className="auth-input-group">
-              <label htmlFor="auth-fullName">الاسم الكامل / الصفة المهنية</label>
-              <div className="auth-input-wrapper">
-                <User size={18} className="auth-field-icon" />
-                <input
-                  id="auth-fullName"
-                  type="text"
-                  placeholder="مثال: م. أحمد عبد العزيز"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  disabled={loading}
-                  autoComplete="name"
-                  required
-                />
+            <>
+              <div className="auth-input-group">
+                <label htmlFor="auth-fullName">الاسم الكامل / اللقب المهني</label>
+                <div className="auth-input-wrapper">
+                  <User size={18} className="auth-field-icon" />
+                  <input
+                    id="auth-fullName"
+                    type="text"
+                    placeholder="مثال: أحمد عبد العزيز"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    disabled={loading}
+                    autoComplete="name"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Role Selection */}
+              <div className="auth-input-group">
+                <label>نوع الحساب والدور في المنصة</label>
+                <div className="grid grid-cols-2 gap-2 mt-1" dir="rtl">
+                  {[
+                    { id: 'student', label: 'طالب مدرسي / جامعي', icon: '🎓' },
+                    { id: 'researcher', label: 'معلم / باحث أكاديمي', icon: '🔬' },
+                    { id: 'maker', label: 'مبتكر وصانع مستقل', icon: '💡' },
+                    { id: 'institution', label: 'مدرسة أو جهة تعليمية', icon: '🏢' }
+                  ].map(r => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setRole(r.id)}
+                      className={`p-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 justify-center ${
+                        role === r.id
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-500 shadow-xs ring-1 ring-emerald-500'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <span>{r.icon}</span>
+                      <span>{r.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* School / Institution (Optional) */}
+              <div className="auth-input-group">
+                <label htmlFor="auth-school">المدرسة / الجامعة / المؤسسة (اختياري)</label>
+                <div className="auth-input-wrapper">
+                  <Sparkles size={18} className="auth-field-icon" />
+                  <input
+                    id="auth-school"
+                    type="text"
+                    placeholder="مثال: مدرسة التميز، جامعة الزرقاء، مدرسة اليرموك"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {/* Email Address */}

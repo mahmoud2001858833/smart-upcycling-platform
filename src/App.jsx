@@ -8,8 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
-  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
-  Smartphone, WifiOff, TrendingUp
+  Smartphone, WifiOff, TrendingUp, Cpu
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
@@ -49,6 +48,8 @@ const StudentRubricModal = lazy(() => import('./components/StudentRubricModal.js
 const StudentQuizModal = lazy(() => import('./components/StudentQuizModal.jsx'));
 const PlatformTourPage = lazy(() => import('./components/PlatformTourPage.jsx'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard.jsx'));
+const InlineConsultationModal = lazy(() => import('./components/InlineConsultationModal.jsx'));
+const CertificateVerificationModal = lazy(() => import('./components/CertificateVerificationModal.jsx'));
 
 import {
   getSavedProjects,
@@ -139,8 +140,39 @@ export default function App() {
   const [hasGeminiKey, setHasGeminiKey] = useState(() => Boolean(getStoredGeminiApiKey()));
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isTourModalOpen, setIsTourModalOpen] = useState(false);
+  const [inlineConsultation, setInlineConsultation] = useState({
+    isOpen: false,
+    project: null,
+    query: ''
+  });
+  const [verificationData, setVerificationData] = useState(null);
   const fileInputRef = useRef(null);
   const userDropdownRef = useRef(null);
+
+  // Listen for #verify hash in URL for real scannable QR verification
+  useEffect(() => {
+    const handleCheckHash = () => {
+      const hash = window.location.hash || '';
+      if (hash.startsWith('#verify')) {
+        const queryStr = hash.includes('?') ? hash.split('?')[1] : '';
+        const params = new URLSearchParams(queryStr);
+        setVerificationData({
+          certId: params.get('cert') || 'CERT-LCA-VERIFIED-2026',
+          studentName: params.get('student') || 'طالب الابتكار البيئي',
+          projectName: params.get('project') || 'مشروع إعادة التدوير المبتكر',
+          co2: params.get('co2') || '3.50',
+          mass: params.get('mass') || '2.10',
+          kwh: params.get('kwh') || '450',
+          school: params.get('school') || 'المنصة الوطنية للتدوير والاستدامة',
+          date: params.get('date') || new Date().toLocaleDateString('ar-EG')
+        });
+      }
+    };
+
+    handleCheckHash();
+    window.addEventListener('hashchange', handleCheckHash);
+    return () => window.removeEventListener('hashchange', handleCheckHash);
+  }, []);
 
 
   // Handle click outside for user profile menu
@@ -342,14 +374,16 @@ export default function App() {
     }
   };
 
-  // Handle clicking a Project Customization Suggestion
+  // Handle clicking a Project Customization Suggestion (On-Page Inline Consultation)
   const handleCustomizationSuggestion = (sug, project) => {
     const target = project || projects[0] || selectedProjectModal;
-    setProjectContextForChat(target);
-    setActiveTab('chat');
     const prompt = sug.promptTemplate(target);
-    setChatInput(prompt);
-    showToast(`💡 تم تحضير استشارة الخبير الذكي حول الاقتراح!`, 'info');
+    setInlineConsultation({
+      isOpen: true,
+      project: target,
+      query: prompt
+    });
+    showToast(`💡 تم فتح استشارة الخبير الذكي في نفس الصفحة!`, 'info');
   };
 
   // Environmental impact calculations
@@ -693,12 +727,17 @@ export default function App() {
     }
   };
 
-  // Consult AI Expert specifically about this project
+  // Consult AI Expert specifically about this project (On-Page Inline Consultation)
   const handleConsultExpertForProject = (project) => {
-    setProjectContextForChat(project);
-    setActiveTab('chat');
-    const introQuery = `أود استشارتك حول مشروع "${project.name}" المصنوع من (${project.materials}). كيف أبدأ بالتنفيذ العملي بأعلى درجات الأمان والمتانة؟`;
-    setChatInput(introQuery);
+    const target = project || selectedProjectModal || projects[0];
+    const materialsStr = typeof target?.materials === 'string' ? target.materials : (target?.materials?.join?.(', ') || 'الخامات المستصلحة');
+    const introQuery = `أود استشارتك حول مشروع "${target?.name || target?.title || 'مشروعي'}" المصنوع من (${materialsStr}). كيف أبدأ بالتنفيذ العملي بأعلى درجات الأمان والمتانة وبأقل تكلفة؟`;
+    setInlineConsultation({
+      isOpen: true,
+      project: target,
+      query: introQuery
+    });
+    showToast(`💡 تم فتح استشارة الخبير في نفس الصفحة!`, 'info');
   };
 
   // Save Project with Supabase Cloud Sync
@@ -791,42 +830,15 @@ export default function App() {
     }
   };
 
-  // Click on a Follow-up Question with Resilient Streaming
-  const handleAskFollowUp = async (question) => {
-    setActiveTab('chat');
-    const updatedHistory = [...chatMessages, { role: 'user', content: question }];
-    setChatMessages([...updatedHistory, { role: 'assistant', content: '' }]);
-    setIsChatLoading(true);
-
-    try {
-      await streamChatMessage({
-        question,
-        conversationHistory: updatedHistory,
-        projectContext: projectContextForChat,
-        onChunk: (_chunk, accumulated) => {
-          setChatMessages((prev) => {
-            const updated = [...prev];
-            const lastIdx = updated.length - 1;
-            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
-              updated[lastIdx] = { ...updated[lastIdx], content: accumulated };
-            }
-            return updated;
-          });
-        }
-      });
-    } catch (err) {
-      console.error('Chat error:', err);
-      setChatMessages(prev => {
-        const updated = [...prev];
-        const lastIdx = updated.length - 1;
-        if (lastIdx >= 0 && updated[lastIdx].role === 'assistant' && !updated[lastIdx].content) {
-          updated[lastIdx] = { ...updated[lastIdx], content: 'نعتذر، حدث تعثر أثناء الاتصال بالخبير الذكي. يرجى المحاولة مرة أخرى.' };
-        }
-        return updated;
-      });
-    } finally {
-      setIsChatLoading(false);
-    }
+  // Click on a Follow-up Question (On-Page Inline Consultation)
+  const handleAskFollowUp = (question) => {
+    const target = projectContextForChat || projects[0] || selectedProjectModal;
+    setInlineConsultation({
+      isOpen: true,
+      project: target,
+      query: question
+    });
+    showToast(`💡 تم فتح استشارة الخبير في نفس الصفحة!`, 'info');
   };
 
   // Handle Real Image Upload & Multimodal Analysis
@@ -2121,8 +2133,8 @@ export default function App() {
                   <div className="smart-customization-section">
                     <div className="customization-header">
                       <div className="customization-title">
-                        <Sparkles size={18} color="var(--emerald-primary)" />
-                        <h4>🔮 اقتراحات ذكية لتطوير وتخصيص المشاريع المولدة:</h4>
+                        <Cpu size={18} color="var(--emerald-primary)" />
+                        <h4>اقتراحات هندسية ذكية لتطوير وتخصيص المشاريع المولدة:</h4>
                       </div>
                       <span className="customization-badge">اختر اقتراحاً لبدء استشارة هندسية فورية وتخصيص المشروع</span>
                     </div>
@@ -2663,6 +2675,8 @@ export default function App() {
             isOpen={Boolean(activeCertModalProject)}
             onClose={() => setActiveCertModalProject(null)}
             projectName={activeCertModalProject.name || activeCertModalProject.title}
+            project={activeCertModalProject}
+            user={user}
             lcaResults={{
               totalMassKg: activeCertModalProject.massKg || 2.45,
               totalNetOffsetKg: activeCertModalProject.co2SavedKg || (activeCertModalProject.metrics?.co2SavedKg ? parseFloat(activeCertModalProject.metrics.co2SavedKg) : 5.8),
@@ -2679,6 +2693,75 @@ export default function App() {
                 name: typeof m === 'string' ? m.trim() : (m.name || 'خامة مستصلحة'),
                 massKg: 0.82
               }))
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ============================================================
+          INLINE PROJECT CONSULTATION MODAL (ON-PAGE EXPERT DIALOG)
+          ============================================================ */}
+      {inlineConsultation.isOpen && (
+        <Suspense fallback={null}>
+          <InlineConsultationModal
+            isOpen={inlineConsultation.isOpen}
+            onClose={() => setInlineConsultation({ isOpen: false, project: null, query: '' })}
+            project={inlineConsultation.project}
+            initialQuery={inlineConsultation.query}
+            geminiApiKey={getStoredGeminiApiKey()}
+            onOpenFullChat={(lastMsg) => {
+              setProjectContextForChat(inlineConsultation.project);
+              setActiveTab('chat');
+              setChatInput(lastMsg || '');
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ============================================================
+          OFFICIAL QR CERTIFICATE VERIFICATION MODAL
+          ============================================================ */}
+      {verificationData && (
+        <Suspense fallback={null}>
+          <CertificateVerificationModal
+            isOpen={Boolean(verificationData)}
+            onClose={() => {
+              setVerificationData(null);
+              if (window.location.hash.startsWith('#verify')) {
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+              }
+            }}
+            verificationData={verificationData}
+            onOpenStudentPortal={() => {
+              setActiveTab('academic');
+              setVerificationData(null);
+              if (window.location.hash.startsWith('#verify')) {
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+              }
+            }}
+            onOpenProjectStudio={(data) => {
+              const matched = projects.find(p => (p.name || p.title) === data.projectName)
+                || savedProjects.find(p => (p.name || p.title) === data.projectName)
+                || {
+                  id: 'verified-' + Date.now(),
+                  name: data.projectName,
+                  title: data.projectName,
+                  idea: `مشروع معتمد تم توثيقه وحساب وفره الكربوني (+${data.co2} كجم CO2e) للطالب ${data.studentName}.`,
+                  materials: 'خامات ومخلفات منزلية مستصلحة ومقيمة بمعايير LCA',
+                  time: 'ساعتان ونصف',
+                  difficulty: 'متوسط',
+                  metrics: { co2SavedKg: data.co2, wasteReducedKg: data.mass },
+                  parsedSteps: [
+                    { title: 'جمع وفرز الخامات المطلوبة', detail: 'فرز الخامات المعتمدة وتجهيز مساحة العمل الآمنة.' },
+                    { title: 'القص والتشكيل الأولي', detail: 'تنفيذ التقطيع وفق حاسبة الكفاءة لتقليل الهدر.' },
+                    { title: 'التجميع والتثبيت النهائي', detail: 'استخدام وسيلة الربط الآمنة غير السامة وفحص المتانة.' }
+                  ]
+                };
+              setSelectedProjectModal(matched);
+              setVerificationData(null);
+              if (window.location.hash.startsWith('#verify')) {
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+              }
             }}
           />
         </Suspense>

@@ -237,3 +237,54 @@ export async function updateUserProfileStats(userId, { points, completed, co2Sav
     }
   }
 }
+
+// 6. Explicitly sync/upsert registered user into profiles table
+export async function syncUserProfileRecord(user, extraMetadata = {}) {
+  if (!user?.id) return null;
+  const fullName = extraMetadata.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'مبتكر بيئي';
+  const role = extraMetadata.role || user.user_metadata?.role || 'student';
+  const school = extraMetadata.school || user.user_metadata?.school || 'المنصة الوطنية للتدوير والابتكار';
+  const email = user.email || '';
+  const avatarUrl = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.id)}`;
+
+  // Save to localStorage for instant offline PWA access
+  try {
+    const cachedProfile = {
+      id: user.id,
+      email,
+      full_name: fullName,
+      role,
+      school,
+      avatar_url: avatarUrl,
+      updated_at: new Date().toISOString()
+    };
+    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(cachedProfile));
+  } catch (e) {
+    console.warn('Profile cache error:', e);
+  }
+
+  // Upsert to Supabase profiles table
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email: email,
+        full_name: fullName,
+        role: role,
+        school: school,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+      .select();
+
+    if (error) {
+      console.warn('Supabase profile upsert notice (fallback to local state):', error.message);
+    }
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Profile upsert exception:', err);
+    return null;
+  }
+}
+

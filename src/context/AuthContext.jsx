@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { syncUserProfileRecord } from '../utils/supabaseSync.js';
 
 const AuthContext = createContext({
   user: null,
@@ -58,6 +59,7 @@ export const AuthProvider = ({ children }) => {
         setSession(currentSession);
         setUser(currentSession.user);
         localStorage.removeItem('eco_guest_user');
+        syncUserProfileRecord(currentSession.user);
       } else if (!localStorage.getItem('eco_guest_user')) {
         setSession(null);
         setUser(null);
@@ -79,6 +81,9 @@ export const AuthProvider = ({ children }) => {
       }
     });
     if (error) throw error;
+    if (data?.user) {
+      await syncUserProfileRecord(data.user, metadata);
+    }
     return data;
   };
 
@@ -88,6 +93,9 @@ export const AuthProvider = ({ children }) => {
       password
     });
     if (error) throw error;
+    if (data?.user) {
+      await syncUserProfileRecord(data.user);
+    }
     return data;
   };
 
@@ -119,7 +127,7 @@ export const AuthProvider = ({ children }) => {
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
           role: role,
           provider: 'google',
-          school: 'مدرسة الابتكار والاستدامة الخضراء',
+          school: customDetails?.school || 'مدرسة الابتكار والاستدامة الخضراء',
           grade: 'الصف الثانوي / STEM',
           eco_points: 420,
           verified_student: true
@@ -129,6 +137,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('eco_guest_user', JSON.stringify(googleUser));
       setUser(googleUser);
       setSession({ user: googleUser, access_token: 'google_verified_token' });
+      await syncUserProfileRecord(googleUser, googleUser.user_metadata);
       return { user: googleUser, session: { access_token: 'google_verified_token' } };
     }
   };
