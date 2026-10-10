@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Recycle, Lightbulb, Star, Send, ArrowLeft, Camera, Loader2,
@@ -8,10 +8,13 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
-  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play
+  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
+  Smartphone, WifiOff
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
+import ViewLoadingFallback from './components/ViewLoadingFallback.jsx';
+import { useOnlineStatus } from './hooks/useOnlineStatus.js';
 import {
   COMMON_MATERIALS,
   USER_LEVELS,
@@ -29,18 +32,21 @@ import {
   COMPANION_SUGGESTIONS_MAP, 
   PROJECT_CUSTOMIZATION_SUGGESTIONS 
 } from './data/inspirationSuggestions.js';
-import CarbonCalculatorView from './components/CarbonCalculatorView.jsx';
-import LcaDirectoryBrowser from './components/LcaDirectoryBrowser.jsx';
 import { useAuth } from './context/AuthContext';
-import AuthModal from './components/AuthModal';
-import MaterialsLibraryModal from './components/MaterialsLibraryModal.jsx';
-import ProjectDedicatedPage from './components/ProjectDedicatedPage.jsx';
-import EcoCertificateModal from './components/EcoCertificateModal.jsx';
-import StudentPortalSection from './components/StudentPortalSection.jsx';
-import StudentLabReportModal from './components/StudentLabReportModal.jsx';
-import StudentRubricModal from './components/StudentRubricModal.jsx';
-import StudentQuizModal from './components/StudentQuizModal.jsx';
-import PlatformTourPage from './components/PlatformTourPage.jsx';
+
+// Dynamic Code Splitting via React.lazy() for fast initial bundle
+const CarbonCalculatorView = lazy(() => import('./components/CarbonCalculatorView.jsx'));
+const LcaDirectoryBrowser = lazy(() => import('./components/LcaDirectoryBrowser.jsx'));
+const AuthModal = lazy(() => import('./components/AuthModal'));
+const MaterialsLibraryModal = lazy(() => import('./components/MaterialsLibraryModal.jsx'));
+const ProjectDedicatedPage = lazy(() => import('./components/ProjectDedicatedPage.jsx'));
+const EcoCertificateModal = lazy(() => import('./components/EcoCertificateModal.jsx'));
+const StudentPortalSection = lazy(() => import('./components/StudentPortalSection.jsx'));
+const StudentLabReportModal = lazy(() => import('./components/StudentLabReportModal.jsx'));
+const StudentRubricModal = lazy(() => import('./components/StudentRubricModal.jsx'));
+const StudentQuizModal = lazy(() => import('./components/StudentQuizModal.jsx'));
+const PlatformTourPage = lazy(() => import('./components/PlatformTourPage.jsx'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard.jsx'));
 
 import {
   getSavedProjects,
@@ -54,7 +60,6 @@ import { handleImageFallback, generateSvgBlueprint, preloadProjectImages } from 
 import { ProjectCover, ViewThumb } from './components/AiImage.jsx';
 import GenerationProgress from './components/GenerationProgress.jsx';
 import CapacityBanner from './components/CapacityBanner.jsx';
-import AdminDashboard from './components/AdminDashboard.jsx';
 import { isLimitError } from './utils/aiGateway.js';
 import { usePlatformStatus } from './hooks/usePlatformStatus.js';
 import './index.css';
@@ -153,6 +158,7 @@ export default function App() {
 
   // Server-verified platform state: capacity banner + whether this viewer is the admin
   const platform = usePlatformStatus(session?.access_token || null);
+  const isOnline = useOnlineStatus();
 
   // Main navigation tab: 'generator' | 'calculator' | 'directory' | 'saved' | 'chat' | 'certificate'
   const [activeTab, setActiveTab] = useState('generator');
@@ -906,6 +912,15 @@ export default function App() {
               </span>
             )}
 
+            <span 
+              className={`eco-point-badge ${isOnline ? 'green' : 'amber'}`}
+              title={isOnline ? 'تطبيق ويب تقدمي (PWA) يدعم حفظ وتصفح المشاريع دون إنترنت' : 'أنت الآن في وضع عدم الاتصال (Offline) - التصفح محفوظ'}
+              style={!isOnline ? { backgroundColor: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' } : {}}
+            >
+              {isOnline ? <Smartphone size={14} /> : <WifiOff size={14} />}
+              <span>{isOnline ? 'PWA متاح دون إنترنت' : 'وضع أوفلاين'}</span>
+            </span>
+
             {/* Supabase Authentication Section */}
             <div className="auth-header-actions" ref={userDropdownRef}>
               {user ? (
@@ -1101,7 +1116,9 @@ export default function App() {
             TAB: OFFICIAL PLATFORM TOUR & PRESENTATION SHOWCASE (عن مُدام)
             ============================================================ */}
         {activeTab === 'tour' && (
-          <PlatformTourPage onStartExploring={() => setActiveTab('generator')} />
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل الجولة التعريفية الشاملة..." />}>
+            <PlatformTourPage onStartExploring={() => setActiveTab('generator')} />
+          </Suspense>
         )}
 
         {/* ============================================================
@@ -2115,47 +2132,57 @@ export default function App() {
         {/* ============================================================
             TAB: STUDENT & ACADEMIC HUB (بوابة الطلاب والمدارس)
             ============================================================ */}
-        {activeTab === 'admin' && platform.isAdmin && <AdminDashboard />}
+        {activeTab === 'admin' && platform.isAdmin && (
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل لوحة التحكم الإدارية..." />}>
+            <AdminDashboard />
+          </Suspense>
+        )}
 
         {activeTab === 'students' && (
-          <StudentPortalSection
-            onSelectProject={(project) => {
-              setSelectedProjectModal(project);
-            }}
-            onOpenLabReport={(project) => {
-              setActiveLabReportProject(project);
-            }}
-            onOpenRubric={(project) => {
-              setActiveRubricProject(project);
-            }}
-            onOpenQuiz={(project) => {
-              setActiveQuizProject(project);
-            }}
-            user={user}
-          />
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل بوابة الطلاب والمدارس (STEM Lab)..." />}>
+            <StudentPortalSection
+              onSelectProject={(project) => {
+                setSelectedProjectModal(project);
+              }}
+              onOpenLabReport={(project) => {
+                setActiveLabReportProject(project);
+              }}
+              onOpenRubric={(project) => {
+                setActiveRubricProject(project);
+              }}
+              onOpenQuiz={(project) => {
+                setActiveQuizProject(project);
+              }}
+              user={user}
+            />
+          </Suspense>
         )}
 
         {/* ============================================================
             TAB: LCA CARBON CALCULATOR
             ============================================================ */}
         {activeTab === 'calculator' && (
-          <CarbonCalculatorView 
-            lcaResults={lcaResults} 
-            presets={PRESET_SCENARIOS}
-            currentScenarioId={currentPresetId}
-            onSelectPreset={handleSelectPresetScenario}
-            onOpenCertificate={() => {
-              setActiveTab('certificate');
-              triggerCelebration();
-            }} 
-          />
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل حاسبة الأثر وتقييم دورة الحياة (LCA)..." />}>
+            <CarbonCalculatorView 
+              lcaResults={lcaResults} 
+              presets={PRESET_SCENARIOS}
+              currentScenarioId={currentPresetId}
+              onSelectPreset={handleSelectPresetScenario}
+              onOpenCertificate={() => {
+                setActiveTab('certificate');
+                triggerCelebration();
+              }} 
+            />
+          </Suspense>
         )}
 
         {/* ============================================================
             TAB: 150 LCA BENCHMARK DIRECTORY
             ============================================================ */}
         {activeTab === 'directory' && (
-          <LcaDirectoryBrowser />
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل دليل الـ 150 مرجعاً ومعاملات الانبعاثات..." />}>
+            <LcaDirectoryBrowser />
+          </Suspense>
         )}
 
         {/* ============================================================
@@ -2163,12 +2190,39 @@ export default function App() {
             ============================================================ */}
         {activeTab === 'saved' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>مشاريعك المحفوظة ({savedProjects.length})</h3>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                  قائمتك المختارة من مشاريع إعادة التدوير المبتكرة المزامنة سحابياً مع حسابك
+                  قائمتك المختارة من مشاريع إعادة التدوير المبتكرة المزامنة سحابياً والمتاحة بدون إنترنت
                 </p>
+              </div>
+            </div>
+
+            {/* PWA Offline-Availability Banner */}
+            <div 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.85rem', 
+                backgroundColor: isOnline ? '#f0fdf4' : '#fef2f2', 
+                border: `1px solid ${isOnline ? '#bbf7d0' : '#fecaca'}`, 
+                borderRadius: '14px', 
+                padding: '0.9rem 1.25rem', 
+                marginBottom: '1.5rem', 
+                fontSize: '0.83rem', 
+                color: isOnline ? '#065f46' : '#991b1b',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
+            >
+              <Smartphone size={22} className={isOnline ? 'text-emerald-600' : 'text-rose-600'} style={{ flexShrink: 0 }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '0.15rem' }}>
+                  ⚡ ميزة التصفح دون إنترنت (PWA Offline Capability):
+                </strong>
+                <span>
+                  كافة مشاريعك المحفوظة، وخطوات التنفيذ، والمخططات مخزنة في ذاكرة جهازك. يمكنك فتحها وتطبيقها بالكامل حتى في حال انقطاع اتصال الإنترنت.
+                </span>
               </div>
             </div>
 
@@ -2510,18 +2564,20 @@ export default function App() {
             height: '100vh' 
           }}
         >
-          <ProjectDedicatedPage
-            project={selectedProjectModal}
-            onBack={() => {
-              setSelectedProjectModal(null);
-              window.location.hash = '';
-            }}
-            isSaved={isProjectSaved(savedProjects, selectedProjectModal)}
-            onToggleSave={handleSaveProject}
-            onOpenCertificate={(proj) => {
-              setActiveCertModalProject(proj);
-            }}
-          />
+          <Suspense fallback={<ViewLoadingFallback message="جاري تجهيز صفحة ومخططات المشروع..." />}>
+            <ProjectDedicatedPage
+              project={selectedProjectModal}
+              onBack={() => {
+                setSelectedProjectModal(null);
+                window.location.hash = '';
+              }}
+              isSaved={isProjectSaved(savedProjects, selectedProjectModal)}
+              onToggleSave={handleSaveProject}
+              onOpenCertificate={(proj) => {
+                setActiveCertModalProject(proj);
+              }}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -2529,77 +2585,92 @@ export default function App() {
           OFFICIAL ECO CERTIFICATE MODAL POPUP
           ============================================================ */}
       {activeCertModalProject && (
-        <EcoCertificateModal
-          isOpen={Boolean(activeCertModalProject)}
-          onClose={() => setActiveCertModalProject(null)}
-          projectName={activeCertModalProject.name || activeCertModalProject.title}
-          lcaResults={{
-            totalMassKg: activeCertModalProject.massKg || 2.45,
-            totalNetOffsetKg: activeCertModalProject.co2SavedKg || (activeCertModalProject.metrics?.co2SavedKg ? parseFloat(activeCertModalProject.metrics.co2SavedKg) : 5.8),
-            equivalences: {
-              smartphoneCharges: 640,
-              treeDaysOffset: 85,
-              carKmEquivalent: 46
-            },
-            itemizedResults: (typeof activeCertModalProject.materials === 'string'
-              ? activeCertModalProject.materials.split(/[،,]+/)
-              : (activeCertModalProject.materials || ['خامات مستصلحة'])
-            ).map((m, idx) => ({
-              id: idx,
-              name: typeof m === 'string' ? m.trim() : (m.name || 'خامة مستصلحة'),
-              massKg: 0.82
-            }))
-          }}
-        />
+        <Suspense fallback={null}>
+          <EcoCertificateModal
+            isOpen={Boolean(activeCertModalProject)}
+            onClose={() => setActiveCertModalProject(null)}
+            projectName={activeCertModalProject.name || activeCertModalProject.title}
+            lcaResults={{
+              totalMassKg: activeCertModalProject.massKg || 2.45,
+              totalNetOffsetKg: activeCertModalProject.co2SavedKg || (activeCertModalProject.metrics?.co2SavedKg ? parseFloat(activeCertModalProject.metrics.co2SavedKg) : 5.8),
+              equivalences: {
+                smartphoneCharges: 640,
+                treeDaysOffset: 85,
+                carKmEquivalent: 46
+              },
+              itemizedResults: (typeof activeCertModalProject.materials === 'string'
+                ? activeCertModalProject.materials.split(/[،,]+/)
+                : (activeCertModalProject.materials || ['خامات مستصلحة'])
+              ).map((m, idx) => ({
+                id: idx,
+                name: typeof m === 'string' ? m.trim() : (m.name || 'خامة مستصلحة'),
+                massKg: 0.82
+              }))
+            }}
+          />
+        </Suspense>
       )}
 
       {/* ============================================================
           EXPANDED MATERIALS LIBRARY MODAL (مكتبة المواد الموسعة)
           ============================================================ */}
-      <MaterialsLibraryModal
-        key={isMaterialsLibraryOpen ? 'open' : 'closed'}
-        isOpen={isMaterialsLibraryOpen}
-        onClose={() => setIsMaterialsLibraryOpen(false)}
-        initialSelected={selectedMaterials}
-        onApplyMaterials={handleApplyLibraryMaterials}
-      />
+      {isMaterialsLibraryOpen && (
+        <Suspense fallback={null}>
+          <MaterialsLibraryModal
+            isOpen={isMaterialsLibraryOpen}
+            onClose={() => setIsMaterialsLibraryOpen(false)}
+            initialSelected={selectedMaterials}
+            onApplyMaterials={handleApplyLibraryMaterials}
+          />
+        </Suspense>
+      )}
 
 
       {/* ============================================================
           SUPABASE AUTHENTICATION MODAL
           ============================================================ */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-      />
+      {isAuthModalOpen && (
+        <Suspense fallback={null}>
+          <AuthModal 
+            isOpen={isAuthModalOpen} 
+            onClose={() => setIsAuthModalOpen(false)} 
+          />
+        </Suspense>
+      )}
 
       {/* ============================================================
           STUDENT & ACADEMIC SUITE GLOBAL MODALS
           ============================================================ */}
       {activeLabReportProject && (
-        <StudentLabReportModal
-          isOpen={Boolean(activeLabReportProject)}
-          onClose={() => setActiveLabReportProject(null)}
-          project={activeLabReportProject}
-          user={user}
-        />
+        <Suspense fallback={null}>
+          <StudentLabReportModal
+            isOpen={Boolean(activeLabReportProject)}
+            onClose={() => setActiveLabReportProject(null)}
+            project={activeLabReportProject}
+            user={user}
+          />
+        </Suspense>
       )}
 
       {activeRubricProject && (
-        <StudentRubricModal
-          isOpen={Boolean(activeRubricProject)}
-          onClose={() => setActiveRubricProject(null)}
-          project={activeRubricProject}
-          user={user}
-        />
+        <Suspense fallback={null}>
+          <StudentRubricModal
+            isOpen={Boolean(activeRubricProject)}
+            onClose={() => setActiveRubricProject(null)}
+            project={activeRubricProject}
+            user={user}
+          />
+        </Suspense>
       )}
 
       {activeQuizProject && (
-        <StudentQuizModal
-          isOpen={Boolean(activeQuizProject)}
-          onClose={() => setActiveQuizProject(null)}
-          project={activeQuizProject}
-        />
+        <Suspense fallback={null}>
+          <StudentQuizModal
+            isOpen={Boolean(activeQuizProject)}
+            onClose={() => setActiveQuizProject(null)}
+            project={activeQuizProject}
+          />
+        </Suspense>
       )}
 
       {/* ============================================================
@@ -2616,7 +2687,7 @@ export default function App() {
             <span className="std-tag">ISO 14044 LCA Compliant</span>
             <span className="std-tag">GHG Protocol Scope 3</span>
             <span className="std-tag">Multi-AI Smart Engine</span>
-            <span className="std-tag">Multi-Image Visual Suite</span>
+            <span className="std-tag">PWA Offline Enabled</span>
           </div>
         </div>
       </footer>

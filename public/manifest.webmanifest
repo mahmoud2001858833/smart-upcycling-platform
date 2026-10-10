@@ -1,0 +1,33 @@
+{
+  "name": "منظومة مُدام للتدوير الذكي والاستدامة",
+  "short_name": "مُدام MUDAM",
+  "description": "منصة ذكية لهندسة إعادة التدوير واحتساب البصمة الكربونية وفق ISO 14044 مع دعم كامل للعمل دون اتصال إنترنت",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#064e3b",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["education", "utilities", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "/mudam-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/mudam-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -21,7 +21,10 @@ import {
   GraduationCap,
   Scale,
   Check,
-  HelpCircle
+  HelpCircle,
+  WifiOff,
+  Download,
+  Smartphone
 } from 'lucide-react';
 
 export default function PlatformTourPage({ onStartExploring }) {
@@ -40,7 +43,8 @@ export default function PlatformTourPage({ onStartExploring }) {
     { value: 'ISO 14044', label: 'منهجية تقييم دورة الحياة (LCA)', icon: Scale },
     { value: 'GHG Scope 3', label: 'بروتوكول غازات الاحتباس العالمي', icon: Leaf },
     { value: '61+ خامة', label: 'موسوعة المواد والمطابقة الكيميائية', icon: Layers },
-    { value: '150 مصدر', label: 'قاعدة بيانات انبعاثات EPA & DEFRA', icon: Database }
+    { value: '150 مصدر', label: 'قاعدة بيانات انبعاثات EPA & DEFRA', icon: Database },
+    { value: 'PWA Ready', label: 'يعمل دون اتصال إنترنت (تطبيق تقدمي)', icon: Smartphone }
   ];
 
   const features = [
@@ -53,6 +57,11 @@ export default function PlatformTourPage({ onStartExploring }) {
       icon: Leaf,
       title: 'حاسبة الأثر وتقييم دورة الحياة (LCA Engine)',
       desc: 'احتساب كمية الانبعاثات الكربونية المحيدة (kg CO₂e)، والوفر المائي، والطاقة الكهربائية ومؤشر الاقتصاد الدائري مقارنة بالإنتاج العذري ومكبات النفايات.'
+    },
+    {
+      icon: Smartphone,
+      title: 'تطبيق ويب تقدمي (PWA) وتصفح دون إنترنت',
+      desc: 'إمكانية تثبيت المنصة كتطبيق مستقل على الهاتف والحاسوب، وتصفح مشاريعك المحفوظة وخطوات التنفيذ والأدلة حتى في حالة انقطاع اتصال الإنترنت بالكامل.'
     },
     {
       icon: Database,
@@ -215,12 +224,29 @@ export default function PlatformTourPage({ onStartExploring }) {
               <video 
                 controls 
                 autoPlay 
+                playsInline
                 className="tour-html-video"
                 poster="/mudam-logo.png"
               >
                 <source src="/mudam-presentation.mp4" type="video/mp4" />
-                متصفحك لا يدعم تشغيل الفيديو المباشر.
+                <source src="/1007(2).mov" type="video/quicktime" />
+                متصفحك لا يدعم تشغيل الفيديو المباشر. يمكنك تحميل الملف أدناه.
               </video>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0', fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#065f46', fontWeight: 600 }}>
+                  <Sparkles size={14} />
+                  <span>فيديو العرض التقديمي الموثق (1007(2)) • دقة فائقة</span>
+                </span>
+                <a 
+                  href="/1007(2).mov" 
+                  download="عرض-منصة-مدام-1007(2).mov"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#047857', textDecoration: 'none', fontWeight: 600 }}
+                  title="تحميل ملف الفيديو الأصلي بدقة فائقة من سطح المكتب"
+                >
+                  <Download size={14} />
+                  <span>تحميل النسخة الأصلية (1007(2).mov)</span>
+                </a>
+              </div>
             </div>
           ) : (
             <div 
@@ -233,7 +259,7 @@ export default function PlatformTourPage({ onStartExploring }) {
                 <Play size={34} fill="currentColor" />
               </div>
               <div className="video-placeholder-caption">
-                <span className="video-tag-pill">عرض تقديمي رسمي • 2026</span>
+                <span className="video-tag-pill">عرض تقديمي رسمي • 2026 (1007(2).mov)</span>
                 <h3>شاهد كيف تعمل خوارزميات التدوير الذكي في مُدام</h3>
                 <p>انقر لتشغيل الفيديو والشرح العملي المباشر</p>
               </div>

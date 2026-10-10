@@ -167,6 +167,7 @@ export default function PlatformTourModal({ isOpen, onClose, onStartExploring })
                     poster="/mudam-logo.png"
                   >
                     <source src="/mudam-presentation.mp4" type="video/mp4" />
+                    <source src="/1007(2).mov" type="video/quicktime" />
                     متصفحك لا يدعم تشغيل الفيديو مباشرة.
                   </video>
                 </div>

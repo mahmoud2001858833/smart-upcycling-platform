@@ -13,8 +13,12 @@ import {
   Sparkles,
   Leaf,
   Activity,
-  Compass
+  Compass,
+  Wifi,
+  WifiOff,
+  Smartphone
 } from 'lucide-react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
 export default function SidebarNav({
   activeTab,
@@ -31,6 +35,8 @@ export default function SidebarNav({
   isAdmin = false,
   onOpenTour
 }) {
+  const isOnline = useOnlineStatus();
+
   const navItems = [
     {
       id: 'tour',
@@ -201,6 +207,40 @@ export default function SidebarNav({
                   {impactCo2.toFixed(1)} كغ CO₂
                 </strong>
               </div>
+            )}
+          </div>
+
+          {/* PWA Offline-Ready Pill */}
+          <div 
+            style={{ 
+              marginTop: '0.65rem',
+              padding: '0.55rem 0.75rem',
+              borderRadius: '10px',
+              backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+              border: `1px solid ${isOnline ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.25)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.74rem'
+            }}
+            title={isOnline ? 'المنصة تدعم العمل وتصفح المشاريع دون إنترنت (PWA)' : 'أنت الآن في وضع عدم الاتصال - تصفح المشاريع متاح'}
+          >
+            {isOnline ? (
+              <>
+                <Smartphone size={14} className="text-emerald-600" />
+                <div style={{ flex: 1, lineHeight: 1.25 }}>
+                  <span style={{ fontWeight: 700, color: '#065f46', display: 'block' }}>تطبيق PWA مثبت ومتاح</span>
+                  <span style={{ color: '#047857', fontSize: '0.68rem' }}>يعمل ويحفظ بدون إنترنت</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <WifiOff size={14} className="text-rose-600" />
+                <div style={{ flex: 1, lineHeight: 1.25 }}>
+                  <span style={{ fontWeight: 700, color: '#991b1b', display: 'block' }}>وضع عدم الاتصال (Offline)</span>
+                  <span style={{ color: '#b91c1c', fontSize: '0.68rem' }}>المشاريع المحفوظة متاحة</span>
+                </div>
+              </>
             )}
           </div>
         </div>

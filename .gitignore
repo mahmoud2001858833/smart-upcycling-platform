@@ -25,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Heavy media files (> 100MB exceeds GitHub push limits)
+*.mov
+
