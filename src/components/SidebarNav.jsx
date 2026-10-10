@@ -63,6 +63,12 @@ export default function SidebarNav({
       badge: null
     },
     {
+      id: 'forecasting',
+      label: 'التنبؤ البيئي الذكي 🔮',
+      icon: TrendingUp,
+      badge: 'جديد'
+    },
+    {
       id: 'directory',
       label: 'دليل الـ 150 مصدراً',
       icon: Database,

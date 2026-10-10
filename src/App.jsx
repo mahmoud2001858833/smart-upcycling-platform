@@ -9,7 +9,7 @@ import {
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
   AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
-  Smartphone, WifiOff
+  Smartphone, WifiOff, TrendingUp
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
@@ -33,9 +33,11 @@ import {
   PROJECT_CUSTOMIZATION_SUGGESTIONS 
 } from './data/inspirationSuggestions.js';
 import { useAuth } from './context/AuthContext';
+import { streamChatMessage } from './utils/resilientAiStream.js';
 
 // Dynamic Code Splitting via React.lazy() for fast initial bundle
 const CarbonCalculatorView = lazy(() => import('./components/CarbonCalculatorView.jsx'));
+const SmartEnvironmentalForecasting = lazy(() => import('./components/SmartEnvironmentalForecasting.jsx'));
 const LcaDirectoryBrowser = lazy(() => import('./components/LcaDirectoryBrowser.jsx'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
 const MaterialsLibraryModal = lazy(() => import('./components/MaterialsLibraryModal.jsx'));
@@ -746,48 +748,82 @@ export default function App() {
     });
   };
 
-  // Send message in Live AI Expert Chat
+  // Send message in Live AI Expert Chat with Resilient Streaming
   const handleSendChatMessage = async (e) => {
     e?.preventDefault();
     if (!chatInput.trim() || isChatLoading) return;
 
     const userText = chatInput.trim();
     const updatedHistory = [...chatMessages, { role: 'user', content: userText }];
-    setChatMessages(updatedHistory);
+    // Add empty assistant placeholder for real-time streaming accumulation
+    setChatMessages([...updatedHistory, { role: 'assistant', content: '' }]);
     setChatInput('');
     setIsChatLoading(true);
 
     try {
-      const reply = await sendChatMessageToAi({
+      await streamChatMessage({
         question: userText,
         conversationHistory: updatedHistory,
-        projectContext: projectContextForChat
+        projectContext: projectContextForChat,
+        onChunk: (_chunk, accumulated) => {
+          setChatMessages((prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+              updated[lastIdx] = { ...updated[lastIdx], content: accumulated };
+            }
+            return updated;
+          });
+        }
       });
-      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {
       console.error('Chat error:', err);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'نعتذر، حدث خطأ أثناء التواصل مع نموذج الذكاء الاصطناعي. يرجى المحاولة مرة أخرى.' }]);
+      setChatMessages(prev => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (lastIdx >= 0 && updated[lastIdx].role === 'assistant' && !updated[lastIdx].content) {
+          updated[lastIdx] = { ...updated[lastIdx], content: 'نعتذر، حدث تعثر أثناء الاتصال بنموذج الذكاء الاصطناعي. يرجى المحاولة مرة أخرى.' };
+        }
+        return updated;
+      });
     } finally {
       setIsChatLoading(false);
     }
   };
 
-  // Click on a Follow-up Question
+  // Click on a Follow-up Question with Resilient Streaming
   const handleAskFollowUp = async (question) => {
     setActiveTab('chat');
     const updatedHistory = [...chatMessages, { role: 'user', content: question }];
-    setChatMessages(updatedHistory);
+    setChatMessages([...updatedHistory, { role: 'assistant', content: '' }]);
     setIsChatLoading(true);
 
     try {
-      const reply = await sendChatMessageToAi({
+      await streamChatMessage({
         question,
         conversationHistory: updatedHistory,
-        projectContext: projectContextForChat
+        projectContext: projectContextForChat,
+        onChunk: (_chunk, accumulated) => {
+          setChatMessages((prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+              updated[lastIdx] = { ...updated[lastIdx], content: accumulated };
+            }
+            return updated;
+          });
+        }
       });
-      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {
       console.error('Chat error:', err);
+      setChatMessages(prev => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (lastIdx >= 0 && updated[lastIdx].role === 'assistant' && !updated[lastIdx].content) {
+          updated[lastIdx] = { ...updated[lastIdx], content: 'نعتذر، حدث تعثر أثناء الاتصال بالخبير الذكي. يرجى المحاولة مرة أخرى.' };
+        }
+        return updated;
+      });
     } finally {
       setIsChatLoading(false);
     }
@@ -1005,6 +1041,18 @@ export default function App() {
                         >
                           <Calculator size={16} />
                           <span>حاسبة أثر الكربون (LCA)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setActiveTab('forecasting');
+                            setIsUserDropdownOpen(false);
+                          }}
+                        >
+                          <TrendingUp size={16} />
+                          <span>أداة التنبؤ البيئي الذكية 🔮</span>
                         </button>
 
                         <button
@@ -2177,6 +2225,20 @@ export default function App() {
         )}
 
         {/* ============================================================
+            TAB: SMART ENVIRONMENTAL FORECASTING (أداة التنبؤ البيئي الذكية)
+            ============================================================ */}
+        {activeTab === 'forecasting' && (
+          <SmartEnvironmentalForecasting 
+            onNavigateToExpertChat={(initialQuestion) => {
+              setActiveTab('chat');
+              if (initialQuestion) {
+                setChatInput(initialQuestion);
+              }
+            }}
+          />
+        )}
+
+        {/* ============================================================
             TAB: 150 LCA BENCHMARK DIRECTORY
             ============================================================ */}
         {activeTab === 'directory' && (
@@ -2346,17 +2408,28 @@ export default function App() {
 
             {/* Chat Messages */}
             <div className="chat-messages-area">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`chat-bubble ${msg.role}`}>
-                  {msg.content}
-                </div>
-              ))}
-              {isChatLoading && (
-                <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>خبير الذكاء الاصطناعي يحلل استفسارك ويكتب الإجابة...</span>
-                </div>
-              )}
+              {chatMessages.map((msg, i) => {
+                if (msg.role === 'assistant' && !msg.content && isChatLoading && i === chatMessages.length - 1) {
+                  return (
+                    <div key={i} className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>خبير الذكاء الاصطناعي يحلل استفسارك ويبدأ التدفق المباشر...</span>
+                    </div>
+                  );
+                }
+                if (!msg.content && msg.role === 'assistant') return null;
+
+                const isCurrentlyStreaming = isChatLoading && i === chatMessages.length - 1 && msg.role === 'assistant';
+
+                return (
+                  <div key={i} className={`chat-bubble ${msg.role}`}>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                      {msg.content}
+                      {isCurrentlyStreaming && <span className="ai-stream-cursor">▌</span>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Chat Input Bar */}
