@@ -8,6 +8,7 @@ import {
   CheckCheck, QrCode, Sparkles, MessageSquare,
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
+  AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
   Smartphone, WifiOff, TrendingUp, Cpu
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
