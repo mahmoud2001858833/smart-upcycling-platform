@@ -14,6 +14,7 @@
 import {
   resolveConfig, ideate, develop, generateImage, chatReply, newMeter, GatewayError
 } from './openrouterCore.js';
+import { hasGemini } from './gemini.js';
 import {
   resolveLimits, decideCapacity, publicCapacity, fetchCredit, resolveIdentity, hashIp,
   getStore, aggregateStats, clip
@@ -57,6 +58,27 @@ function cleanStage(st) {
     checkpoint: clip(st.checkpoint, 300),
     actions: Array.isArray(st.actions) ? st.actions.slice(0, 8).map(a => clip(a, 300)) : []
   };
+}
+
+const strList = (v, n, max) => (Array.isArray(v) ? v.slice(0, n).map(x => clip(typeof x === 'string' ? x : (x?.name || x?.title || ''), max)).filter(Boolean) : []);
+
+/** The assistant is told about the whole project; keep it bounded and plain. */
+function cleanProjectContext(p) {
+  if (!p || typeof p !== 'object') return null;
+  return {
+    name: clip(p.name, 120), materials: clip(p.materials, 400), idea: clip(p.idea, 800),
+    difficulty: clip(p.difficulty, 40), time: clip(p.time, 60), cost: clip(p.cost, 60),
+    materialsList: strList(p.materialsList, 20, 120), tools: strList(p.tools, 20, 80), safety: strList(p.safety, 10, 200),
+    steps: (Array.isArray(p.steps) ? p.steps.slice(0, 14) : []).map(st => ({
+      title: clip(st?.title, 100), tip: clip(st?.tip, 160), goal: clip(st?.goal, 220), measurements: clip(st?.measurements, 220), actions: strList(st?.actions, 8, 220)
+    }))
+  };
+}
+
+function cleanFocus(f) {
+  if (!f || typeof f !== 'object') return null;
+  const index = Number.isInteger(f.index) ? f.index : null;
+  return { index, title: clip(f.title, 100) };
 }
 
 const money = n => (Number.isFinite(n) ? Number(n.toFixed(6)) : null);
@@ -471,7 +493,7 @@ const actions = {
     const started = Date.now();
     const c = await getCapacity(ctx);
     const cap = effectiveCap(c.cap, viewer, limits);
-    if (cap.level === 'closed') {
+    if (cap.level === 'closed' && !hasGemini(config.gemini)) {
       throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
     }
     await enforceDaily({ store, limits, viewer, kind: 'chat' });
@@ -479,7 +501,7 @@ const actions = {
     try {
       const r = await chatReply({
         apiKey, config, meter, question: payload?.question, history: Array.isArray(payload?.history) ? payload.history : [],
-        project: payload?.project || null
+        project: cleanProjectContext(payload?.project), focusStep: cleanFocus(payload?.focusStep)
       });
       await safeLog(store, viewer, {
         kind: 'chat', model: r.model, cost: meter.cost, tokens: meter.tokens, durationMs: Date.now() - started

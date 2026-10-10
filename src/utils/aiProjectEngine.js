@@ -504,6 +504,33 @@ export async function sendChatToGeminiApi({ question, conversationHistory = [], 
   return result.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+const txt = v => (v == null ? '' : typeof v === 'string' ? v : Array.isArray(v) ? v.map(txt).filter(Boolean).join('، ') : (v.name || v.title || ''));
+
+/** Everything the project assistant needs to know, flattened to plain text for the server. */
+export function buildAssistantProject(p) {
+  if (!p || typeof p !== 'object') return null;
+  const safety = p.safety && typeof p.safety === 'object' && !Array.isArray(p.safety)
+    ? [p.safety.ppe && `معدات الوقاية: ${p.safety.ppe}`, ...(p.safety.hazards || []), p.safety.childNote].filter(Boolean)
+    : (Array.isArray(p.safety) ? p.safety : []);
+  const steps = (p.steps || []).map(st => ({
+    title: st.title || st.name,
+    goal: st.goal || '',
+    measurements: st.measurements || '',
+    tip: st.tip || '',
+    actions: Array.isArray(st.actions) ? st.actions : [st.detail || st.instruction || ''].filter(Boolean)
+  }));
+  const cost = p.cost && typeof p.cost === 'object' ? (p.cost.diyUsd ? `${p.cost.diyUsd}$` : '') : txt(p.cost);
+  return {
+    name: p.name || p.title,
+    materials: txt(p.materials),
+    idea: p.idea || p.description || '',
+    difficulty: txt(p.difficulty), time: txt(p.time), cost,
+    materialsList: (p.materialsList || []).map(m => (typeof m === 'string' ? m : [m.name, m.quantity || m.qty || m.amount].filter(Boolean).join(' - '))),
+    tools: (p.toolsList || p.tools || []).map(t => (typeof t === 'string' ? t : t.name)).filter(Boolean),
+    safety, steps
+  };
+}
+
 /**
  * Chat with Live AI Recycling Expert
  */
@@ -513,9 +540,8 @@ export async function sendChatMessageToAi({ question, conversationHistory = [], 
     const out = await callAi('chat', {
       question,
       history: conversationHistory,
-      project: projectContext
-        ? { name: projectContext.name, materials: projectContext.materials, idea: projectContext.idea }
-        : null
+      project: buildAssistantProject(projectContext),
+      focusStep: projectContext?.focusStep || null
     }, { timeoutMs: 70000 });
     if (out.reply) return out.reply;
   } catch (gatewayErr) {

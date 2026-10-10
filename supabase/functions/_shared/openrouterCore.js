@@ -9,6 +9,8 @@
  * It must never be shipped to the browser.
  */
 
+import { geminiConfig, hasGemini, geminiText, geminiImage } from './gemini.js';
+
 const OPENROUTER_API = 'https://openrouter.ai/api/v1';
 const OPENROUTER_URL = `${OPENROUTER_API}/chat/completions`;
 
@@ -63,6 +65,7 @@ export function resolveConfig(env = {}) {
     imageModels: list(env.OPENROUTER_IMAGE_MODEL, [
       'google/gemini-2.5-flash-image'
     ]),
+    gemini: geminiConfig(env),
     apiBase: env.OPENROUTER_API_BASE || OPENROUTER_API,
     baseUrl: env.OPENROUTER_BASE_URL || (env.OPENROUTER_API_BASE ? `${env.OPENROUTER_API_BASE}/chat/completions` : OPENROUTER_URL),
     // Resolution for the main pictures. 2K/4K only apply to image models that support them.
@@ -106,9 +109,37 @@ function errorMessage(r) {
 
 export async function chat({
   apiKey, config, models, messages, meter = null,
+  json = false, temperature = 0.8, maxTokens = 8000, timeoutMs = 100000, role = 'text'
+}) {
+  const gem = config.gemini;
+  const gemOn = hasGemini(gem);
+  if (!apiKey && !gemOn) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
+  // who goes first: the assistant always prefers Gemini; ideate/develop follow TEXT_PROVIDER
+  const geminiFirst = gemOn && (!apiKey || role === 'chat' || gem.textProvider === 'gemini');
+  const viaGemini = async () => {
+    const model = role === 'develop' ? gem.developModel : gem.model;
+    const r = await geminiText({ cfg: gem, model, messages, json, temperature, maxTokens, timeoutMs });
+    addUsage(meter, { usage: r.usage });
+    return { text: r.text, model: r.model };
+  };
+  if (geminiFirst) {
+    try { return await viaGemini(); } catch (e) {
+      if (!apiKey) throw new GatewayError(`تعذر الاتصال بـ Gemini: ${e.message}`, { status: 503, code: e.code === 'BAD_KEY' ? 'BAD_KEY' : 'AI_FAILED' });
+      /* fall through to OpenRouter */
+    }
+  }
+  try {
+    return await chatOpenRouter({ apiKey, config, models, messages, meter, json, temperature, maxTokens, timeoutMs });
+  } catch (e) {
+    if (gemOn && !geminiFirst) { try { return await viaGemini(); } catch { /* report the first error */ } }
+    throw e;
+  }
+}
+
+async function chatOpenRouter({
+  apiKey, config, models, messages, meter = null,
   json = false, temperature = 0.8, maxTokens = 8000, timeoutMs = 100000
 }) {
-  if (!apiKey) throw new GatewayError('OPENROUTER_API_KEY غير مضبوط على الخادم', { status: 503, code: 'NO_KEY' });
   let lastErr = null;
 
   for (const model of models) {
@@ -466,7 +497,7 @@ export async function develop({ apiKey, config, materials, concept, level, type,
   const messages = buildDevelopMessages({ materials: mats, concept, level, type });
 
   const first = await chat({
-    apiKey, config, meter, models: config.developModels, messages,
+    apiKey, config, meter, models: config.developModels, messages, role: 'develop',
     json: true, temperature: 0.7, maxTokens: 14000, timeoutMs: 120000
   });
 
@@ -558,8 +589,31 @@ function pickImageUrl(message) {
 
 const validReference = u => typeof u === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(u) && u.length < 1_500_000;
 
-export async function generateImage({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, stage = null, projectName = '', meter = null }) {
-  if (!apiKey) throw new GatewayError('OPENROUTER_API_KEY غير مضبوط على الخادم', { status: 503, code: 'NO_KEY' });
+export async function generateImage(args) {
+  const { apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, stage = null, projectName = '', meter = null } = args;
+  const gem = config.gemini;
+  if (!apiKey && !hasGemini(gem)) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
+  const viaGemini = async () => {
+    const useRef = validReference(referenceImage);
+    const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: useRef, stage, projectName });
+    const r = await geminiImage({ cfg: gem, text, referenceImage: useRef ? referenceImage : null, aspect: aspect || IMAGE_ASPECT[kind] || '4:3' });
+    addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
+    return { imageUrl: r.imageUrl, model: r.model, usedReference: useRef, size: null };
+  };
+  if (!apiKey) {
+    try { return await viaGemini(); } catch (e) {
+      throw new GatewayError(`تعذر توليد الصورة عبر Gemini: ${e.message}`, { status: 503, code: e.code === 'BAD_KEY' ? 'BAD_KEY' : 'AI_FAILED' });
+    }
+  }
+  try {
+    return await generateImageOpenRouter(args);
+  } catch (e) {
+    if (!hasGemini(gem) || e?.code === 'NO_KEY') throw e;
+    try { return await viaGemini(); } catch { throw e; }
+  }
+}
+
+async function generateImageOpenRouter({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, stage = null, projectName = '', meter = null }) {
   const useRef = validReference(referenceImage);
   const ratio = aspect || IMAGE_ASPECT[kind] || '4:3';
   // main pictures in high resolution; per-step pictures stay at 1K to keep costs sane
@@ -613,12 +667,43 @@ export async function generateImage({ apiKey, config, kind = 'step', visualBible
   throw lastErr || new Error('تعذر توليد الصورة');
 }
 
-export async function chatReply({ apiKey, config, question, history = [], project = null, meter = null }) {
-  let system = `أنت خبير واستشاري إعادة التدوير والاستدامة والهندسة الدائرية في منصة Smart Upcycling Platform.
-تحدث بالعربية الفصحى المبسطة بأسلوب مهني ودافئ. قدّم حلولاً عملية بأرقام وقياسات حقيقية، وحذّر من المخاطر الفعلية. اجعل الإجابة موجزة ومباشرة.`;
-  if (project) {
-    system += `\n\nالمستخدم يسأل عن مشروع "${clip(project.name, 120)}" المصنوع من (${clip(project.materials, 300)}). الفكرة: ${clip(project.idea, 500)}.`;
+const listLines = (v, n, max) => (Array.isArray(v) ? v : []).slice(0, n).map(x => clip(typeof x === 'string' ? x : (x?.name || x?.title || JSON.stringify(x)), max));
+
+/** Compact, trustworthy text version of everything we know about the project. */
+export function projectDossier(project, focusStep = null) {
+  if (!project) return '';
+  const L = [];
+  L.push(`اسم المشروع: ${clip(project.name, 120)}`);
+  if (project.materials) L.push(`المواد المُدخلة: ${clip(project.materials, 400)}`);
+  if (project.idea) L.push(`الفكرة: ${clip(project.idea, 800)}`);
+  if (project.difficulty) L.push(`الصعوبة: ${clip(project.difficulty, 40)} | الوقت: ${clip(project.time, 60)} | التكلفة: ${clip(project.cost, 60)}`);
+  const mats = listLines(project.materialsList, 20, 120);
+  if (mats.length) L.push(`قائمة المواد:\n- ${mats.join('\n- ')}`);
+  const tools = listLines(project.tools, 20, 80);
+  if (tools.length) L.push(`الأدوات: ${tools.join('، ')}`);
+  const safety = listLines(project.safety, 10, 200);
+  if (safety.length) L.push(`السلامة:\n- ${safety.join('\n- ')}`);
+  const steps = (Array.isArray(project.steps) ? project.steps : []).slice(0, 14);
+  if (steps.length) {
+    L.push('المراحل:\n' + steps.map((st, i) => {
+      const acts = listLines(st.actions, 8, 220).join(' ؛ ');
+      return `${i + 1}. ${clip(st.title, 100)}${st.goal ? ` [الهدف: ${clip(st.goal, 220)}]` : ''}${acts ? ` — ${acts}` : ''}${st.measurements ? ` {القياسات: ${clip(st.measurements, 220)}}` : ''}${st.tip ? ` (نصيحة: ${clip(st.tip, 160)})` : ''}`;
+    }).join('\n'));
   }
+  if (focusStep && (focusStep.title || focusStep.index != null)) {
+    L.push(`\nالمستخدم يتصفح الآن المرحلة${focusStep.index != null ? ` رقم ${Number(focusStep.index) + 1}` : ''}: ${clip(focusStep.title, 100)}. أسئلته غالباً عنها ما لم يقل غير ذلك.`);
+  }
+  return L.join('\n').slice(0, 9000);
+}
+
+export async function chatReply({ apiKey, config, question, history = [], project = null, focusStep = null, meter = null }) {
+  let system = `أنت "مساعد مُدام"، المسؤول عن هذا المشروع تحديداً في منصة إعادة التدوير الذكية. أنت تعرف المشروع بكل تفاصيله (مواده وأدواته ومراحله) أدناه.
+- أجب بالعربية الفصحى المبسطة بأسلوب ودود ومهني وموجز، وافهم سؤال المستخدم ولو كان غير دقيق.
+- اربط كل إجابة بمواد هذا المشروع ومراحله الفعلية، وقدّم أرقاماً وقياسات عملية وبدائل بسيطة إن لم تتوفر مادة أو أداة.
+- إن كان السؤال عن مرحلة فاشرحها خطوة بخطوة بلغة مبسطة مع سبب كل خطوة وخطأ شائع يجب تجنبه.
+- حذّر من أي خطر حقيقي (قطع، كيماويات، كهرباء، حمل ثقيل). لا تخترع تفاصيل غير موجودة في المشروع؛ وإن لم تكن متأكداً فقل ذلك.`;
+  const dossier = projectDossier(project, focusStep);
+  if (dossier) system += `\n\n=== ملف المشروع ===\n${dossier}`;
   const messages = [
     { role: 'system', content: system },
     ...history.slice(-10).map(m => ({
@@ -628,7 +713,7 @@ export async function chatReply({ apiKey, config, question, history = [], projec
     { role: 'user', content: clip(question, 2000) }
   ];
   const { text, model } = await chat({
-    apiKey, config, meter, models: config.chatModels, messages,
+    apiKey, config, meter, models: config.chatModels, messages, role: 'chat',
     temperature: 0.6, maxTokens: 1500, timeoutMs: 60000
   });
   return { reply: text, model };

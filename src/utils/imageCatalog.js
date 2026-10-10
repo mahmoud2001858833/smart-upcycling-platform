@@ -167,7 +167,20 @@ export function detectMaterialCategory(materialsStr = '', projectName = '') {
  * Generate a Zero-Failure Technical SVG Blueprint Data URL
  * This guarantees a crisp, stunning schematic illustration even 100% offline.
  */
-export function generateSvgBlueprint(projectName = 'مشروع إعادة تدوير', materialsStr = 'خامات مستدامة', viewType = 'finished') {
+
+/**
+ * Neutral "no picture yet" tile. The platform no longer ships ready-made pictures, drawn blueprints or
+ * schematics: a real picture exists only after the person presses "create image".
+ */
+export const NO_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">' +
+  '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1f5f9"/><stop offset="1" stop-color="#e2f3ea"/></linearGradient></defs>' +
+  '<rect width="640" height="400" fill="url(#g)"/>' +
+  '<g fill="none" stroke="#9bb8a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".8">' +
+  '<rect x="270" y="150" width="100" height="100" rx="14"/><circle cx="302" cy="185" r="9"/><path d="M276 240l30-28 22 20 16-14 24 22"/></g></svg>'
+);
+
+function legacyDrawBlueprint(projectName = 'مشروع إعادة تدوير', materialsStr = 'خامات مستدامة', viewType = 'finished') {
   const safeName = (projectName || 'مشروع إعادة التدوير').replace(/["<>]/g, '');
   const safeMats = (materialsStr || 'مواد مستدامة').substring(0, 50).replace(/["<>]/g, '');
   
@@ -553,7 +566,7 @@ export function getNextStepImage(stepIndex = 1, stepTitle = '', materialsStr = '
  * - If gluing/assembly: shows joint alignment, glue bead layer, and clamp pressure arrows.
  * - If lighting: shows LED string circuit with glow path.
  */
-export function generateStepInfographic(
+function legacyDrawStepInfographic(
   stepNumber = 1,
   stepTitle = '',
   stepDetail = '',
@@ -883,3 +896,8 @@ export function handleStepImageFallback(event, stepNumber = 1, stepTitle = '', m
 
 
 
+
+void legacyDrawBlueprint; void legacyDrawStepInfographic;
+
+export function generateSvgBlueprint() { return NO_IMAGE_PLACEHOLDER; }
+export function generateStepInfographic() { return NO_IMAGE_PLACEHOLDER; }

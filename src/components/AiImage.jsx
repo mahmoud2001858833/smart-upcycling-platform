@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ImageIcon, RefreshCw, Sparkles } from 'lucide-react';
 import { useAiHero } from '../hooks/useProjectAiImages.js';
-import { generateSvgBlueprint, handleImageFallback } from '../utils/imageCatalog.js';
+import { generateSvgBlueprint } from '../utils/imageCatalog.js';
 
 const VIEW_LABEL = {
   finished: 'المنتج النهائي',
@@ -58,18 +58,11 @@ export function AiImage({ src, alt = '', status = 'ready', fallback, onRetry, la
 export function ProjectCover({ project, view = 'finished', className = '', imgClassName = '' }) {
   const hero = useAiHero(project, view);
 
-  if (!hero.isAi || !hero.url) {
-    // no AI picture yet (it is generated on demand from the project page): show the drawn blueprint, never a stock photo
-    const url = hero.isAi ? null : (project?.gallery?.[view] || project?.generatedImage);
+  if (!hero.url) {
+    // pictures only exist after the person asks for them on the project page
     return (
       <div className={`ai-img ${className}`}>
-        <img
-          src={url || generateSvgBlueprint(project?.name, project?.materials, view)}
-          alt={project?.name || ''}
-          className={`ai-img-el is-shown ${imgClassName}`}
-          loading="lazy"
-          onError={(e) => handleImageFallback(e, project?.name, project?.materials, view)}
-        />
+        <div className="img-placeholder" aria-hidden="true"><Sparkles size={22} /></div>
       </div>
     );
   }
@@ -88,8 +81,7 @@ export function ProjectCover({ project, view = 'finished', className = '', imgCl
 
 export function ViewThumb({ project, view, active, onClick }) {
   const hero = useAiHero(project, view);
-  const legacy = !hero.isAi ? (project?.gallery?.[view] || project?.generatedImage) : null;
-  const src = hero.url || legacy;
+  const src = hero.url;
   return (
     <button type="button" className={`angle-thumb ${active ? 'active' : ''}`} onClick={onClick} aria-pressed={active}>
       <span className="angle-thumb-media">

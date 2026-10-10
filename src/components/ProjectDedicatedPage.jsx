@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SWARM_AGENTS } from '../utils/multiAgentSwarm.js';
-import { generateStepInfographic, getAiStepPhotoUrl, generateSvgBlueprint } from '../utils/imageCatalog.js';
 import StudentLabReportModal from './StudentLabReportModal.jsx';
 import StudentRubricModal from './StudentRubricModal.jsx';
 import StudentQuizModal from './StudentQuizModal.jsx';
@@ -20,19 +19,17 @@ export default function ProjectDedicatedPage({
   onBack, 
   isSaved = false, 
   onToggleSave,
-  onOpenCertificate
+  onOpenCertificate,
+  onConsultInline
 }) {
-  const [activeAngle, setActiveAngle] = useState('finished'); // 'finished' | 'assembly' | 'inUse' | 'blueprint'
+  const [activeAngle, setActiveAngle] = useState('finished'); // 'finished' | 'assembly' | 'inUse'
   const [activeStepTab, setActiveStepTab] = useState(0);
   const [completedSteps, setCompletedSteps] = useState({});
-  const [viewModes, setViewModes] = useState({}); // stepIndex -> 'infographic' | 'photo'
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [workshopMode, setWorkshopMode] = useState(false);
   const [showSwarmDetails, setShowSwarmDetails] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeStepAiTool, setActiveStepAiTool] = useState(null); // 'alternative' | 'safety' | null
-  const [stepSeeds, setStepSeeds] = useState({});
-  const [isRegeneratingAi, setIsRegeneratingAi] = useState(false);
   const [lightboxStep, setLightboxStep] = useState(null);
 
   // Student Academic Suite Modals
@@ -189,23 +186,6 @@ export default function ProjectDedicatedPage({
     setIsSpeaking(true);
   };
 
-  // Regenerate step AI visual
-  const handleRegenerateStepAi = (stepIdx) => {
-    if (ai.enabled) {
-      setViewModes(prev => ({ ...prev, [stepIdx]: 'photo' }));
-      ai.regenerateStep(stepIdx);
-      return;
-    }
-    setIsRegeneratingAi(true);
-    setStepSeeds(prev => ({
-      ...prev,
-      [stepIdx]: (prev[stepIdx] || 0) + 1
-    }));
-    setTimeout(() => {
-      setIsRegeneratingAi(false);
-    }, 600);
-  };
-
   // WhatsApp share
   const handleShareWhatsApp = () => {
     const title = project?.title || project?.name || 'مشروع إعادة تدوير ذكي';
@@ -236,25 +216,11 @@ export default function ProjectDedicatedPage({
 
   // Real AI pictures (cached in IndexedDB, generated on demand through the secure gateway)
   const ai = useProjectAiImages(project, activeStepTab);
-  const aiHeroUrl = activeAngle === 'blueprint' ? null : ai.heroUrl(activeAngle);
-  const heroLoading = ai.enabled && activeAngle !== 'blueprint' && ai.heroState(activeAngle) === 'loading';
-  const heroNeedsGenerate = ai.enabled && activeAngle !== 'blueprint' && !aiHeroUrl;
-  const heroErr = activeAngle === 'blueprint' ? null : ai.heroError(activeAngle);
-
-  // Multi-angle image resolver
-  const currentHeroImage = useMemo(() => {
-    if (activeAngle === 'blueprint') {
-      return project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
-    }
-    if (aiHeroUrl) return aiHeroUrl;
-    // AI-developed projects never fall back to unrelated stock photos
-    if (project?.isAiDeveloped) return generateSvgBlueprint(project.name, project.materials, activeAngle);
-    const gallery = project?.multiAngleViews || project?.gallery;
-    if (gallery && gallery[activeAngle]) {
-      return gallery[activeAngle];
-    }
-    return project?.image || project?.generatedImage;
-  }, [activeAngle, project, aiHeroUrl]);
+  // Nothing is shown until the person asks for it: no stock photos, no drawn placeholders.
+  const aiHeroUrl = ai.heroUrl(activeAngle);
+  const heroLoading = ai.heroState(activeAngle) === 'loading';
+  const heroNeedsGenerate = !aiHeroUrl;
+  const heroErr = ai.heroError(activeAngle);
 
   if (!project) return null;
 
@@ -542,7 +508,7 @@ export default function ProjectDedicatedPage({
                 <span>استوديو العرض البصري متعدد الزوايا (Multi-Angle Studio)</span>
               </h2>
               <p className="text-xs text-slate-500">
-                تنقل بين زوايا العرض الواقعية، أو تفقد المخطط الهندسي التجميعي بنقرة زر
+                اضغط «إنشاء صورة» ليرسم الذكاء الاصطناعي صورة مبنية على وصف مشروعك وموادك
               </p>
             </div>
 
@@ -578,29 +544,14 @@ export default function ProjectDedicatedPage({
               >
                 🏡 الاستخدام الواقعي
               </button>
-              <button
-                onClick={() => setActiveAngle('blueprint')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeAngle === 'blueprint'
-                    ? 'bg-emerald-700 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                📐 المخطط الإنفوجرافيكي
-              </button>
             </div>
           </div>
 
           {/* Hero Visual Display */}
           <div className="relative rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[16/9] bg-slate-100 border border-slate-200 flex items-center justify-center">
-            <img
-              src={currentHeroImage}
-              alt={project.title}
-              className={`w-full h-full object-cover transition-all duration-500 ${heroLoading ? 'opacity-40 blur-xs' : 'opacity-100'}`}
-              onError={(e) => {
-                e.target.src = project?.blueprintUrl || generateStepInfographic(1, project?.title, project?.idea);
-              }}
-            />
+            {aiHeroUrl
+              ? <img src={aiHeroUrl} alt={project.title} className="w-full h-full object-cover" />
+              : <div className="img-placeholder" aria-hidden="true"><Sparkles className="w-10 h-10" /></div>}
 
             {heroLoading && (
               <div className="ai-img-skeleton" role="status">
@@ -612,18 +563,18 @@ export default function ProjectDedicatedPage({
               <div className="gen-image-cta">
                 <button type="button" className="gen-image-btn" onClick={() => ai.generateHero(activeAngle)} data-testid="generate-hero">
                   <Sparkles className="w-5 h-5" />
-                  <span>{activeAngle === 'finished' ? 'توليد صورة المشروع بدقة عالية' : 'توليد هذه الصورة بدقة عالية'}</span>
+                  <span>{activeAngle === 'finished' ? 'إنشاء صورة المشروع بدقة عالية' : 'إنشاء هذه الصورة بدقة عالية'}</span>
                 </button>
                 <p className="gen-image-note">
                   {heroErr
                     ? (heroErr.code === 'IMAGES_PAUSED' || heroErr.code === 'DAILY_LIMIT' || heroErr.code === 'NO_CREDIT' || heroErr.code === 'CAPACITY_CLOSED'
                         ? heroErr.message
                         : 'تعذر توليد الصورة، حاول مرة أخرى.')
-                    : 'لا تُنشأ الصورة تلقائياً — اضغط عندما تريدها.'}
+                    : 'لا توجد صورة بعد. تُنشأ بالذكاء الاصطناعي من وصف المشروع عند الضغط فقط.'}
                 </p>
               </div>
             )}
-            {ai.enabled && activeAngle !== 'blueprint' && aiHeroUrl && (
+            {aiHeroUrl && (
               <div className="absolute top-3 left-3 flex gap-1.5">
                 <a
                   href={aiHeroUrl}
@@ -650,7 +601,6 @@ export default function ProjectDedicatedPage({
                 {activeAngle === 'finished' && 'صورة المنتج المكتمل'}
                 {activeAngle === 'assembly' && 'صورة مراحل التجميع'}
                 {activeAngle === 'inUse' && 'صورة الاستخدام العملي'}
-                {activeAngle === 'blueprint' && 'المخطط الهندسي التجميعي'}
               </span>
             </div>
           </div>
@@ -898,36 +848,12 @@ export default function ProjectDedicatedPage({
           {steps[activeStepTab] && (() => {
             const step = steps[activeStepTab];
             const isCompleted = completedSteps[activeStepTab];
-            const viewMode = viewModes[activeStepTab] || (ai.enabled ? 'photo' : 'infographic');
-            const seed = stepSeeds[activeStepTab] || 0;
-
-            // Generate instant annotated infographic for this step
-            const infographicUrl = generateStepInfographic(
-              activeStepTab + 1,
-              step.title,
-              step.detail || step.instruction || '',
-              step.infographic || {},
-              project.category || 'general'
-            );
-
-            // Generative AI photo URL
-            const photoUrl = getAiStepPhotoUrl(
-              activeStepTab + 1,
-              step.title,
-              step.detail || step.instruction || '',
-              project.materials,
-              project.title || project.name,
-              seed
-            );
-
-            const aiStepUrl = ai.enabled ? ai.stepUrl(activeStepTab) : null;
-            const aiStepState = ai.enabled ? ai.stepState(activeStepTab) : null;
-            const aiPending = ai.enabled && viewMode === 'photo' && aiStepState === 'loading';
-            const stepNeedsGenerate = ai.enabled && viewMode === 'photo' && !aiStepUrl && aiStepState !== 'loading';
-            const stepErr = ai.enabled ? ai.stepError(activeStepTab) : null;
-            const displayImage = viewMode === 'infographic'
-              ? infographicUrl
-              : (aiStepUrl || (ai.enabled ? infographicUrl : photoUrl));
+            const aiStepUrl = ai.stepUrl(activeStepTab);
+            const aiStepState = ai.stepState(activeStepTab);
+            const aiPending = aiStepState === 'loading';
+            const stepNeedsGenerate = !aiStepUrl && !aiPending;
+            const stepErr = ai.stepError(activeStepTab);
+            const displayImage = aiStepUrl || '';
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -935,14 +861,9 @@ export default function ProjectDedicatedPage({
                 {/* Left/Main Column: Image with embedded or toggleable Infographic */}
                 <div className="lg:col-span-7 space-y-3">
                   <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-slate-100 border border-slate-200 shadow-md group">
-                    <img
-                      src={displayImage}
-                      alt={step.title}
-                      className={`w-full h-full object-cover transition-all duration-300 ${isRegeneratingAi || aiPending || stepNeedsGenerate ? 'opacity-40 blur-xs' : 'opacity-100'}`}
-                      onError={(e) => {
-                        e.target.src = infographicUrl;
-                      }}
-                    />
+                    {aiStepUrl
+                      ? <img src={aiStepUrl} alt={step.title} className="w-full h-full object-cover" />
+                      : <div className="img-placeholder" aria-hidden="true"><Sparkles className="w-9 h-9" /></div>}
 
                     {aiPending && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-700 pointer-events-none">
@@ -954,51 +875,27 @@ export default function ProjectDedicatedPage({
                       <div className="gen-image-cta">
                         <button type="button" className="gen-image-btn is-small" onClick={() => ai.generateStep(activeStepTab)} data-testid="generate-step">
                           <Sparkles className="w-4 h-4" />
-                          <span>توليد صورة هذه المرحلة</span>
+                          <span>إنشاء صورة لهذه المرحلة</span>
                         </button>
                         {stepErr && <p className="gen-image-note">{['IMAGES_PAUSED', 'DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'].includes(stepErr.code) ? stepErr.message : 'تعذر توليد الصورة، حاول مرة أخرى.'}</p>}
                       </div>
                     )}
-                    {ai.enabled && aiStepUrl && viewMode === 'photo' && (
+                    {aiStepUrl && (
                       <a href={aiStepUrl} download={`step-${activeStepTab + 1}.jpg`} className="absolute bottom-3 left-3 p-1.5 rounded-xl bg-white/95 border border-slate-200 text-slate-700 hover:text-emerald-700 shadow-xs" title="تحميل الصورة">
                         <Download className="w-4 h-4" />
                       </a>
                     )}
 
-                    {/* Mode Toggle Pills (Infographic with explanation vs Realistic AI Photo) */}
-                    <div className="absolute top-3 right-3 flex items-center gap-1.5 p-1 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md">
-                      <button
-                        onClick={() => setViewModes(prev => ({ ...prev, [activeStepTab]: 'infographic' }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          viewMode === 'infographic'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        📐 رسم توضيحي بالعربية
-                      </button>
-                      <button
-                        onClick={() => setViewModes(prev => ({ ...prev, [activeStepTab]: 'photo' }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          viewMode === 'photo'
-                            ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        📸 صورة المرحلة
-                      </button>
-                    </div>
-
                     {/* Left Quick Action Icons: Regenerate & Fullscreen Zoom */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                    {aiStepUrl && <div className="absolute top-3 left-3 flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => handleRegenerateStepAi(activeStepTab)}
-                        disabled={isRegeneratingAi}
+                        onClick={() => ai.regenerateStep(activeStepTab)}
+                        disabled={aiPending}
                         className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs"
                         title="إعادة توليد صورة الشرح بالذكاء الاصطناعي"
                       >
-                        <RefreshCw className={`w-4 h-4 ${isRegeneratingAi ? 'animate-spin text-emerald-600' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${aiPending ? 'animate-spin text-emerald-600' : ''}`} />
                       </button>
 
                       <button
@@ -1014,7 +911,7 @@ export default function ProjectDedicatedPage({
                       >
                         <Maximize2 className="w-4 h-4" />
                       </button>
-                    </div>
+                    </div>}
 
                     {/* Step Number Indicator */}
                     <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-2">
@@ -1024,7 +921,7 @@ export default function ProjectDedicatedPage({
                   </div>
 
                   <p className="text-[11px] text-slate-500 text-center">
-                    💡 الصورة التوضيحية تحتوي على شرح تفصيلي مكتوب بالذكاء الاصطناعي ونقاط القياس الهندسية لتجنب أي أخطاء أثناء التنفيذ.
+                    💡 الصورة تُرسم بالذكاء الاصطناعي من نص هذه المرحلة نفسه (الإجراءات والقياسات)، وتُنشأ عند الضغط فقط.
                   </p>
                 </div>
 
@@ -1133,6 +1030,21 @@ export default function ProjectDedicatedPage({
                         <Shield className="w-3.5 h-3.5 text-rose-600" />
                         <span>فحص أمان الخطوة</span>
                       </button>
+
+                      {onConsultInline && (
+                        <button
+                          type="button"
+                          data-testid="ask-assistant"
+                          onClick={() => onConsultInline(
+                            `اشرح لي المرحلة ${activeStepTab + 1} "${step.title || ''}" بتفصيل مبسط: ماذا أفعل بالضبط ولماذا، وما الخطأ الشائع الذي يجب تجنبه؟`,
+                            { ...project, focusStep: { index: activeStepTab, title: step.title || '' } }
+                          )}
+                          className="px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border cursor-pointer bg-emerald-700 text-white border-emerald-800 hover:bg-emerald-800"
+                        >
+                          <Bot className="w-3.5 h-3.5" />
+                          <span>اسأل مساعد المشروع عن هذه المرحلة</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Dynamic AI Guidance Drawers */}

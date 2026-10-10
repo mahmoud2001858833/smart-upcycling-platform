@@ -2669,6 +2669,9 @@ export default function App() {
               onOpenCertificate={(proj) => {
                 setActiveCertModalProject(proj);
               }}
+              onConsultInline={(queryText, context) => {
+                setInlineConsultation({ isOpen: true, project: context, query: queryText });
+              }}
             />
           </Suspense>
         </div>

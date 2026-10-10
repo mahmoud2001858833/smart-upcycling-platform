@@ -206,29 +206,50 @@ export async function hasImage(spec) {
 
 /* ---------------- project helpers ---------------- */
 
-export function heroSpec(project, view = 'finished') {
-  const prompts = project?.imagePrompts || {};
-  const map = {
-    finished: ['hero', prompts.hero],
-    assembly: ['assembly', prompts.assembly],
-    inUse: ['lifestyle', prompts.lifestyle]
-  };
-  const [kind, prompt] = map[view] || map.finished;
-  if (!prompt) return null;
-  return { kind, visualBible: project.visualBible || '', prompt, projectName: project.name || '' };
+const asText = v => (Array.isArray(v) ? v.join('، ') : String(v || '')).trim();
+
+/** Description of the project used when it carries no image prompts (older / offline-built projects). */
+function describe(project) {
+  const bible = project.visualBible
+    || [project.name || project.title, project.idea, asText(project.materials) && `Materials: ${asText(project.materials)}`]
+      .filter(Boolean).join('. ').slice(0, 700);
+  return bible;
 }
 
+/** Prompt for a project picture. Works for every project: AI prompts when present, otherwise the written description. */
+export function heroSpec(project, view = 'finished') {
+  if (!project) return null;
+  const name = project.name || project.title || '';
+  if (!name && !project.idea) return null;
+  const prompts = project.imagePrompts || {};
+  const materials = asText(project.materials);
+  const own = { finished: prompts.hero, assembly: prompts.assembly, inUse: prompts.lifestyle }[view];
+  const generic = {
+    finished: `The finished upcycled project "${name}", shown complete and beautifully styled. ${project.idea || ''} Built visibly from: ${materials}.`,
+    assembly: `All the parts and tools for the upcycled project "${name}" laid out neatly before assembly. Parts come from: ${materials}.`,
+    inUse: `The finished upcycled project "${name}" being used in a real home. ${project.idea || ''}`
+  }[view] || '';
+  const kind = { finished: 'hero', assembly: 'assembly', inUse: 'lifestyle' }[view] || 'hero';
+  return { kind, visualBible: describe(project), prompt: own || generic.slice(0, 900), projectName: name };
+}
+
+/** Prompt for one stage picture, always carrying the written stage so the picture matches the explanation. */
 export function stepSpec(project, step) {
-  if (!step?.imagePrompt) return null;
+  if (!step) return null;
+  const actions = Array.isArray(step.actions) && step.actions.length
+    ? step.actions
+    : String(step.detail || step.instruction || '').split(/\n+/).map(x => x.trim()).filter(Boolean).slice(0, 6);
+  const title = step.title || '';
+  if (!title && !actions.length) return null;
+  const generic = `A clear how-to photograph of this build stage of "${project.name || project.title}": ${title}. ${actions.slice(0, 3).join(' ')} Show the real materials (${asText(project.materials)}), the tool used and the work in progress.`;
   return {
     kind: 'step',
-    visualBible: project.visualBible || '',
-    prompt: step.imagePrompt,
-    projectName: project.name || '',
-    // the written stage is sent along so the picture matches the explanation, not only the short visual prompt
+    visualBible: describe(project),
+    prompt: step.imagePrompt || generic.slice(0, 900),
+    projectName: project.name || project.title || '',
     stage: {
-      title: step.title || '', goal: step.goal || '', actions: step.actions || [],
-      measurements: step.measurements || '', checkpoint: step.checkpoint || ''
+      title, goal: step.goal || '', actions,
+      measurements: step.measurements || '', checkpoint: step.checkpoint || step.qualityCheck || ''
     }
   };
 }

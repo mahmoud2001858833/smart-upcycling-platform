@@ -13,7 +13,7 @@ const HERO_VIEWS = ['finished', 'assembly', 'inUse'];
  */
 export function useProjectAiImages(project, activeStepIndex = 0) {
   void activeStepIndex;
-  const enabled = Boolean(project?.isAiDeveloped);
+  const enabled = Boolean(project);
   const [hero, setHero] = useState({});
   const [stepImgs, setStepImgs] = useState({});
   const [state, setState] = useState({});
@@ -96,7 +96,7 @@ export function useProjectAiImages(project, activeStepIndex = 0) {
  * It never starts a generation; it refreshes itself when the picture is created elsewhere.
  */
 export function useAiHero(project, view = 'finished') {
-  const spec = project?.isAiDeveloped ? heroSpec(project, view) : null;
+  const spec = project ? heroSpec(project, view) : null;
   const key = spec ? imageKey(spec) : null;
   const [entry, setEntry] = useState({ key: null, url: null });
 
