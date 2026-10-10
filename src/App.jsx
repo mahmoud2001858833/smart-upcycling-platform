@@ -1065,7 +1065,7 @@ export default function App() {
                           }}
                         >
                           <TrendingUp size={16} />
-                          <span>أداة التنبؤ البيئي الذكية 🔮</span>
+                          <span>أداة التنبؤ البيئي الذكية</span>
                         </button>
 
                         <button
@@ -2242,6 +2242,13 @@ export default function App() {
             ============================================================ */}
         {activeTab === 'forecasting' && (
           <SmartEnvironmentalForecasting 
+            onConsultInline={(queryText, context) => {
+              setInlineConsultation({
+                isOpen: true,
+                project: context,
+                query: queryText
+              });
+            }}
             onNavigateToExpertChat={(initialQuestion) => {
               setActiveTab('chat');
               if (initialQuestion) {

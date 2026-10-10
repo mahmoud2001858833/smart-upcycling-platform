@@ -34,7 +34,7 @@ import {
   calculateEnvironmentalForecast
 } from '../utils/environmentalForecastingEngine.js';
 
-export default function SmartEnvironmentalForecasting({ onNavigateToExpertChat }) {
+export default function SmartEnvironmentalForecasting({ onNavigateToExpertChat, onConsultInline }) {
   // Form State initialized to exact sample numbers in the user image
   const [inputs, setInputs] = useState({
     electricityKwh: 500,
@@ -546,15 +546,24 @@ export default function SmartEnvironmentalForecasting({ onNavigateToExpertChat }
                 type="button"
                 className="btn-consult-expert-action"
                 onClick={() => {
-                  if (onNavigateToExpertChat) {
-                    onNavigateToExpertChat(
-                      `أريد استشارة حول بصمتي الكربونية في ${forecast.selectedRegion.name}: إجمالي انبعاثاتي ${forecast.totalAnnualHouseholdCo2Tonnes} طن سنوياً، ونسبة التدوير لدي ${inputs.recyclingRatePercent}%. كيف أستفيد من منصة مُدام للوصول إلى خفض ${forecast.potentialReductionPercent}%؟`
-                    );
+                  const queryText = `أريد استشارة حول بصمتي الكربونية في ${forecast.selectedRegion.name}: إجمالي انبعاثاتي ${forecast.totalAnnualHouseholdCo2Tonnes} طن سنوياً، ونسبة التدوير لدي ${inputs.recyclingRatePercent}%. كيف أستفيد من منصة مُدام للوصول إلى خفض ${forecast.potentialReductionPercent}%؟`;
+                  const forecastingContext = {
+                    name: `خطة التنبؤ البيئي وخفض الانبعاثات (${forecast.selectedRegion.name})`,
+                    title: `خطة التنبؤ البيئي وخفض الانبعاثات (${forecast.selectedRegion.name})`,
+                    materials: `كهرباء ${inputs.electricityKwh} ك.و.س/شهر، ماء ${inputs.waterLiters} لتر/شهر، نفايات ${inputs.wasteKg} كغ/شهر، سيارة ${inputs.carDistanceKm} كم/شهر (${inputs.fuelType})، نسبة تدوير ${inputs.recyclingRatePercent}%`,
+                    totalCo2: forecast.totalAnnualHouseholdCo2Tonnes,
+                    reductionTarget: forecast.potentialReductionPercent,
+                    region: forecast.selectedRegion.name
+                  };
+                  if (onConsultInline) {
+                    onConsultInline(queryText, forecastingContext);
+                  } else if (onNavigateToExpertChat) {
+                    onNavigateToExpertChat(queryText);
                   }
                 }}
               >
                 <Sparkles size={16} />
-                <span>استشارة خبير الاستدامة الذكي حول خطة التخفيض</span>
+                <span>استشارة خبير الاستدامة الذكي حول خطة التخفيض (فوري بنفس الصفحة)</span>
                 <ArrowRight size={16} />
               </button>
             </div>

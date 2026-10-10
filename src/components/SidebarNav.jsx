@@ -65,7 +65,7 @@ export default function SidebarNav({
     },
     {
       id: 'forecasting',
-      label: 'التنبؤ البيئي الذكي 🔮',
+      label: 'التنبؤ البيئي الذكي',
       icon: TrendingUp,
       badge: 'جديد'
     },
