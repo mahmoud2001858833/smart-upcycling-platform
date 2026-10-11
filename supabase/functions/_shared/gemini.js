@@ -10,9 +10,10 @@ export function geminiConfig(env = {}) {
   return {
     keys: [...new Set(keys)],
     base: env.GEMINI_API_BASE || GEMINI_BASE,
-    model: env.GEMINI_MODEL || 'gemini-2.5-flash',
-    developModel: env.GEMINI_DEVELOP_MODEL || env.GEMINI_MODEL || 'gemini-2.5-flash',
-    imageModel: env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image',
+    model: env.GEMINI_MODEL || 'gemini-3.8-flash',
+    developModel: env.GEMINI_DEVELOP_MODEL || env.GEMINI_MODEL || 'gemini-3.8-flash',
+    // comma separated list: tried in order
+    imageModels: (env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image,gemini-2.5-flash-image').split(',').map(x => x.trim()).filter(Boolean),
     // 'openrouter' (default) | 'gemini' -> which provider handles ideate/develop first
     textProvider: (env.TEXT_PROVIDER || 'openrouter').toLowerCase()
   };
@@ -76,12 +77,20 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
     contents,
     generationConfig: {
       temperature,
-      maxOutputTokens: maxTokens,
+      maxOutputTokens: Math.min(maxTokens + 4000, 60000), // headroom: thinking tokens count against the limit
       ...(json ? { responseMimeType: 'application/json' } : {})
     },
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {})
   };
-  const data = await call({ cfg, model: model || cfg.model, body, timeoutMs });
+  let data = null; let used = model || cfg.model; let lastErr = null;
+  for (const m of [...new Set([used, cfg.model, 'gemini-3.6-flash'])]) {
+    try { data = await call({ cfg, model: m, body, timeoutMs }); used = m; break; } catch (e) {
+      lastErr = e;
+      if (e.status !== 404 && e.status !== 400) throw e; // only an unknown/retired model moves on to the next
+    }
+  }
+  if (!data) throw lastErr;
+  model = used;
   const text = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
   if (!text) throw new Error(`gemini ${model}: استجابة فارغة`);
   const u = data.usageMetadata || {};
@@ -96,17 +105,27 @@ export async function geminiImage({ cfg, text, referenceImage = null, aspect = '
     contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } }
   };
-  let data;
-  try {
-    data = await call({ cfg, model: cfg.imageModel, body, timeoutMs });
-  } catch (e) {
-    if (e.status !== 400) throw e;
-    // some image models reject imageConfig / IMAGE-only: retry in the simplest form
-    data = await call({ cfg, model: cfg.imageModel, timeoutMs, body: { contents: body.contents, generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } } });
+  let lastErr = null;
+  for (const model of cfg.imageModels) {
+    let data;
+    try {
+      try {
+        data = await call({ cfg, model, body, timeoutMs });
+      } catch (e) {
+        if (e.status !== 400) throw e;
+        // some image models reject imageConfig / IMAGE-only: retry in the simplest form
+        data = await call({ cfg, model, timeoutMs, body: { contents: body.contents, generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } } });
+      }
+    } catch (e) {
+      lastErr = e;
+      if (e.code === 'BAD_KEY') throw e;
+      continue; // unknown / retired model -> next one
+    }
+    for (const p of data?.candidates?.[0]?.content?.parts || []) {
+      const d = p.inlineData || p.inline_data;
+      if (d?.data) return { imageUrl: `data:${d.mimeType || d.mime_type || 'image/png'};base64,${d.data}`, model };
+    }
+    lastErr = new Error(`gemini ${model}: لم يُرجع صورة`);
   }
-  for (const p of data?.candidates?.[0]?.content?.parts || []) {
-    const d = p.inlineData || p.inline_data;
-    if (d?.data) return { imageUrl: `data:${d.mimeType || d.mime_type || 'image/png'};base64,${d.data}`, model: cfg.imageModel };
-  }
-  throw new Error(`gemini ${cfg.imageModel}: لم يُرجع صورة`);
+  throw lastErr || new Error('gemini: لم يُرجع صورة');
 }
