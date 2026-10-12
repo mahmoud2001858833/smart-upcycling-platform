@@ -750,6 +750,63 @@ export async function chatReply({ apiKey, config, question, history = [], projec
   return { reply: text, model };
 }
 
+
+/* ---------------- Impact calculator analyst ---------------- */
+
+const nonNeg = (v, max = 1e6) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0; };
+
+/** Re-computes the LCA numbers server-side so the model can only reason about verified figures. */
+export function prepareImpact(rawItems = []) {
+  const items = (Array.isArray(rawItems) ? rawItems : []).slice(0, 15).map(m => {
+    const massKg = nonNeg(m.massKg, 10000);
+    const virginFactor = nonNeg(m.virginFactor, 500);
+    const landfillFactor = nonNeg(m.landfillFactor, 500);
+    const processFactor = m.processFactor == null ? 0.005 : nonNeg(m.processFactor, 500);
+    const virgin = massKg * virginFactor, landfill = massKg * landfillFactor, proc = massKg * processFactor;
+    return {
+      name: clip(m.name || m.nameEn, 80), category: clip(m.category, 40), authority: clip(m.authority, 60),
+      massKg: +massKg.toFixed(4), virginFactor, landfillFactor, processFactor,
+      virginAvoidedKg: +virgin.toFixed(4), landfillAvoidedKg: +landfill.toFixed(4), processKg: +proc.toFixed(4),
+      netKg: +Math.max(0, virgin + landfill - proc).toFixed(4)
+    };
+  }).filter(i => i.name && i.massKg > 0);
+  const sum = k => +items.reduce((a, i) => a + i[k], 0).toFixed(4);
+  const total = { massKg: sum('massKg'), virginAvoidedKg: sum('virginAvoidedKg'), landfillAvoidedKg: sum('landfillAvoidedKg'), processKg: sum('processKg'), netKg: sum('netKg') };
+  items.forEach(i => { i.sharePct = total.netKg ? +(100 * i.netKg / total.netKg).toFixed(1) : 0; });
+  return { items, total };
+}
+
+export async function impactAnalysis({ apiKey, config, items, question = '', projectName = '', meter = null }) {
+  const data = prepareImpact(items);
+  if (!data.items.length) throw new GatewayError('أضف مادة واحدة على الأقل لتحليل أثرها', { status: 400, code: 'BAD_REQUEST' });
+  const system = `أنت محلل أثر بيئي (تقييم دورة الحياة LCA) داخل منصة "مُدام" لإعادة التدوير الإبداعي. تشرح لشخص غير متخصص بالعربية المبسطة وبدقة علمية.
+قواعد صارمة:
+- استخدم فقط الأرقام الواردة في الجدول المحسوب أدناه؛ لا تخترع أرقاماً ولا مصادر. الأرقام بوحدة kg CO2e.
+- المعادلة: الصافي = (انبعاثات المادة البكر المتفادية + انبعاثات المكب المتفادية) − انبعاثات المعالجة المنزلية.
+- لا تبالغ: وضّح أن العوامل متوسطات عالمية وأن الأثر الفعلي يتغير حسب المنتج والمنطقة وطريقة التدوير البديلة (التدوير الصناعي أفضل من المكب أحياناً).
+- التوصيات يجب أن تكون عملية وقابلة للتنفيذ في المنزل وترتبط بمواد المستخدم بالاسم، ومرتبة حسب أثرها المتوقع.
+- لا تخلط بين kg وg، وقرّب الأرقام بذكاء (3 خانات كحد أقصى).
+أعد JSON فقط بهذا الشكل:
+{"headline":"جملة واحدة تلخص النتيجة بالأرقام","summary":"فقرة قصيرة (3-4 جمل)","drivers":[{"material":"..","sharePct":0,"why":"سبب كبر/صغر مساهمة هذه المادة"}],"improvements":[{"title":"..","how":"خطوات عملية","expectedEffect":"وصف كمي أو نوعي حذر"}],"caveats":["..",".."],"fact":"معلومة علمية قصيرة ومفيدة متعلقة بمواده","answer":"إجابة مباشرة عن سؤال المستخدم إن وُجد وإلا سلسلة فارغة"}`;
+  const user = `${projectName ? `المشروع: ${clip(projectName, 120)}\n` : ''}الجدول المحسوب (موثوق):\n${JSON.stringify(data)}\n${question ? `\nسؤال المستخدم: ${clip(question, 600)}` : '\nلا يوجد سؤال محدد.'}`;
+  const { text, model } = await chat({
+    apiKey, config, meter, models: config.chatModels, role: 'chat', json: true,
+    temperature: 0.4, maxTokens: 2500, timeoutMs: 60000,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
+  });
+  const j = extractJson(text) || {};
+  const arr = (v, n) => (Array.isArray(v) ? v.slice(0, n) : []);
+  return {
+    model, totals: data.total, items: data.items,
+    analysis: {
+      headline: clip(j.headline, 300), summary: clip(j.summary, 1200),
+      drivers: arr(j.drivers, 6).map(d => ({ material: clip(d?.material, 80), sharePct: Number(d?.sharePct) || 0, why: clip(d?.why, 400) })),
+      improvements: arr(j.improvements, 5).map(d => ({ title: clip(d?.title, 120), how: clip(d?.how, 500), expectedEffect: clip(d?.expectedEffect, 300) })),
+      caveats: arr(j.caveats, 4).map(x => clip(x, 300)), fact: clip(j.fact, 400), answer: clip(j.answer, 1500)
+    }
+  };
+}
+
 /** Single entry used by both hosts. */
 export async function handleAction({ action, payload = {}, apiKey, env = {} }) {
   const config = resolveConfig(env);

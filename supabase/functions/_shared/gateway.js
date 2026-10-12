@@ -12,7 +12,7 @@
  */
 
 import {
-  resolveConfig, ideate, develop, generateImage, chatReply, newMeter, GatewayError
+  resolveConfig, ideate, develop, generateImage, chatReply, impactAnalysis, newMeter, GatewayError
 } from './openrouterCore.js';
 import { hasGemini } from './gemini.js';
 import {
@@ -569,6 +569,30 @@ const actions = {
       await safeLog(store, viewer, {
         kind: 'chat', status: 'error', cost: meter.cost, durationMs: Date.now() - started, meta: { error: clip(e.message, 300) }
       });
+      throw e;
+    }
+  },
+
+  async impact({ ctx, payload }) {
+    const { store, viewer, limits, config, apiKey } = ctx;
+    const started = Date.now();
+    const c = await getCapacity(ctx);
+    const cap = effectiveCap(c.cap, viewer, limits);
+    if (cap.level === 'closed' && !hasGemini(config.gemini)) {
+      throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
+    }
+    await enforceDaily({ store, limits, viewer, kind: 'chat' });
+    await enforceGlobal(ctx, 'chat', store);
+    const meter = newMeter();
+    try {
+      const r = await impactAnalysis({
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, items: payload?.items,
+        question: payload?.question, projectName: payload?.projectName
+      });
+      await safeLog(store, viewer, { kind: 'chat', model: r.model, cost: meter.cost, tokens: meter.tokens, durationMs: Date.now() - started, meta: { feature: 'impact' } });
+      return { success: true, model: r.model, totals: r.totals, items: r.items, analysis: r.analysis };
+    } catch (e) {
+      await safeLog(store, viewer, { kind: 'chat', status: 'error', cost: meter.cost, durationMs: Date.now() - started, meta: { feature: 'impact', error: clip(e.message, 300) } });
       throw e;
     }
   },

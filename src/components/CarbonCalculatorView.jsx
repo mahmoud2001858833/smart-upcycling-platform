@@ -1,4 +1,5 @@
 import React from 'react';
+import ImpactAiPanel from './ImpactAiPanel.jsx';
 import { 
   Calculator, 
   Smartphone, 
@@ -319,6 +320,8 @@ export default function CarbonCalculatorView({
             </tbody>
           </table>
         </div>
+
+        <ImpactAiPanel lcaResults={lcaResults} />
       </div>
     </div>
   );
