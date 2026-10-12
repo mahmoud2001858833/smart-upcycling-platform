@@ -118,6 +118,15 @@ async function getCapacity({ apiKey, config, limits, store, env, force = false }
   return value;
 }
 
+/** Which providers the server can see. Names and booleans only, never a key. */
+function providerDiag(config, env, apiKey) {
+  return {
+    gemini: hasGemini(config.gemini), geminiKeys: config.gemini.keys.length, textProvider: config.gemini.textProvider,
+    openrouter: Boolean(apiKey),
+    envNames: Object.keys(env || {}).filter(k => /GEMINI|OPENROUTER|TEXT_PROVIDER/i.test(k)).slice(0, 12)
+  };
+}
+
 /** The admin is not throttled by load (so they can always test), but nobody can outrun an empty balance. */
 function effectiveCap(cap, viewer, limits) {
   if (!viewer.isAdmin || cap.causes.includes('credit')) return cap;
@@ -359,7 +368,7 @@ const actions = {
     const c = await getCapacity({ ...ctx, force: true });
     const cap = effectiveCap(c.cap, viewer, limits);
     if (cap.level === 'closed') {
-      await safeLog(store, viewer, { kind: 'ideate', status: 'throttled', meta: { reason: cap.reasons.join(' | ') } });
+      await safeLog(store, viewer, { kind: 'ideate', status: 'throttled', meta: { reason: cap.reasons.join(' | '), diag: providerDiag(config, ctx.env, apiKey) } });
       throw new GatewayError(cap.message, {
         status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED'
       });
@@ -456,7 +465,7 @@ const actions = {
     const c = await getCapacity(ctx);
     const cap = effectiveCap(c.cap, viewer, limits);
     if (!cap.imagesAllowed) {
-      await safeLog(store, viewer, { kind: 'image', status: 'throttled', meta: { reason: cap.reasons.join(' | ') } });
+      await safeLog(store, viewer, { kind: 'image', status: 'throttled', meta: { reason: cap.reasons.join(' | '), diag: providerDiag(config, ctx.env, apiKey) } });
       throw new GatewayError(
         'توليد الصور متوقف مؤقتاً بسبب الازدحام أو محدودية الرصيد. فكرة المشروع وخطواته متاحة بالكامل، وجرّب الصورة لاحقاً.',
         { status: 503, code: 'IMAGES_PAUSED' }
