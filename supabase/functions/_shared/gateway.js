@@ -599,7 +599,19 @@ const PUBLIC_ERROR = 'تعذّر إكمال الطلب الآن، حاول مر�
  * @param {{ body: {action?:string,payload?:object}, headers?: any, ip?: string, env?: object, store?: object }} req
  * @returns {Promise<{status:number, body:object}>}
  */
-export async function handleRequest({ body, headers = {}, ip = '', env = {}, store = null }) {
+/** A secret saved as "GEMINI_API_KEY " (trailing space) or with stray spaces in the value must still work. */
+function normalizeEnv(env = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(env)) {
+    const key = String(k).trim();
+    const val = typeof v === 'string' ? v.trim() : v;
+    if (!(key in out) || k === key) out[key] = val;
+  }
+  return out;
+}
+
+export async function handleRequest({ body, headers = {}, ip = '', env: rawEnv = {}, store = null }) {
+  const env = normalizeEnv(rawEnv);
   let viewer = { isAdmin: false };
   try {
     const action = body?.action;
