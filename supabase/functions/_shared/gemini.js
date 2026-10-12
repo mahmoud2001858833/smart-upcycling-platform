@@ -27,6 +27,7 @@ export const hasGemini = cfg => Boolean(cfg?.keys?.length || cfg?.imageKeys?.len
 
 // key -> timestamp until which it is skipped (quota/rate limit)
 const cooldown = new Map();
+const modelBlocked = new Map(); // image model -> until (quota 'limit: 0' etc.)
 let rr = 0;
 
 function pickKeys(cfg) {
@@ -121,6 +122,7 @@ export async function geminiImage({ cfg: baseCfg, text, referenceImage = null, a
   };
   const errs = [];
   for (const model of cfg.imageModels) {
+    if ((modelBlocked.get(model) || 0) > Date.now()) { errs.push(`${model}: quota (skipped)`); continue; }
     let data;
     try {
       try {
@@ -131,8 +133,9 @@ export async function geminiImage({ cfg: baseCfg, text, referenceImage = null, a
         data = await call({ cfg, model, timeoutMs, body: { contents: body.contents, generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } } });
       }
     } catch (e) {
-      errs.push(e.message);
+      errs.push(e.message.replace(/\s+/g, ' ').slice(0, 110));
       if (e.code === 'BAD_KEY') throw e;
+      if (e.status === 429) modelBlocked.set(model, Date.now() + 20 * 60_000);
       continue; // unknown / retired model -> next one
     }
     for (const p of data?.candidates?.[0]?.content?.parts || []) {
@@ -144,20 +147,34 @@ export async function geminiImage({ cfg: baseCfg, text, referenceImage = null, a
   throw new Error(errs.join(' | ') || 'gemini: لم يُرجع صورة');
 }
 
-/** Free last-resort image route (no key, no quota). Best effort. */
-export async function freeImage({ text, aspect = '4:3', timeoutMs = 60000 }) {
-  const [w, h] = aspect === '16:9' ? [1280, 720] : aspect === '1:1' ? [1024, 1024] : aspect === '3:4' ? [768, 1024] : [1024, 768];
-  const prompt = encodeURIComponent(String(text).replace(/\s+/g, ' ').slice(0, 900));
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(`https://image.pollinations.ai/prompt/${prompt}?width=${w}&height=${h}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const type = res.headers.get('content-type') || 'image/jpeg';
-    if (!/^image\//.test(type)) throw new Error('not an image');
-    const buf = new Uint8Array(await res.arrayBuffer());
-    if (buf.length < 2000) throw new Error('empty image');
-    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    return { imageUrl: `data:${type.split(';')[0]};base64,${btoa(bin)}`, model: 'free-flux' };
-  } finally { clearTimeout(timer); }
+/** Free last-resort image route (no key, no quota). Best effort, retries with another seed/model. */
+export async function freeImage({ text, aspect = '4:3', timeoutMs = 45000 }) {
+  const [w, h] = aspect === '16:9' ? [1280, 720] : aspect === '1:1' ? [1024, 1024] : aspect === '3:4' ? [768, 1024] : aspect === '3:2' ? [1152, 768] : [1024, 768];
+  const clean = String(text).replace(/\s+/g, ' ');
+  const attempts = [
+    { model: 'flux', prompt: clean.slice(0, 900) },
+    { model: 'flux', prompt: clean.slice(0, 500) },
+    { model: 'turbo', prompt: clean.slice(0, 500) }
+  ];
+  const errs = [];
+  for (let i = 0; i < attempts.length; i++) {
+    const a = attempts[i];
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(a.prompt)}?width=${w}&height=${h}&model=${a.model}&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`;
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const type = res.headers.get('content-type') || 'image/jpeg';
+      if (!/^image\//.test(type)) throw new Error('not an image');
+      const buf = new Uint8Array(await res.arrayBuffer());
+      if (buf.length < 2000) throw new Error('empty image');
+      let bin = ''; for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode(...buf.subarray(k, k + 0x8000));
+      return { imageUrl: `data:${type.split(';')[0]};base64,${btoa(bin)}`, model: `free-${a.model}` };
+    } catch (e) {
+      errs.push(`${a.model}: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+      if (i < attempts.length - 1) await new Promise(r => setTimeout(r, 1500));
+    } finally { clearTimeout(timer); }
+  }
+  throw new Error(errs.join(', '));
 }

@@ -426,6 +426,12 @@ export default function App() {
       return;
     }
 
+    if (!user) {
+      showToast('سجّل الدخول أولاً لتتمكن من إنشاء مشروع (مشروعان يومياً لكل حساب)', 'info');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setIsLoading(true);
     setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: allMaterials.join('، ') });
     setGenerationError(null);

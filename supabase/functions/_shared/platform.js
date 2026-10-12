@@ -38,8 +38,8 @@ export function resolveLimits(env = {}) {
 
     // Per-person daily caps (anonymous visitors are keyed by IP and get a larger allowance
     // because a whole school can share one address).
-    dailyGenerations: int(env.DAILY_GENERATIONS, 3),
-    dailyProjects: int(env.DAILY_PROJECTS, 3),
+    dailyGenerations: int(env.DAILY_GENERATIONS, 2),
+    dailyProjects: int(env.DAILY_PROJECTS, 2),
     dailyImages: int(env.DAILY_IMAGES, 12),
     dailyChats: int(env.DAILY_CHATS, 20),
     anonMultiplier: int(env.ANON_MULTIPLIER, 1),

@@ -614,9 +614,9 @@ export async function generateImage(args) {
     try { return await viaGemini(); } catch (e) { errs.push(e); }
   }
   if (gem.freeImages !== false) {
-    try { return await viaFree(); } catch (e) { errs.push(new Error(`free: ${e.message}`)); }
+    try { return await viaFree(); } catch (e) { errs.unshift(new Error(`free: ${e.message}`)); }
   }
-  const first = errs[0];
+  const first = errs.find(e => e?.status) || errs[0];
   const code = errs.some(e => e?.code === 'BAD_KEY') ? 'BAD_KEY' : (first?.code || 'AI_FAILED');
   throw new GatewayError(`تعذر توليد الصورة: ${errs.map(e => e.message).join(' | ').slice(0, 600)}`, { status: first?.status && first.status >= 400 ? first.status : 503, code });
 }

@@ -150,6 +150,11 @@ function viewerFilter(viewer) {
   return { visitor_id: viewer.visitorId || 'anon-unknown' };
 }
 
+function requireLogin(viewer) {
+  if (viewer.signedIn || viewer.isAdmin) return;
+  throw new GatewayError('سجّل الدخول أولاً لإنشاء مشروع.', { status: 401, code: 'LOGIN_REQUIRED' });
+}
+
 async function enforceDaily({ store, limits, viewer, kind }) {
   if (viewer.isAdmin) return;
   const spec = DAILY[kind];
@@ -397,6 +402,7 @@ const actions = {
 
   async ideate({ ctx, payload }) {
     const { store, viewer, limits, config, apiKey } = ctx;
+    requireLogin(viewer);
     const started = Date.now();
 
     const c = await getCapacity({ ...ctx, force: true });
@@ -449,6 +455,7 @@ const actions = {
 
   async develop({ ctx, payload }) {
     const { store, viewer, limits, config, apiKey } = ctx;
+    requireLogin(viewer);
     if (!payload?.concept) throw new GatewayError('concept مطلوب', { status: 400, code: 'BAD_REQUEST' });
     const started = Date.now();
 
