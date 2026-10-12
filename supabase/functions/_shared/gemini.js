@@ -15,6 +15,7 @@ export function geminiConfig(env = {}) {
     // comma separated list: tried in order
     imageModels: (env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image,gemini-2.5-flash-image').split(',').map(x => x.trim()).filter(Boolean),
     // 'openrouter' (default) | 'gemini' -> which provider handles ideate/develop first
+    freeImages: String(env.FREE_IMAGE_FALLBACK || 'on').toLowerCase() !== 'off',
     textProvider: (env.TEXT_PROVIDER || 'openrouter').toLowerCase()
   };
 }
@@ -82,14 +83,22 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
     },
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {})
   };
-  let data = null; let used = model || cfg.model; let lastErr = null;
-  for (const m of [...new Set([used, cfg.model, 'gemini-3.6-flash'])]) {
-    try { data = await call({ cfg, model: m, body, timeoutMs }); used = m; break; } catch (e) {
-      lastErr = e;
-      if (e.status !== 404 && e.status !== 400) throw e; // only an unknown/retired model moves on to the next
+  let data = null; let used = model || cfg.model; const errs = [];
+  const started = Date.now();
+  const models = [...new Set([used, cfg.model, 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])];
+  for (let i = 0; i < models.length; i++) {
+    const m = models[i];
+    const left = timeoutMs - (Date.now() - started);
+    if (left < 8000) break;
+    // each attempt gets a slice so a hung/overloaded model can't eat the whole budget
+    const per = i === models.length - 1 ? left : Math.min(left, Math.max(25000, Math.floor(timeoutMs / 2.5)));
+    try { data = await call({ cfg, model: m, body, timeoutMs: per }); used = m; break; } catch (e) {
+      errs.push(e.message);
+      if (e.code === 'BAD_KEY') break;
+      // overload / quota / timeout / unknown model -> try the next model
     }
   }
-  if (!data) throw lastErr;
+  if (!data) throw new Error(errs.join(' | ') || 'gemini: failed');
   model = used;
   const text = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
   if (!text) throw new Error(`gemini ${model}: استجابة فارغة`);
@@ -105,7 +114,7 @@ export async function geminiImage({ cfg, text, referenceImage = null, aspect = '
     contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } }
   };
-  let lastErr = null;
+  const errs = [];
   for (const model of cfg.imageModels) {
     let data;
     try {
@@ -117,7 +126,7 @@ export async function geminiImage({ cfg, text, referenceImage = null, aspect = '
         data = await call({ cfg, model, timeoutMs, body: { contents: body.contents, generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } } });
       }
     } catch (e) {
-      lastErr = e;
+      errs.push(e.message);
       if (e.code === 'BAD_KEY') throw e;
       continue; // unknown / retired model -> next one
     }
@@ -125,7 +134,25 @@ export async function geminiImage({ cfg, text, referenceImage = null, aspect = '
       const d = p.inlineData || p.inline_data;
       if (d?.data) return { imageUrl: `data:${d.mimeType || d.mime_type || 'image/png'};base64,${d.data}`, model };
     }
-    lastErr = new Error(`gemini ${model}: لم يُرجع صورة`);
+    errs.push(`gemini ${model}: لم يُرجع صورة`);
   }
-  throw lastErr || new Error('gemini: لم يُرجع صورة');
+  throw new Error(errs.join(' | ') || 'gemini: لم يُرجع صورة');
+}
+
+/** Free last-resort image route (no key, no quota). Best effort. */
+export async function freeImage({ text, aspect = '4:3', timeoutMs = 60000 }) {
+  const [w, h] = aspect === '16:9' ? [1280, 720] : aspect === '1:1' ? [1024, 1024] : aspect === '3:4' ? [768, 1024] : [1024, 768];
+  const prompt = encodeURIComponent(String(text).replace(/\s+/g, ' ').slice(0, 900));
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`https://image.pollinations.ai/prompt/${prompt}?width=${w}&height=${h}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const type = res.headers.get('content-type') || 'image/jpeg';
+    if (!/^image\//.test(type)) throw new Error('not an image');
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.length < 2000) throw new Error('empty image');
+    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    return { imageUrl: `data:${type.split(';')[0]};base64,${btoa(bin)}`, model: 'free-flux' };
+  } finally { clearTimeout(timer); }
 }

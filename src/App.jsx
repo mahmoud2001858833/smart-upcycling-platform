@@ -436,7 +436,7 @@ export default function App() {
     const timeoutPromise = new Promise((_, reject) => {
       timeoutId = setTimeout(() => {
         reject(new Error('TIMEOUT_60S'));
-      }, 60000);
+      }, 150000);
     });
 
     try {
@@ -476,7 +476,7 @@ export default function App() {
           console.warn('Auto-save warning:', saveErr);
         }
 
-        showToast(`✨ تم ابتكار ${res.projects.length} مشاريع وحفظها تلقائياً في قائمة المحفوظات!`);
+        showToast(`✨ تم ابتكار ${res.projects.length === 1 ? 'مشروع' : res.projects.length + ' مشاريع'} وحفظه تلقائياً في قائمة المحفوظات!`);
       } else {
         setGenerationError('تعذّر التوليد، يرجى المحاولة مرة أخرى.');
         showToast('تعذر توليد المشاريع، يرجى المحاولة مجدداً', 'error');
@@ -485,7 +485,7 @@ export default function App() {
       if (timeoutId) clearTimeout(timeoutId);
       console.error('Error generating AI projects:', err);
       if (err.message === 'TIMEOUT_60S') {
-        setGenerationError('استغرقت العملية أكثر من 60 ثانية نظراً للضغط على محرك الذكاء الاصطناعي. موادك وخياراتك ما زالت محفوظة، اضغط أدناه لإعادة المحاولة.');
+        setGenerationError('استغرقت العملية وقتاً أطول من المعتاد نظراً للضغط على محرك الذكاء الاصطناعي. موادك وخياراتك ما زالت محفوظة، اضغط أدناه لإعادة المحاولة.');
         showToast('تعذّر التوليد، تجاوزت العملية المهلة المحددة (60 ثانية)', 'error');
       } else if (isLimitError(err)) {
         setGenerationError(err.message);
@@ -1502,7 +1502,7 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '0.65rem', fontSize: '0.75rem', color: '#64748b' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
                 <span>
-                  عصف ذهني لـ 8 أفكار ← اختيار أقوى 3 ← دليل تنفيذ بقياسات دقيقة ← صور واضحة لكل مرحلة
+                  عصف ذهني لعدة أفكار ← اختيار أقوى فكرة ← دليل تنفيذ بقياسات دقيقة ← صور واضحة لكل مرحلة
                 </span>
               </div>
             </div>

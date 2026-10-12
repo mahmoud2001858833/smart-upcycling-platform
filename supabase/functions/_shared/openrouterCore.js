@@ -9,7 +9,7 @@
  * It must never be shipped to the browser.
  */
 
-import { geminiConfig, hasGemini, geminiText, geminiImage } from './gemini.js';
+import { geminiConfig, hasGemini, geminiText, geminiImage, freeImage } from './gemini.js';
 
 const OPENROUTER_API = 'https://openrouter.ai/api/v1';
 const OPENROUTER_URL = `${OPENROUTER_API}/chat/completions`;
@@ -600,17 +600,25 @@ export async function generateImage(args) {
     addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
     return { imageUrl: r.imageUrl, model: r.model, usedReference: useRef, size: null };
   };
-  if (!apiKey) {
-    try { return await viaGemini(); } catch (e) {
-      throw new GatewayError(`تعذر توليد الصورة عبر Gemini: ${e.message}`, { status: 503, code: e.code === 'BAD_KEY' ? 'BAD_KEY' : 'AI_FAILED' });
-    }
+  const viaFree = async () => {
+    const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName });
+    const r = await freeImage({ text, aspect: aspect || IMAGE_ASPECT[kind] || '4:3' });
+    addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
+    return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: null };
+  };
+  const errs = [];
+  if (apiKey) {
+    try { return await generateImageOpenRouter(args); } catch (e) { errs.push(e); if (e?.code === 'NO_KEY') errs.pop(); }
   }
-  try {
-    return await generateImageOpenRouter(args);
-  } catch (e) {
-    if (!hasGemini(gem) || e?.code === 'NO_KEY') throw e;
-    try { return await viaGemini(); } catch { throw e; }
+  if (hasGemini(gem)) {
+    try { return await viaGemini(); } catch (e) { errs.push(e); }
   }
+  if (gem.freeImages !== false) {
+    try { return await viaFree(); } catch (e) { errs.push(new Error(`free: ${e.message}`)); }
+  }
+  const first = errs[0];
+  const code = errs.some(e => e?.code === 'BAD_KEY') ? 'BAD_KEY' : (first?.code || 'AI_FAILED');
+  throw new GatewayError(`تعذر توليد الصورة: ${errs.map(e => e.message).join(' | ').slice(0, 600)}`, { status: first?.status && first.status >= 400 ? first.status : 503, code });
 }
 
 async function generateImageOpenRouter({ apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, hd = true, stage = null, projectName = '', meter = null }) {

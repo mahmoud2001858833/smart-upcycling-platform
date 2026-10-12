@@ -149,7 +149,7 @@ export async function generateProjectsWithAi({ materials, userLevel, projectType
   const say = (phase, message, extra = {}) => onProgress?.({ phase, message, ...extra });
 
   say('ideate', 'عصف ذهني: ابتكار 8 أفكار مختلفة وتقييم كل فكرة…');
-  const ideation = await callAi('ideate', { materials, level: userLevel, type: projectType, take: 3 }, { timeoutMs: 100000 });
+  const ideation = await callAi('ideate', { materials, level: userLevel, type: projectType, take: 1 }, { timeoutMs: 120000 });
   const concepts = ideation.concepts || [];
   if (concepts.length === 0) throw new Error('لم تُنتج مرحلة العصف الذهني أفكاراً');
 
