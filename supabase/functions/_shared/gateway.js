@@ -108,8 +108,12 @@ async function getCapacity({ apiKey, config, limits, store, env, force = false }
     currentPressure(store, limits).catch(() => 0),
     fetchCredit({ apiKey, apiBase: config.apiBase, managementKey: env.OPENROUTER_MANAGEMENT_KEY || '', force })
   ]);
-  const cap = decideCapacity({ pressure, remaining: credit.known ? credit.remaining : null, limits });
-  const value = { cap, pressure, credit };
+  let remaining = credit.known ? credit.remaining : null;
+  // OpenRouter is empty but Gemini is configured: keep serving through Gemini and stop spending OpenRouter calls
+  const skipOpenRouter = Boolean(apiKey) && hasGemini(config.gemini) && remaining != null && remaining <= limits.creditCriticalUsd;
+  if (skipOpenRouter) remaining = null;
+  const cap = decideCapacity({ pressure, remaining, limits });
+  const value = { cap, pressure, credit, skipOpenRouter };
   capCache.set(sig, { at: Date.now(), value });
   return value;
 }
@@ -375,7 +379,7 @@ const actions = {
     const meter = newMeter();
     try {
       const r = await ideate({
-        apiKey, config, meter, take,
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, take,
         materials: payload?.materials, level: payload?.level, type: payload?.type,
         count: IDEATE_COUNT[take] || 8, avoid: Array.isArray(payload?.avoid) ? payload.avoid : []
       });
@@ -414,7 +418,7 @@ const actions = {
     const meter = newMeter();
     try {
       const r = await develop({
-        apiKey, config, meter,
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter,
         materials: payload.materials, concept: payload.concept, level: payload.level, type: payload.type
       });
       const cost = meter.cost;
@@ -468,7 +472,7 @@ const actions = {
     const meter = newMeter();
     try {
       const r = await generateImage({
-        apiKey, config, meter, kind,
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, kind,
         visualBible: clip(payload?.visualBible, 1500), prompt,
         referenceImage: payload?.referenceImage, stageLabel: clip(payload?.stageLabel, 40),
         isFinal: Boolean(payload?.isFinal), hd: payload?.hd !== false,
@@ -500,7 +504,7 @@ const actions = {
     const meter = newMeter();
     try {
       const r = await chatReply({
-        apiKey, config, meter, question: payload?.question, history: Array.isArray(payload?.history) ? payload.history : [],
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, question: payload?.question, history: Array.isArray(payload?.history) ? payload.history : [],
         project: cleanProjectContext(payload?.project), focusStep: cleanFocus(payload?.focusStep)
       });
       await safeLog(store, viewer, {
