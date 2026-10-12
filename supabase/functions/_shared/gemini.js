@@ -7,8 +7,11 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 export function geminiConfig(env = {}) {
   const keys = [env.GEMINI_API_KEY, ...(env.GEMINI_API_KEYS ? String(env.GEMINI_API_KEYS).split(',') : [])]
     .map(s => (s || '').trim()).filter(Boolean);
+  const imageKeys = [env.GEMINI_IMAGE_API_KEY, ...(env.GEMINI_IMAGE_API_KEYS ? String(env.GEMINI_IMAGE_API_KEYS).split(',') : [])]
+    .map(s => (s || '').trim()).filter(Boolean);
   return {
     keys: [...new Set(keys)],
+    imageKeys: [...new Set(imageKeys)],
     base: env.GEMINI_API_BASE || GEMINI_BASE,
     model: env.GEMINI_MODEL || 'gemini-3.8-flash',
     developModel: env.GEMINI_DEVELOP_MODEL || env.GEMINI_MODEL || 'gemini-3.8-flash',
@@ -20,7 +23,7 @@ export function geminiConfig(env = {}) {
   };
 }
 
-export const hasGemini = cfg => Boolean(cfg?.keys?.length);
+export const hasGemini = cfg => Boolean(cfg?.keys?.length || cfg?.imageKeys?.length);
 
 // key -> timestamp until which it is skipped (quota/rate limit)
 const cooldown = new Map();
@@ -106,7 +109,9 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
   return { text, model: model || cfg.model, usage: { total_tokens: u.totalTokenCount || 0, cost: 0 } };
 }
 
-export async function geminiImage({ cfg, text, referenceImage = null, aspect = '4:3', timeoutMs = 120000 }) {
+export async function geminiImage({ cfg: baseCfg, text, referenceImage = null, aspect = '4:3', timeoutMs = 120000 }) {
+  // a dedicated image key (often from another Google account/project) wins over the text key
+  const cfg = baseCfg.imageKeys?.length ? { ...baseCfg, keys: baseCfg.imageKeys } : baseCfg;
   const parts = [{ text }];
   const m = typeof referenceImage === 'string' && referenceImage.match(/^data:(image\/[a-z+]+);base64,(.+)$/);
   if (m) parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
