@@ -1,26 +1,21 @@
 /**
  * Resilient Streaming Chat Client for AI Expert
- * Incorporates the 4-layer defense architecture:
+ * Incorporates the gateway-first architecture:
  * 1. Resilient Chunk Reassembly Buffer (prevents JSON parse crashes on fragmented SSE chunks)
  * 2. Dual-schema parsing (OpenAI-compatible choices[0].delta.content & Google candidates[0].content.parts[0].text)
  * 3. Model Cascade Failover (tries fast/high-quota models sequentially)
- * 4. Multi-transport fallback (SSE stream -> Direct API -> Cloud gateway -> Contextual AI Knowledge Base)
+ * 4. Multi-transport fallback (Cloud gateway -> personal Gemini key -> honest 'unavailable' message; never canned answers)
  */
 
 import { callAi } from './aiGateway.js';
-import { getStoredGeminiApiKey } from './aiProjectEngine.js';
+import { getStoredGeminiApiKey, buildAssistantProject, AI_UNAVAILABLE_MESSAGE } from './aiProjectEngine.js';
 
 const getOpenRouterKey = () => {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('openrouter_api_key') || import.meta.env?.VITE_OPENROUTER_API_KEY || '';
 };
 
-const CANDIDATE_GEMINI_MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-2.0-flash',
-  'gemini-2.5-flash'
-];
+const CANDIDATE_GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash'];
 
 /**
  * Resilient buffer line parser
@@ -85,7 +80,21 @@ export async function streamChatMessage({
     projectContext ? `\nالمستخدم يستشيرك حالياً بخصوص مشروع "${projectContext.name}"، المصنوع من (${projectContext.materials}). فكرة المشروع: ${projectContext.idea}.` : ''
   }`;
 
-  // 1. Try Streaming via Direct Gemini API if API key exists (Cascade failover)
+  // 1. The platform's own server (key kept server-side): knows the whole project, the current step and the platform
+  try {
+    const out = await callAi('chat', {
+      question,
+      history: conversationHistory,
+      project: buildAssistantProject(projectContext),
+      focusStep: projectContext?.focusStep || null
+    }, { timeoutMs: 60000 });
+    if (out.reply) return simulateStreaming(out.reply, onChunk, signal);
+  } catch (gatewayErr) {
+    if (gatewayErr?.name === 'AbortError') throw gatewayErr;
+    console.warn('Gateway chat unavailable, trying direct keys:', gatewayErr.message);
+  }
+
+  // 2. Optional personal Gemini key stored in this browser
   const geminiKey = getStoredGeminiApiKey();
   if (geminiKey) {
     for (const model of CANDIDATE_GEMINI_MODELS) {
@@ -125,7 +134,7 @@ export async function streamChatMessage({
     }
   }
 
-  // 2. Try OpenRouter direct streaming if key exists
+  // 2b. Try OpenRouter direct streaming if key exists
   const orKey = getOpenRouterKey();
   if (orKey) {
     try {
@@ -159,25 +168,8 @@ export async function streamChatMessage({
     }
   }
 
-  // 3. Fallback to Cloud Gateway (non-streaming or batch reply)
-  try {
-    const out = await callAi('chat', {
-      question,
-      history: conversationHistory,
-      project: projectContext ? { name: projectContext.name, materials: projectContext.materials, idea: projectContext.idea } : null
-    }, { timeoutMs: 50000 });
-
-    if (out.reply) {
-      // Simulate smooth typing chunk by chunk for consistency
-      return simulateStreaming(out.reply, onChunk, signal);
-    }
-  } catch (gatewayErr) {
-    console.warn('Gateway chat fallback error:', gatewayErr.message);
-  }
-
-  // 4. Ultimate Contextual Fallback Knowledge Base with Smooth Stream Simulation
-  const fallbackReply = generateContextualReply(question, projectContext);
-  return simulateStreaming(fallbackReply, onChunk, signal);
+  // 3. Honest message instead of a pre-written answer
+  return simulateStreaming(AI_UNAVAILABLE_MESSAGE, onChunk, signal);
 }
 
 /**
@@ -193,45 +185,4 @@ async function simulateStreaming(fullText, onChunk, signal) {
     await new Promise(r => setTimeout(r, 18));
   }
   return fullText;
-}
-
-function generateContextualReply(question, projectContext) {
-  const qLower = question.toLowerCase();
-  
-  if (qLower.includes('لاصق') || qLower.includes('غراء') || qLower.includes('تثبيت') || qLower.includes('تلزيق')) {
-    return `بناءً على المعايير الهندسية للمواد المستدامة في منصة مُدام:
-• **لربط الزجاج بالمعادن أو البلاستيك:** يُنصح باستخدام لاصق الإيبوكسي ثنائي التركيب (Epoxy 2-Part) أو السيليكون الهيكلي الشفاف RTV.
-• **للأخشاب والكرتون:** غراء الخشب المائي (PVA) يقدم رابطة أقوى من ألياف الخشب نفسها إذا تُرك تحت الضغط لـ 4 ساعات.
-• **للبلاستيك المرن (PET/PP):** تجنب مسدس الشمع الساخن جداً لأنه قد يشوه العبوات؛ يُفضل غراء البولي يوريثان أو التثبيت الميكانيكي بالبراغي الدقيقة.`;
-  }
-  
-  if (qLower.includes('قص') || qLower.includes('قطع') || qLower.includes('حواف') || qLower.includes('منشار')) {
-    return `إرشادات السلامة والقص الدقيق:
-1. **الزجاج:** لا تحاول كسر الزجاج بالمطرقة! استخدم قاطع زجاج بعجلة كربيد التنجستن مع زيت التزليق، ثم طبق صدمة حرارية (ماء مغلي يليه ماء مثلج) لينفصل بسلاسة.
-2. **علب الألمنيوم والصلب:** استخدم مقص صاج ميكانيكي (Tin Snips) واثنِ الحواف الداخلية بمقدار 3 مم بمساعدة زرادية مسطحة لتفادي أي جروح قطعية.
-3. **الكرتون:** استخدم دائماً مسطرة معدنية ومشرطاً فائق الحدة بزاوية 45 درجة لتفادي تمزق الألياف.`;
-  }
-
-  if (qLower.includes('كربون') || qLower.includes('وفر') || qLower.includes('أثر') || qLower.includes('lca') || qLower.includes('تنبؤ')) {
-    return `وفقاً لمعايير تقييم دورة الحياة (ISO 14040/14044):
-• كل كيلوجرام من خردة الألمنيوم المعاد تدويرها يوفر قرابة **9.1 كغ من مكافئ CO₂** مقارنة بالتعدين البكر، ويوفر 95% من الطاقة الكهربائية!
-• تحويل الكرتون عن المرادم يمنع تحلله اللاهوائي الذي ينتج غاز الميثان.
-• يمكنك استخدام أداة **"التنبؤ البيئي الذكية"** الجديدة في المنصة لتحليل الاستهلاك الشامل (كهرباء، مياه، نقل، ونفايات) مع مقارنة دقيقة لمحافظات الأردن!`;
-  }
-
-  if (qLower.includes('طلاء') || qLower.includes('دهان') || qLower.includes('تلوين') || qLower.includes('صبغ')) {
-    return `للحفاظ على البيئة مع الحصول على مظهر جمالي يدوم:
-• اختر دائماً دهانات الأكريليك المائية الخالية من المركبات العضوية المتطايرة (Low-VOC / Zero-VOC).
-• قبل طلاء المعادن أو البلاستيك الأملس، قم بصنفرة خفيفة بحبيبات 220 لزيادة الالتصاق، ثم طبق طبقة أساس (Primer) مخصصة.
-• لتشطيب الخشب وحمايته، زيت بذر الكتان الطبيعي (Linseed Oil) أو شمع العسل يمنح حماية ممتازة ولمعة دافئة صديقة للبيئة.`;
-  }
-
-  if (projectContext) {
-    return `بخصوص مشروع "${projectContext.name}":
-فكرة متميزة جداً! للارتقاء بهذا المشروع المصنوع من (${projectContext.materials})، نوصي بالتركيز على جودة التشطيب ومقاومة الرطوبة وثبات التوصيلات الميكانيكية. هل ترغب في تفاصيل إضافية حول اختبار المتانة أو تحسين الوفر الكربوني؟`;
-  }
-
-  return `شكراً لاستشارتك! تحويل المخلفات المنزلية إلى أصول نفعية يحقق هدفين متلازمين: توفير مالي ملموس وخفض انبعاثات الكربون المتسببة في الاحتباس الحراري.
-
-نصيحتنا الهندسية في منصة مُدام: ابدأ بالفرز الدقيق والتنظيف التام، واعتمد على قوة الربط الميكانيكي (البراغي والتعشيق) قبل الاعتماد الكلي على اللواصق لضمان استدامة المنتج لسنوات طويلة.`;
 }
