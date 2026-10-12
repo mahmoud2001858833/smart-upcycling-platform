@@ -38,7 +38,7 @@ export class AiError extends Error {
 }
 
 /** Errors where silently switching to fake/legacy generators would hide a real limit from the person. */
-export const isLimitError = e => ['CAPACITY_CLOSED', 'NO_CREDIT', 'DAILY_LIMIT', 'IMAGES_PAUSED', 'RATE_LIMIT'].includes(e?.code);
+export const isLimitError = e => ['CAPACITY_CLOSED', 'NO_CREDIT', 'DAILY_LIMIT', 'GLOBAL_DAILY_LIMIT', 'IMAGES_PAUSED', 'RATE_LIMIT'].includes(e?.code);
 
 function unwrap(data) {
   if (!data || data.success === false) {

@@ -17,7 +17,13 @@ const clip = (s, n) => String(s ?? '').slice(0, n);
 
 export function resolveLimits(env = {}) {
   return {
-    maxProjects: Math.max(1, Math.min(3, int(env.MAX_PROJECTS, 3))),
+    // projects produced per generation (1 keeps each request cheap; up to 3 is possible)
+    maxProjects: Math.max(1, Math.min(3, int(env.MAX_PROJECTS, 1))),
+
+    // Platform-wide budget per rolling 24h, shared by everyone (the admin is exempt).
+    globalDailyProjects: int(env.GLOBAL_DAILY_PROJECTS, 10),
+    globalDailyImages: int(env.GLOBAL_DAILY_IMAGES, 40),
+    globalDailyChats: int(env.GLOBAL_DAILY_CHATS, 150),
 
     // Load: how many generations *started* in the last windowSec seconds.
     windowSec: int(env.CAPACITY_WINDOW_SEC, 60),
@@ -32,11 +38,11 @@ export function resolveLimits(env = {}) {
 
     // Per-person daily caps (anonymous visitors are keyed by IP and get a larger allowance
     // because a whole school can share one address).
-    dailyGenerations: int(env.DAILY_GENERATIONS, 8),
-    dailyProjects: int(env.DAILY_PROJECTS, 24),
-    dailyImages: int(env.DAILY_IMAGES, 30),
-    dailyChats: int(env.DAILY_CHATS, 40),
-    anonMultiplier: int(env.ANON_MULTIPLIER, 3),
+    dailyGenerations: int(env.DAILY_GENERATIONS, 3),
+    dailyProjects: int(env.DAILY_PROJECTS, 3),
+    dailyImages: int(env.DAILY_IMAGES, 12),
+    dailyChats: int(env.DAILY_CHATS, 20),
+    anonMultiplier: int(env.ANON_MULTIPLIER, 1),
 
     // Used for the runway estimate until real costs have been recorded.
     estProjectCostUsd: flt(env.EST_PROJECT_COST_USD, 0.15),

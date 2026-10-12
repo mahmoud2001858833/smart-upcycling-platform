@@ -174,6 +174,40 @@ async function enforceDaily({ store, limits, viewer, kind }) {
   }
 }
 
+/** Platform-wide daily budget (keeps cost predictable). Returns how many projects are still available today. */
+const GLOBAL = {
+  ideate: { event: 'develop', limit: 'globalDailyProjects', what: 'المشاريع' },
+  develop: { event: 'develop', limit: 'globalDailyProjects', what: 'المشاريع' },
+  image: { event: 'image', limit: 'globalDailyImages', what: 'توليد الصور' },
+  chat: { event: 'chat', limit: 'globalDailyChats', what: 'استشارة الخبير' }
+};
+
+async function globalRemaining({ store, limits, viewer, kind }) {
+  const spec = GLOBAL[kind];
+  if (!spec || viewer.isAdmin) return Infinity;
+  const max = limits[spec.limit];
+  let used = 0;
+  try {
+    used = await store.countEvents({ kinds: [spec.event], status: 'ok', sinceMs: Date.now() - DAY });
+  } catch (err) {
+    console.warn('[usage] global cap check skipped:', err.message);
+    return Infinity;
+  }
+  return Math.max(0, max - used);
+}
+
+async function enforceGlobal(ctx, kind, store) {
+  const left = await globalRemaining({ store, limits: ctx.limits, viewer: ctx.viewer, kind });
+  if (left <= 0) {
+    await safeLog(store, ctx.viewer, { kind, status: 'throttled', meta: { reason: 'global-daily' } });
+    throw new GatewayError(
+      `اكتملت حصة ${GLOBAL[kind].what} المتاحة للمنصة اليوم. تتجدد خلال 24 ساعة، فعد لاحقاً.`,
+      { status: 429, code: 'GLOBAL_DAILY_LIMIT' }
+    );
+  }
+  return left;
+}
+
 /* ------------------------------------------------------------------ */
 /* Logging (never allowed to break a request)                          */
 /* ------------------------------------------------------------------ */
@@ -379,9 +413,10 @@ const actions = {
       await safeLog(store, viewer, { kind: 'ideate', status: 'throttled', meta: { reason: 'daily' } });
       throw e;
     }
+    const left = await enforceGlobal(ctx, 'ideate', store);
 
     const wanted = Math.max(1, Math.min(3, Number(payload?.take) || limits.maxProjects));
-    const take = Math.min(wanted, cap.projects);
+    const take = Math.max(1, Math.min(wanted, cap.projects, limits.maxProjects, Number.isFinite(left) ? left : 3));
 
     await safeLog(store, viewer, { kind: 'gen_start', meta: { take, level: cap.level } });
 
@@ -423,6 +458,7 @@ const actions = {
       throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
     }
     await enforceDaily({ store, limits, viewer, kind: 'develop' });
+    await enforceGlobal(ctx, 'develop', store);
 
     const meter = newMeter();
     try {
@@ -477,6 +513,7 @@ const actions = {
       await safeLog(store, viewer, { kind: 'image', status: 'throttled', meta: { reason: 'daily' } });
       throw e;
     }
+    await enforceGlobal(ctx, 'image', store);
 
     const meter = newMeter();
     try {
@@ -510,6 +547,7 @@ const actions = {
       throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
     }
     await enforceDaily({ store, limits, viewer, kind: 'chat' });
+    await enforceGlobal(ctx, 'chat', store);
     const meter = newMeter();
     try {
       const r = await chatReply({

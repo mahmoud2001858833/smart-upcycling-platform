@@ -567,7 +567,7 @@ export default function ProjectDedicatedPage({
                 </button>
                 <p className="gen-image-note">
                   {heroErr
-                    ? (heroErr.code === 'IMAGES_PAUSED' || heroErr.code === 'DAILY_LIMIT' || heroErr.code === 'NO_CREDIT' || heroErr.code === 'CAPACITY_CLOSED'
+                    ? (heroErr.code === 'IMAGES_PAUSED' || heroErr.code === 'DAILY_LIMIT' || heroErr.code === 'GLOBAL_DAILY_LIMIT' || heroErr.code === 'NO_CREDIT' || heroErr.code === 'CAPACITY_CLOSED'
                         ? heroErr.message
                         : 'تعذر توليد الصورة، حاول مرة أخرى.')
                     : 'لا توجد صورة بعد. تُنشأ بالذكاء الاصطناعي من وصف المشروع عند الضغط فقط.'}
@@ -877,7 +877,7 @@ export default function ProjectDedicatedPage({
                           <Sparkles className="w-4 h-4" />
                           <span>إنشاء صورة لهذه المرحلة</span>
                         </button>
-                        {stepErr && <p className="gen-image-note">{['IMAGES_PAUSED', 'DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'].includes(stepErr.code) ? stepErr.message : 'تعذر توليد الصورة، حاول مرة أخرى.'}</p>}
+                        {stepErr && <p className="gen-image-note">{['IMAGES_PAUSED', 'DAILY_LIMIT', 'GLOBAL_DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'].includes(stepErr.code) ? stepErr.message : 'تعذر توليد الصورة، حاول مرة أخرى.'}</p>}
                       </div>
                     )}
                     {aiStepUrl && (
