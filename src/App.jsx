@@ -34,6 +34,7 @@ import {
 } from './data/inspirationSuggestions.js';
 import { useAuth } from './context/AuthContext';
 import { streamChatMessage } from './utils/resilientAiStream.js';
+import { getRemainingDailyProjects, recordProjectGeneration, MAX_DAILY_PROJECTS } from './utils/dailyLimitTracker.js';
 
 // Dynamic Code Splitting via React.lazy() for fast initial bundle
 const CarbonCalculatorView = lazy(() => import('./components/CarbonCalculatorView.jsx'));
@@ -129,6 +130,12 @@ function ConceptMeters({ scores }) {
 
 export default function App() {
   const { user, session, signOut } = useAuth();
+  const [dailyQuotaRemaining, setDailyQuotaRemaining] = useState(() => getRemainingDailyProjects(user?.id));
+
+  useEffect(() => {
+    setDailyQuotaRemaining(getRemainingDailyProjects(user?.id));
+  }, [user?.id]);
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedProjectModal, setSelectedProjectModal] = useState(null);
@@ -432,6 +439,11 @@ export default function App() {
       return;
     }
 
+    if (getRemainingDailyProjects(user?.id) <= 0) {
+      showToast('وصلت إلى الحد الأقصى اليومي المسموح به (مشروعان يومياً لكل حساب). يتجدد رصيدك تلقائياً غداً الساعة 12:00 منتصف الليل! ⏳', 'warning');
+      return;
+    }
+
     setIsLoading(true);
     setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: allMaterials.join('، ') });
     setGenerationError(null);
@@ -470,6 +482,10 @@ export default function App() {
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
         setGenerationError(null);
+
+        // Deduct from daily project allowance (max 2 per day)
+        recordProjectGeneration(user?.id);
+        setDailyQuotaRemaining(getRemainingDailyProjects(user?.id));
 
         // Auto-save all generated projects to Saved Projects list safely
         try {
@@ -956,6 +972,21 @@ export default function App() {
               <span>عن مُدام (الجولة 🎬)</span>
             </button>
 
+            {/* Daily Projects Remaining Counter Badge */}
+            <span 
+              className={`eco-point-badge quota-pill ${dailyQuotaRemaining > 0 ? 'green' : 'amber'}`}
+              title={`الرصيد اليومي المتبقي: يحق لكل حساب توليد مشروعين كحد أقصى يومياً. المتبقي لك اليوم: ${dailyQuotaRemaining} من ${MAX_DAILY_PROJECTS}`}
+              style={{
+                backgroundColor: dailyQuotaRemaining > 0 ? '#ecfdf5' : '#fef2f2',
+                color: dailyQuotaRemaining > 0 ? '#047857' : '#b91c1c',
+                borderColor: dailyQuotaRemaining > 0 ? '#a7f3d0' : '#fca5a5',
+                fontWeight: 800
+              }}
+            >
+              <Sparkles size={14} color={dailyQuotaRemaining > 0 ? '#10b981' : '#ef4444'} />
+              <span>المشاريع المتبقية اليوم: <strong>{dailyQuotaRemaining} من {MAX_DAILY_PROJECTS}</strong></span>
+            </span>
+
             <span className="eco-point-badge">
               <Trophy size={15} />
               <span>{environmentalPoints} نقطة بيئية</span>
@@ -1028,6 +1059,12 @@ export default function App() {
                       </div>
 
                       <div className="user-dropdown-stats-grid">
+                        <div className="user-dropdown-stat-card">
+                          <span className="stat-label">المتبقي اليوم</span>
+                          <strong className="stat-val" style={{ color: dailyQuotaRemaining > 0 ? '#10b981' : '#f59e0b', fontFamily: 'var(--font-en)' }}>
+                            {dailyQuotaRemaining} / {MAX_DAILY_PROJECTS} ⚡
+                          </strong>
+                        </div>
                         <div className="user-dropdown-stat-card">
                           <span className="stat-label">نقاط الأثر</span>
                           <strong className="stat-val">{environmentalPoints} 🌱</strong>
@@ -1453,22 +1490,63 @@ export default function App() {
 
               <CapacityBanner capacity={platform.capacity} />
 
+              {/* Daily Quota Notice Box */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.65rem 0.95rem',
+                borderRadius: '12px',
+                marginBottom: '1rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                backgroundColor: dailyQuotaRemaining > 0 ? '#ecfdf5' : '#fef2f2',
+                border: `1px solid ${dailyQuotaRemaining > 0 ? '#a7f3d0' : '#fca5a5'}`,
+                color: dailyQuotaRemaining > 0 ? '#065f46' : '#991b1b'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <Sparkles size={15} />
+                  <span>
+                    {dailyQuotaRemaining > 0 
+                      ? `رصيد حسابك المتبقي اليوم: ${dailyQuotaRemaining} من أصل ${MAX_DAILY_PROJECTS} مشاريع`
+                      : `استنفدت حصتك اليومية (${MAX_DAILY_PROJECTS} مشاريع). يتجدد الرصيد تلقائياً منتصف الليل.`}
+                  </span>
+                </div>
+                <span style={{
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '999px',
+                  backgroundColor: dailyQuotaRemaining > 0 ? '#10b981' : '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-en)'
+                }}>
+                  {dailyQuotaRemaining} / {MAX_DAILY_PROJECTS}
+                </span>
+              </div>
+
               {/* Generate Projects CTA */}
               <button
                 type="button"
                 className="cta-analyze-btn"
                 onClick={handleGenerateProjects}
-                disabled={isLoading}
+                disabled={isLoading || dailyQuotaRemaining === 0}
+                style={dailyQuotaRemaining === 0 ? { opacity: 0.65, cursor: 'not-allowed' } : {}}
               >
                 {isLoading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
                     <span>{loadingStep || 'جاري التحليل وتوليد المشاريع عبر 6 وكلاء ذكاء اصطناعي...'}</span>
                   </>
+                ) : dailyQuotaRemaining === 0 ? (
+                  <>
+                    <Clock size={18} />
+                    <span>اكتمل الحد اليومي (مشروعان يومياً لكل حساب)</span>
+                  </>
                 ) : (
                   <>
                     <Sparkles size={18} className="text-amber-300" />
-                    <span>ابتكار مشاريع بالذكاء الاصطناعي</span>
+                    <span>ابتكار مشاريع بالذكاء الاصطناعي ({dailyQuotaRemaining} متبقي اليوم)</span>
                   </>
                 )}
               </button>
