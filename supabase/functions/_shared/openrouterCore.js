@@ -10,6 +10,7 @@
  */
 
 import { cfConfig, hasCloudflare, cloudflareImage } from './cloudflare.js';
+import { generateImagen } from './imagen.js';
 import { geminiConfig, hasGemini, geminiText, geminiImage, freeImage } from './gemini.js';
 
 const OPENROUTER_API = 'https://openrouter.ai/api/v1';
@@ -633,7 +634,29 @@ export async function generateImage(args) {
   const { apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, stage = null, projectName = '', meter = null } = args;
   const gem = config.gemini;
   const cf = config.cloudflare;
-  if (!apiKey && !hasGemini(gem) && !hasCloudflare(cf)) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
+  // Deno.env only exists in the Supabase Edge runtime; the Node dev middleware passes keys through config
+  const denv = k => (typeof Deno !== 'undefined' && Deno?.env?.get ? Deno.env.get(k) : '') || '';
+  const imagenKey = (denv('GEMINI_IMAGE_API_KEY') || denv('GEMINI_API_KEY') || gem?.imageKeys?.[0] || gem?.keys?.[0] || gem?.apiKey || '').trim();
+  if (!apiKey && !hasGemini(gem) && !hasCloudflare(cf) && !imagenKey) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم', { status: 503, code: 'NO_KEY' });
+  const errs = [];
+  // Google Imagen 3 is the primary generator whenever a Google key is present
+  if (imagenKey) {
+    try {
+      const text = kind === 'guide'
+        ? prompt
+        : (kind === 'hero'
+            ? composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials })
+            : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName }));
+      const validAspects = ['1:1', '3:4', '4:3', '9:16', '16:9'];
+      const chosenAspect = validAspects.includes(aspect) ? aspect : (IMAGE_ASPECT[kind] && validAspects.includes(IMAGE_ASPECT[kind]) ? IMAGE_ASPECT[kind] : '1:1');
+      const r = await generateImagen({ apiKey: imagenKey, prompt: text, aspectRatio: chosenAspect });
+      addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
+      return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: '1K' };
+    } catch (e) {
+      console.error('Google Imagen 3 error:', e);
+      errs.push(e);
+    }
+  }
   const viaGemini = async () => {
     const useRef = validReference(referenceImage);
     const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: useRef, stage, projectName });
@@ -647,7 +670,6 @@ export async function generateImage(args) {
     addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
     return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: null };
   };
-  const errs = [];
   // the paid GPT Image model (Cloudflare Workers AI) draws the stage sheet and the final-product picture
   if ((kind === 'guide' || kind === 'hero') && hasCloudflare(cf)) {
     try {
