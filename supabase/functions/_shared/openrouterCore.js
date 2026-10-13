@@ -558,34 +558,37 @@ export function composeGuidePrompt({ projectName = '', material = '', visualBibl
   const list = steps.slice(0, 9);
   const { cols, rows } = guideGrid(list.length);
   const panels = list.map(st => `Panel ${st.n}: ${clip(st.text, 60)}${st.detail ? ` — ${clip(st.detail, 100)}` : ''}`).join('\n');
-  return clip(`A clean, easy-to-understand visual build guide for ONE specific handmade upcycled product, as a single large image divided into ${list.length} equal panels in a grid of ${cols} columns by ${rows} rows, with generous white gutters between panels. Panels read right-to-left: panel 1 is top-right, then continue leftwards, then the next row.
+  return clip(`${NO_TEXT}
+
+Create a clean, easy-to-understand infographic-style visual build guide for ONE specific handmade upcycled product, as a single large image divided into ${list.length} equal panels in a grid of ${cols} columns by ${rows} rows with generous white gutters. Panels read right-to-left: panel 1 is top-right, then continue leftwards, then the next row.
 THE PRODUCT (identical in every panel): ${clip(visualBible || projectName, 380)}
-Project name: ${clip(projectName, 90)}. Built from: ${clip(material, 140)} — the real recycled materials must be clearly recognizable in every panel (not generic or substituted).
-Rules for every panel: one single clear subject, large and centered; a close-up of hands doing exactly that stage with the correct tool and the actual materials; simple uncluttered neutral background; consistent lighting, colours and style across panels; realistic semi-photographic instructional illustration; the work-in-progress state must visibly progress from panel to panel until the finished product appears in the last panel.
-TEXT: the ONLY text allowed is a small clean numeral badge in the top-right corner of each panel showing its stage number (1, 2, 3 …). Absolutely no other words, letters, captions, titles, labels or logos anywhere. Normal quality.
-What each panel shows (use it only to decide the picture; the Arabic is context, do NOT write it):
-${panels}
-`, 2000);
+Project: ${clip(projectName, 90)}. Built from: ${clip(material, 140)} — the real recycled materials must be clearly recognizable in every panel.
+Every panel: one single clear subject, large and centered; a close-up of hands doing exactly that stage with the correct tool and the actual materials; simple uncluttered neutral background; consistent lighting, colours and style; the work-in-progress visibly progresses panel by panel until the finished product appears in the last panel. Ultra high resolution, professional quality.
+What each panel shows (the Arabic is context only, never write it):
+${panels}`, 2000);
 }
 
 /** Short version of the stage sheet for Imagen 3 (it reads only ~480 tokens, so every word must count). */
 export function composeGuidePromptCompact({ projectName = '', material = '', visualBible = '', steps = [] }) {
   const list = steps.slice(0, 9);
   const { cols, rows } = guideGrid(list.length);
-  const panels = list.map(st => `${st.n}) ${clip(st.detail || st.text, 70)}`).join('; ');
-  return clip(`One image, a clean grid of ${list.length} equal photo panels (${cols} columns x ${rows} rows, white gutters), read right-to-left, one clear close-up per stage of the SAME product: ${clip(visualBible || projectName, 200)}. Real materials: ${clip(material, 90)}. Each panel is a large single subject of hands doing that stage with the right tool, progressing until the finished product in the last panel. Only a small numeral 1,2,3.. in each panel's top-right corner, no other text. Stages: ${panels}`, 900);
+  const panels = list.map(st => `${st.n}) ${clip(st.detail || st.text, 60)}`).join('; ');
+  return clip(`${NO_TEXT} Create an infographic-style grid of ${list.length} equal photo panels (${cols} columns x ${rows} rows, white gutters), read right-to-left, one close-up per stage of the SAME product: ${clip(visualBible || projectName, 170)}. Real materials: ${clip(material, 80)}. Each panel: hands doing that stage with the right tool, progressing to the finished product in the last panel. Stages: ${panels}`, 850);
 }
 
 /** Final-product photo for the paid image model: the product and its real materials come first. */
 export function composeHeroPrompt({ projectName = '', visualBible = '', prompt = '', materials = '' }) {
-  return clip(`Professional product photograph of ONE specific handmade upcycled product.
-Product name: ${clip(projectName, 90)}.
-What it is: ${clip(visualBible || prompt, 500)}
+  return clip(`${NO_TEXT}
+
+Create a professional product photograph of ONE specific handmade upcycled product (${clip(projectName, 90)}): ${clip(visualBible || prompt, 500)}
 It is visibly built from these recycled materials: ${clip(materials, 220)}. The recycled material must be clearly recognizable in the product itself (for example aluminium drink cans must look like aluminium cans), never replaced by plain ceramic, wood or generic shapes.
 Extra detail: ${clip(prompt, 250)}
 Style: ${IMAGE_STYLE.hero}
-No text, letters, numbers, logos or watermarks.`, 2000);
+Ultra high resolution, professional quality.`, 2000);
 }
+
+/** Proven rule from the sister platform: image models garble text, so the picture itself carries no writing at all. */
+export const NO_TEXT = 'IMPORTANT: Do not include any text, labels, words, letters, numbers, or writing on the image. The image should be purely visual without any textual elements.';
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
 
@@ -593,6 +596,7 @@ export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '
   if (kind === 'guide') return prompt; // already the full, server-built instruction
   const style = IMAGE_STYLE[kind] || IMAGE_STYLE.step;
   const lines = [
+    NO_TEXT,
     style,
     `The project object (keep it IDENTICAL in every image): ${visualBible}`
   ];
@@ -617,7 +621,7 @@ export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '
     if (detail) lines.push(`STAGE INSTRUCTIONS THE PICTURE MUST MATCH EXACTLY (show the work being done in these actions, the parts and tool named in them, and nothing from later stages):\n${detail}`);
   }
   lines.push(`Show exactly this: ${prompt}`);
-  lines.push('Photorealistic. ' + IMAGE_AVOID);
+  lines.push(IMAGE_AVOID + ' Ultra high resolution, professional quality.');
   return clip(lines.join('\n'), 3500);
 }
 

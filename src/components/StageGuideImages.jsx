@@ -102,7 +102,7 @@ export default function StageGuideImages({ project, steps }) {
             <span>{busy ? 'جاري إنشاء الصور…' : '🎨 إنشاء صور المراحل'}</span>
           </button>
           <p className="text-[11px] text-slate-500">
-            صورة واحدة أنيقة تضم كل المراحل ({groups[0].length > 1 ? `${groups[0].length} خانات` : 'خانة واحدة'}) بدون أي نص، فقط رقم كل مرحلة.
+            صورة واحدة أنيقة تضم كل المراحل ({groups[0].length > 1 ? `${groups[0].length} خانات` : 'خانة واحدة'}) بصور فقط بدون أي كتابة، مرتبة من اليمين إلى اليسار.
           </p>
         </div>
       )}
