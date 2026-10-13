@@ -9,6 +9,7 @@
  * It must never be shipped to the browser.
  */
 
+import { cfConfig, hasCloudflare, cloudflareImage } from './cloudflare.js';
 import { geminiConfig, hasGemini, geminiText, geminiImage, freeImage } from './gemini.js';
 
 const OPENROUTER_API = 'https://openrouter.ai/api/v1';
@@ -67,6 +68,7 @@ export function resolveConfig(env = {}) {
     ]),
     // paid model for the 2x2 stage-guide sheets (e.g. the exact OpenRouter slug of GPT Image); falls back to imageModels
     guideImageModels: [...list(env.OPENROUTER_GUIDE_IMAGE_MODEL, []), ...list(env.OPENROUTER_IMAGE_MODEL, ['google/gemini-2.5-flash-image'])],
+    cloudflare: cfConfig(env),
     gemini: geminiConfig(env),
     apiBase: env.OPENROUTER_API_BASE || OPENROUTER_API,
     baseUrl: env.OPENROUTER_BASE_URL || (env.OPENROUTER_API_BASE ? `${env.OPENROUTER_API_BASE}/chat/completions` : OPENROUTER_URL),
@@ -602,7 +604,8 @@ const validReference = u => typeof u === 'string' && /^data:image\/(png|jpe?g|we
 export async function generateImage(args) {
   const { apiKey, config, kind = 'step', visualBible, prompt, aspect, referenceImage, stageLabel, isFinal, stage = null, projectName = '', meter = null } = args;
   const gem = config.gemini;
-  if (!apiKey && !hasGemini(gem)) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
+  const cf = config.cloudflare;
+  if (!apiKey && !hasGemini(gem) && !hasCloudflare(cf)) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
   const viaGemini = async () => {
     const useRef = validReference(referenceImage);
     const text = composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: useRef, stage, projectName });
@@ -617,6 +620,14 @@ export async function generateImage(args) {
     return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: null };
   };
   const errs = [];
+  // the paid GPT Image model (Cloudflare Workers AI) handles the 2x2 stage sheets first
+  if (kind === 'guide' && hasCloudflare(cf)) {
+    try {
+      const r = await cloudflareImage({ cfg: cf, prompt });
+      addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
+      return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: '1K' };
+    } catch (e) { errs.push(e); }
+  }
   if (apiKey) {
     try { return await generateImageOpenRouter(args); } catch (e) { errs.push(e); if (e?.code === 'NO_KEY') errs.pop(); }
   }

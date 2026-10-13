@@ -14,6 +14,7 @@
 import {
   resolveConfig, ideate, develop, generateImage, chatReply, impactAnalysis, composeGuidePrompt, newMeter, GatewayError
 } from './openrouterCore.js';
+import { hasCloudflare } from './cloudflare.js';
 import { hasGemini } from './gemini.js';
 import {
   resolveLimits, decideCapacity, publicCapacity, fetchCredit, resolveIdentity, hashIp,
@@ -121,7 +122,7 @@ async function getCapacity({ apiKey, config, limits, store, env, force = false }
 /** Which providers the server can see. Names and booleans only, never a key. */
 function providerDiag(config, env, apiKey) {
   return {
-    gemini: hasGemini(config.gemini), geminiKeys: config.gemini.keys.length, geminiImageKeys: config.gemini.imageKeys.length, textProvider: config.gemini.textProvider,
+    gemini: hasGemini(config.gemini), geminiKeys: config.gemini.keys.length, geminiImageKeys: config.gemini.imageKeys.length, cloudflare: hasCloudflare(config.cloudflare), textProvider: config.gemini.textProvider,
     openrouter: Boolean(apiKey),
     envNames: Object.keys(env || {}).filter(k => /GEMINI|OPENROUTER|TEXT_PROVIDER/i.test(k)).slice(0, 12)
   };
