@@ -158,45 +158,20 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
         priority,
         run: async () => {
           try {
-            let imageUrl = null;
-            try {
-              const res = await callAi('image', {
-                kind: spec.kind,
-                visualBible: spec.visualBible,
-                prompt: spec.prompt,
-                projectName: spec.projectName || undefined,
-                stage: spec.stage || undefined,
-                guide: spec.guide || undefined,
-                materials: spec.materials || undefined,
-                referenceImage: referenceImage || undefined,
-                stageLabel: stageLabel || undefined,
-                isFinal: isFinal || undefined
-              }, { timeoutMs: 110000 });
-              imageUrl = res.imageUrl;
-            } catch (callErr) {
-              console.warn('Primary AI gateway image generation paused/failed, activating high-res fallback synthesis:', callErr.message);
-              const cleanPrompt = encodeURIComponent(
-                `${spec.projectName ? spec.projectName + ' ' : ''}${spec.prompt || 'sustainable upcycled design'}`
-                  .slice(0, 300)
-              );
-              const seed = Math.floor(Math.random() * 100000);
-              const fallbackUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=768&nologo=true&seed=${seed}`;
-              
-              try {
-                const fetched = await fetch(fallbackUrl);
-                if (fetched.ok) {
-                  const blob = await fetched.blob();
-                  imageUrl = await new Promise((resBlob) => {
-                    const r = new FileReader();
-                    r.onloadend = () => resBlob(r.result);
-                    r.readAsDataURL(blob);
-                  });
-                }
-              } catch (pollErr) {
-                console.warn('Fallback image fetch error:', pollErr);
-              }
-              if (!imageUrl) throw callErr;
-            }
+            // no silent substitute pictures: a failed generation is shown as an honest error
+            const res = await callAi('image', {
+              kind: spec.kind,
+              visualBible: spec.visualBible,
+              prompt: spec.prompt,
+              projectName: spec.projectName || undefined,
+              stage: spec.stage || undefined,
+              guide: spec.guide || undefined,
+              materials: spec.materials || undefined,
+              referenceImage: referenceImage || undefined,
+              stageLabel: stageLabel || undefined,
+              isFinal: isFinal || undefined
+            }, { timeoutMs: 110000 });
+            const imageUrl = res.imageUrl;
 
             const packed = await compressDataUrl(imageUrl);
             memory.set(cacheKey, packed);
