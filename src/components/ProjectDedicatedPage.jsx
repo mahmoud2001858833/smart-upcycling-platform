@@ -509,43 +509,10 @@ export default function ProjectDedicatedPage({
                 <span>استوديو العرض البصري متعدد الزوايا (Multi-Angle Studio)</span>
               </h2>
               <p className="text-xs text-slate-500">
-                اضغط «إنشاء صورة» ليرسم الذكاء الاصطناعي صورة مبنية على وصف مشروعك وموادك
+                اضغط «إنشاء صورة المنتج» ليرسم الذكاء الاصطناعي المنتج النهائي مبنياً على وصف مشروعك وموادك
               </p>
             </div>
 
-            {/* Angle switcher buttons */}
-            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200">
-              <button
-                onClick={() => setActiveAngle('finished')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeAngle === 'finished'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🌟 المنتج النهائي
-              </button>
-              <button
-                onClick={() => setActiveAngle('assembly')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeAngle === 'assembly'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🛠️ مرحلة التجميع
-              </button>
-              <button
-                onClick={() => setActiveAngle('inUse')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeAngle === 'inUse'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                🏡 الاستخدام الواقعي
-              </button>
-            </div>
           </div>
 
           {/* Hero Visual Display */}
@@ -564,7 +531,7 @@ export default function ProjectDedicatedPage({
               <div className="gen-image-cta">
                 <button type="button" className="gen-image-btn" onClick={() => ai.generateHero(activeAngle)} data-testid="generate-hero">
                   <Sparkles className="w-5 h-5" />
-                  <span>{activeAngle === 'finished' ? 'إنشاء صورة المشروع بدقة عالية' : 'إنشاء هذه الصورة بدقة عالية'}</span>
+                  <span>إنشاء صورة المنتج النهائي</span>
                 </button>
                 <p className="gen-image-note">
                   {heroErr
@@ -585,14 +552,6 @@ export default function ProjectDedicatedPage({
                 >
                   <Download className="w-4 h-4" />
                 </a>
-                <button
-                  type="button"
-                  onClick={() => ai.regenerateHero(activeAngle)}
-                  className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 transition-all cursor-pointer shadow-xs"
-                  title="إعادة رسم هذه الصورة"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
               </div>
             )}
 
@@ -857,77 +816,10 @@ export default function ProjectDedicatedPage({
             const displayImage = aiStepUrl || '';
 
             return (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="max-w-3xl mx-auto">
                 
-                {/* Left/Main Column: Image with embedded or toggleable Infographic */}
-                <div className="lg:col-span-7 space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-slate-100 border border-slate-200 shadow-md group">
-                    {aiStepUrl
-                      ? <img src={aiStepUrl} alt={step.title} className="w-full h-full object-cover" />
-                      : <div className="img-placeholder" aria-hidden="true"><Sparkles className="w-9 h-9" /></div>}
-
-                    {aiPending && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-700 pointer-events-none">
-                        <RefreshCw className="w-7 h-7 animate-spin text-emerald-600" />
-                        <span className="text-xs font-bold bg-white/90 px-3 py-1 rounded-full border border-slate-200">جاري رسم صورة هذه المرحلة بالذكاء الاصطناعي…</span>
-                      </div>
-                    )}
-                    {stepNeedsGenerate && (
-                      <div className="gen-image-cta">
-                        <button type="button" className="gen-image-btn is-small" onClick={() => ai.generateStep(activeStepTab)} data-testid="generate-step">
-                          <Sparkles className="w-4 h-4" />
-                          <span>إنشاء صورة لهذه المرحلة</span>
-                        </button>
-                        {stepErr && <p className="gen-image-note">{['IMAGES_PAUSED', 'DAILY_LIMIT', 'GLOBAL_DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'].includes(stepErr.code) ? stepErr.message : 'تعذر توليد الصورة، حاول مرة أخرى.'}</p>}
-                      </div>
-                    )}
-                    {aiStepUrl && (
-                      <a href={aiStepUrl} download={`step-${activeStepTab + 1}.jpg`} className="absolute bottom-3 left-3 p-1.5 rounded-xl bg-white/95 border border-slate-200 text-slate-700 hover:text-emerald-700 shadow-xs" title="تحميل الصورة">
-                        <Download className="w-4 h-4" />
-                      </a>
-                    )}
-
-                    {/* Left Quick Action Icons: Regenerate & Fullscreen Zoom */}
-                    {aiStepUrl && <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => ai.regenerateStep(activeStepTab)}
-                        disabled={aiPending}
-                        className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs"
-                        title="إعادة توليد صورة الشرح بالذكاء الاصطناعي"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${aiPending ? 'animate-spin text-emerald-600' : ''}`} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setLightboxStep({
-                          url: displayImage,
-                          title: step.title,
-                          detail: step.detail || step.instruction,
-                          stepNum: activeStepTab + 1
-                        })}
-                        className="p-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs"
-                        title="تكبير ومعاينة الشرح بدقة فائقة"
-                      >
-                        <Maximize2 className="w-4 h-4" />
-                      </button>
-                    </div>}
-
-                    {/* Step Number Indicator */}
-                    <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/20 text-xs font-bold text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span>الخطوة {activeStepTab + 1} من {steps.length}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-500 text-center">
-                    💡 الصورة تُرسم بالذكاء الاصطناعي من نص هذه المرحلة نفسه (الإجراءات والقياسات)، وتُنشأ عند الضغط فقط.
-                  </p>
-                </div>
-
                 {/* Right Column: Step Instructions & Controls */}
-                <div className="lg:col-span-5 space-y-4">
+                <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">

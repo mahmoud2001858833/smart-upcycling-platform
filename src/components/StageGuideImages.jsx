@@ -2,23 +2,25 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, X, Download, Maximize2 } from 'lucide-react';
 import { requestImage, loadCachedImage } from '../utils/aiImageStore.js';
 
-const CHUNK = 4;
+const MAX_PER_SHEET = 8;
 const LIMIT_CODES = ['IMAGES_PAUSED', 'DAILY_LIMIT', 'GLOBAL_DAILY_LIMIT', 'NO_CREDIT', 'CAPACITY_CLOSED'];
 
 const asText = v => (Array.isArray(v) ? v.join(', ') : String(v || '')).trim();
 
-/** One short English-friendly description per step: title plus the first action/detail. */
-function stepText(step) {
-  const actions = Array.isArray(step.actions) && step.actions.length ? step.actions : [];
-  const body = actions[0] || step.detail || step.instruction || step.goal || '';
-  return [step.title, body].filter(Boolean).join(' — ').replace(/\s+/g, ' ').slice(0, 240);
+/** Short Arabic caption for a stage (the title only: long text makes the model misspell Arabic). */
+function stepText(step, i) {
+  return String(step.title || step.name || `المرحلة ${i + 1}`).replace(/\s+/g, ' ').trim().slice(0, 70);
 }
 
-/** Every 4 steps become ONE picture (2x2 grid): images = ceil(steps / 4). */
+/** ALL stages go into ONE sheet (up to 8 panels); more than 8 stages are split evenly into the fewest sheets. */
 export function chunkSteps(steps) {
+  const n = steps.length;
+  if (!n) return [];
+  const sheets = Math.ceil(n / MAX_PER_SHEET);
+  const per = Math.ceil(n / sheets);
   const out = [];
-  for (let i = 0; i < steps.length; i += CHUNK) {
-    out.push(steps.slice(i, i + CHUNK).map((st, k) => ({ n: i + k + 1, text: stepText(st) })));
+  for (let i = 0; i < n; i += per) {
+    out.push(steps.slice(i, i + per).map((st, k) => ({ n: i + k + 1, text: stepText(st, i + k) })));
   }
   return out;
 }
@@ -30,7 +32,7 @@ export default function StageGuideImages({ project, steps }) {
   const specs = useMemo(() => groups.map((g, i) => ({
     kind: 'guide',
     visualBible: `${projectName}|${material}`.slice(0, 300),
-    prompt: `guide-${i}|${g.map(x => `${x.n}:${x.text}`).join('|')}`.slice(0, 1500),
+    prompt: `guide-v2-${i}|${g.map(x => `${x.n}:${x.text}`).join('|')}`.slice(0, 1500),
     guide: { projectName, material, steps: g }
   })), [groups, projectName, material]);
 
@@ -80,31 +82,33 @@ export default function StageGuideImages({ project, steps }) {
 
   return (
     <div className="mt-6 pt-5 border-t border-slate-200" data-testid="stage-guide">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <button
-          type="button"
-          onClick={generate}
-          disabled={busy}
-          className="gen-image-btn"
-          data-testid="generate-guides"
-          aria-busy={busy}
-        >
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          <span>{busy ? 'جاري إنشاء الصور…' : (done && !missing ? '🎨 إعادة إنشاء صور المراحل' : '🎨 إنشاء صور المراحل')}</span>
-        </button>
-        <p className="text-[11px] text-slate-500">
-          {groups.length === 1 ? 'صورة واحدة' : `${groups.length} صور`} (كل صورة تشرح حتى 4 مراحل بشبكة 2×2) بجودة قياسية 1024×1024.
-        </p>
-      </div>
+      {(missing > 0 || busy) && (
+        <div className="flex flex-col items-center gap-2 text-center">
+          <button
+            type="button"
+            onClick={generate}
+            disabled={busy}
+            className="gen-image-btn"
+            data-testid="generate-guides"
+            aria-busy={busy}
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            <span>{busy ? 'جاري إنشاء الصور…' : '🎨 إنشاء صور المراحل'}</span>
+          </button>
+          <p className="text-[11px] text-slate-500">
+            صورة واحدة أنيقة تضم كل المراحل ({groups[0].length > 1 ? `${groups[0].length} خانات` : 'خانة واحدة'}) برقم كل مرحلة وشرحها بالعربية.
+          </p>
+        </div>
+      )}
 
       {(busy || done > 0 || Object.keys(errors).length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 gap-4 mt-4">
           {specs.map((spec, i) => {
             const g = groups[i];
             const label = g.length === 1 ? `المرحلة ${g[0].n}` : `المراحل ${g[0].n}–${g[g.length - 1].n}`;
             return (
               <figure key={i} className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm m-0">
-                <div className="relative aspect-square bg-slate-100">
+                <div className={`relative bg-slate-100 ${groups[i].length > 4 ? "aspect-[3/2]" : "aspect-square"}`}>
                   {images[i] ? (
                     <>
                       <button type="button" onClick={() => setZoom(i)} className="absolute inset-0 w-full h-full p-0 border-0 bg-transparent cursor-zoom-in" aria-label={`تكبير صورة ${label}`}>

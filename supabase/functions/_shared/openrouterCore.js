@@ -543,11 +543,25 @@ const IMAGE_STYLE = {
 
 const IMAGE_ASPECT = { hero: '4:3', assembly: '4:3', lifestyle: '4:3', step: '3:2', guide: '1:1' };
 
-/** One 2x2 instructional sheet for up to 4 consecutive steps. */
+/** Grid for a stage sheet: columns x rows (read right-to-left, step 1 top-right). */
+export function guideGrid(n) {
+  if (n <= 2) return { cols: 2, rows: 1 };
+  if (n <= 4) return { cols: 2, rows: 2 };
+  if (n <= 6) return { cols: 3, rows: 2 };
+  if (n <= 8) return { cols: 4, rows: 2 };
+  return { cols: 3, rows: 3 };
+}
+
+/** ONE large elegant sheet with every stage in its own panel: number on top, short Arabic caption. */
 export function composeGuidePrompt({ projectName = '', material = '', steps = [] }) {
-  const pos = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'];
-  const quad = steps.slice(0, 4).map((st, i) => `- ${pos[i]} (STEP ${st.n}): ${clip(st.text, 220)}`).join('\n');
-  return clip(`An educational step-by-step DIY upcycling guide illustration in a 2x2 grid layout, normal quality, clean instructional sketch style, neutral workshop background.\nProject: ${clip(projectName, 100)} using ${clip(material, 160)}.\n${quad}\nEach quadrant must clearly display its Step number and hands executing the upcycling step with proper tools.`, 1800);
+  const list = steps.slice(0, 9);
+  const { cols, rows } = guideGrid(list.length);
+  const panels = list.map(st => `- Panel for stage ${st.n}: header «المرحلة ${st.n}», caption «${clip(st.text, 70)}»`).join('\n');
+  return clip(`A single large, elegant, beautifully designed educational step-by-step DIY upcycling guide poster, divided into ${list.length} equal panels in a clean grid of ${cols} columns by ${rows} rows with thin clear dividers. Panels are read right-to-left, so stage 1 is in the top-right corner and the order continues leftwards, then down.
+Project: ${clip(projectName, 100)}, made from ${clip(material, 160)}. The same object and the same materials appear consistently in every panel.
+${panels}
+Each panel has a tidy badge at its top with the Arabic header exactly as given (the stage number is clearly visible), then the Arabic caption in one or two short lines under it, then a clean minimal instructional illustration of hands performing that stage with the proper tools on a neutral light workshop background.
+All text must be Arabic, correctly spelled and properly connected, right-to-left, large and highly legible; write ONLY the headers and captions given above and no other words. Soft warm palette (cream, teal, natural wood), refined flat-sketch style, normal quality, uncluttered and elegant.`, 2200);
 }
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
@@ -620,10 +634,12 @@ export async function generateImage(args) {
     return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: null };
   };
   const errs = [];
-  // the paid GPT Image model (Cloudflare Workers AI) handles the 2x2 stage sheets first
-  if (kind === 'guide' && hasCloudflare(cf)) {
+  // the paid GPT Image model (Cloudflare Workers AI) draws the stage sheet and the final-product picture
+  if ((kind === 'guide' || kind === 'hero') && hasCloudflare(cf)) {
     try {
-      const r = await cloudflareImage({ cfg: cf, prompt });
+      const text = kind === 'guide' ? prompt : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName });
+      const size = kind === 'guide' && (args.guideCount || 0) > 4 ? '1536x1024' : cf.size;
+      const r = await cloudflareImage({ cfg: { ...cf, size }, prompt: text });
       addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
       return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: '1K' };
     } catch (e) { errs.push(e); }
