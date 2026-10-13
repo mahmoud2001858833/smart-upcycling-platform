@@ -100,10 +100,13 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
     'gemini-3.6-flash',
     'gemini-3.5-flash-lite'
   ])].filter(Boolean);
+  const firstPass = models.length;
+  models.push(...models.slice(0, 3)); // overload spikes are short: one more quick pass after a pause
   for (let i = 0; i < models.length; i++) {
     const m = models[i];
     const left = timeoutMs - (Date.now() - started);
     if (left < 6000) break;
+    if (i === firstPass) await new Promise(r => setTimeout(r, 2500));
     // each attempt gets a slice so a hung/overloaded model can't eat the whole budget
     const per = i === models.length - 1 ? left : Math.min(left, Math.max(15000, Math.floor(left / 2)));
     try { data = await call({ cfg, model: m, body, timeoutMs: per }); used = m; break; } catch (e) {
