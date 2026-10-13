@@ -568,6 +568,14 @@ ${panels}
 `, 2000);
 }
 
+/** Short version of the stage sheet for Imagen 3 (it reads only ~480 tokens, so every word must count). */
+export function composeGuidePromptCompact({ projectName = '', material = '', visualBible = '', steps = [] }) {
+  const list = steps.slice(0, 9);
+  const { cols, rows } = guideGrid(list.length);
+  const panels = list.map(st => `${st.n}) ${clip(st.detail || st.text, 70)}`).join('; ');
+  return clip(`One image, a clean grid of ${list.length} equal photo panels (${cols} columns x ${rows} rows, white gutters), read right-to-left, one clear close-up per stage of the SAME product: ${clip(visualBible || projectName, 200)}. Real materials: ${clip(material, 90)}. Each panel is a large single subject of hands doing that stage with the right tool, progressing until the finished product in the last panel. Only a small numeral 1,2,3.. in each panel's top-right corner, no other text. Stages: ${panels}`, 900);
+}
+
 /** Final-product photo for the paid image model: the product and its real materials come first. */
 export function composeHeroPrompt({ projectName = '', visualBible = '', prompt = '', materials = '' }) {
   return clip(`Professional product photograph of ONE specific handmade upcycled product.
@@ -642,11 +650,14 @@ export async function generateImage(args) {
   // Google Imagen 3 is the primary generator whenever a Google key is present
   if (imagenKey) {
     try {
-      const text = kind === 'guide'
-        ? prompt
+      const body = kind === 'guide'
+        ? (args.guideData ? composeGuidePromptCompact(args.guideData) : prompt)
         : (kind === 'hero'
             ? composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials })
             : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName }));
+      // keeps Imagen on authentic hands-on workshop photography; the description itself follows the prefix
+      const diyPrefix = "Authentic realistic overhead documentary photo of a physical handmade DIY upcycling project on a rustic wooden craft table. Step-by-step practical craft guide, showing real hands working with the project's actual materials and proper tools, natural indoor lighting. NOT fantasy art, NOT cinematic character render, NOT digital 3D. Description: ";
+      const text = (diyPrefix + String(body).slice(0, 1400 - diyPrefix.length)).slice(0, 1400);
       const validAspects = ['1:1', '3:4', '4:3', '9:16', '16:9'];
       const chosenAspect = validAspects.includes(aspect) ? aspect : (IMAGE_ASPECT[kind] && validAspects.includes(IMAGE_ASPECT[kind]) ? IMAGE_ASPECT[kind] : '1:1');
       const r = await generateImagen({ apiKey: imagenKey, prompt: text, aspectRatio: chosenAspect });

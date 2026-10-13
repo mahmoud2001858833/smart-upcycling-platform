@@ -504,6 +504,7 @@ const actions = {
     const kind = IMAGE_KINDS.has(payload?.kind) ? payload.kind : 'step';
     let prompt = clip(payload?.prompt, 2500);
     let guideCount = 0;
+    let guideData = null;
     if (kind === 'guide') {
       const g = payload?.guide || {};
       const steps = (Array.isArray(g.steps) ? g.steps : []).slice(0, 9)
@@ -511,6 +512,7 @@ const actions = {
       if (!steps.length) throw new GatewayError('خطوات المشروع مطلوبة', { status: 400, code: 'BAD_REQUEST' });
       prompt = composeGuidePrompt({ projectName: clip(g.projectName, 90), material: clip(g.material, 200), visualBible: clip(g.visualBible, 600), steps });
       guideCount = steps.length;
+      guideData = { projectName: clip(g.projectName, 90), material: clip(g.material, 200), visualBible: clip(g.visualBible, 600), steps };
     }
     if (!prompt.trim()) throw new GatewayError('prompt مطلوب', { status: 400, code: 'BAD_REQUEST' });
     const started = Date.now();
@@ -535,7 +537,7 @@ const actions = {
     const meter = newMeter();
     try {
       const r = await generateImage({
-        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, kind, guideCount, materials: clip(payload?.materials, 260),
+        apiKey: c.skipOpenRouter ? null : apiKey, config, meter, kind, guideCount, guideData, materials: clip(payload?.materials, 260),
         visualBible: clip(payload?.visualBible, 1500), prompt,
         referenceImage: payload?.referenceImage, stageLabel: clip(payload?.stageLabel, 40),
         isFinal: Boolean(payload?.isFinal), hd: payload?.hd !== false,
