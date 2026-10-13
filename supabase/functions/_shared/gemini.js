@@ -18,7 +18,7 @@ export function geminiConfig(env = {}) {
     // comma separated list: tried in order
     imageModels: (env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image,gemini-2.5-flash-image').split(',').map(x => x.trim()).filter(Boolean),
     // 'openrouter' (default) | 'gemini' -> which provider handles ideate/develop first
-    freeImages: String(env.FREE_IMAGE_FALLBACK || 'on').toLowerCase() !== 'off',
+    freeImages: String(env.FREE_IMAGE_FALLBACK || 'off').toLowerCase() === 'on',
     textProvider: (env.TEXT_PROVIDER || 'openrouter').toLowerCase()
   };
 }

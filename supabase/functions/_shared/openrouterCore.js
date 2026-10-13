@@ -634,7 +634,7 @@ export async function generateImage(args) {
   if (hasGemini(gem)) {
     try { return await viaGemini(); } catch (e) { errs.push(e); }
   }
-  if (gem.freeImages !== false) {
+  if (gem.freeImages === true) {
     try { return await viaFree(); } catch (e) { errs.unshift(new Error(`free: ${e.message}`)); }
   }
   const first = errs.find(e => e?.status) || errs[0];

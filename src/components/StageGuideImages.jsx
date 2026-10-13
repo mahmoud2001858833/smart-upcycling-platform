@@ -61,7 +61,7 @@ export default function StageGuideImages({ project, steps }) {
         const url = await requestImage(spec, { priority: 1 });
         setImages(prev => ({ ...prev, [i]: url }));
       } catch (e) {
-        setErrors(prev => ({ ...prev, [i]: LIMIT_CODES.includes(e?.code) ? e.message : 'تعذر توليد هذه الصورة، حاول مرة أخرى.' }));
+        setErrors(prev => ({ ...prev, [i]: LIMIT_CODES.includes(e?.code) ? e.message : e?.code === 'BAD_KEY' ? 'مزوّد الصور غير مهيّأ بشكل صحيح على الخادم (مفتاح/صلاحية). تواصل مع إدارة المنصة.' : 'تعذر توليد هذه الصورة، حاول مرة أخرى.' }));
       }
     }));
     setBusy(false);
