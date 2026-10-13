@@ -10,8 +10,7 @@ const AuthContext = createContext({
   signIn: async () => {},
   signOut: async () => {},
   resetPassword: async () => {},
-  signInWithGoogle: async () => {},
-  signInAsGuest: async () => {}
+  signInWithGoogle: async () => {}
 });
 
 export const AuthProvider = ({ children }) => {
@@ -30,19 +29,9 @@ export const AuthProvider = ({ children }) => {
         if (initialSession?.user) {
           setSession(initialSession);
           setUser(initialSession.user);
-          localStorage.removeItem('eco_guest_user');
         } else {
-          // Check if guest demo user was stored in local storage
-          const savedGuest = localStorage.getItem('eco_guest_user');
-          if (savedGuest) {
-            try {
-              const parsed = JSON.parse(savedGuest);
-              setUser(parsed);
-              setSession({ user: parsed, access_token: 'guest_token' });
-            } catch {
-              localStorage.removeItem('eco_guest_user');
-            }
-          }
+          // demo / fake accounts are gone: drop any leftovers from old versions
+          try { localStorage.removeItem('eco_guest_user'); } catch { /* ignore */ }
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -58,9 +47,8 @@ export const AuthProvider = ({ children }) => {
       if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
-        localStorage.removeItem('eco_guest_user');
         syncUserProfileRecord(currentSession.user);
-      } else if (!localStorage.getItem('eco_guest_user')) {
+      } else {
         setSession(null);
         setUser(null);
       }
@@ -81,10 +69,19 @@ export const AuthProvider = ({ children }) => {
       }
     });
     if (error) throw error;
-    if (data?.user) {
-      await syncUserProfileRecord(data.user, metadata);
+    // no confirmation code: when the project has "Confirm email" off, signUp already returns a session;
+    // if it did not, sign in right away so the account is usable immediately
+    let result = data;
+    if (data?.user && !data?.session) {
+      try {
+        const { data: login } = await supabase.auth.signInWithPassword({ email, password });
+        if (login?.session) result = login;
+      } catch { /* email confirmation is still enforced by the project settings */ }
     }
-    return data;
+    if (result?.user) {
+      await syncUserProfileRecord(result.user, metadata);
+    }
+    return result;
   };
 
   const signIn = async (email, password) => {
@@ -99,67 +96,17 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const signInWithGoogle = async (customDetails = {}) => {
-    try {
-      const redirectUrl = window.location.origin + window.location.pathname;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl
-        }
-      });
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      console.warn('Supabase OAuth notice:', err?.message);
-      // Seamless and authentic Google Educational profile login fallback
-      const studentName = customDetails?.name || 'طالب الابتكار (Google Student)';
-      const studentEmail = customDetails?.email || 'student.innovator@gmail.com';
-      const role = customDetails?.role || 'student';
-      
-      const googleUser = {
-        id: 'google_user_' + Math.random().toString(36).substring(2, 10),
-        email: studentEmail,
-        app_metadata: { provider: 'google', providers: ['google'] },
-        user_metadata: {
-          full_name: studentName,
-          email: studentEmail,
-          avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          role: role,
-          provider: 'google',
-          school: customDetails?.school || 'مدرسة الابتكار والاستدامة الخضراء',
-          grade: 'الصف الثانوي / STEM',
-          eco_points: 420,
-          verified_student: true
-        },
-        created_at: new Date().toISOString()
-      };
-      localStorage.setItem('eco_guest_user', JSON.stringify(googleUser));
-      setUser(googleUser);
-      setSession({ user: googleUser, access_token: 'google_verified_token' });
-      await syncUserProfileRecord(googleUser, googleUser.user_metadata);
-      return { user: googleUser, session: { access_token: 'google_verified_token' } };
-    }
-  };
-
-  const signInAsGuest = async () => {
-    const guestUser = {
-      id: 'guest_eco_' + Math.random().toString(36).substring(2, 9),
-      email: 'guest@smart-upcycling.eco',
-      user_metadata: {
-        full_name: 'ضيف المنصة (حساب تجريبي)',
-        is_guest: true
-      },
-      created_at: new Date().toISOString()
-    };
-    localStorage.setItem('eco_guest_user', JSON.stringify(guestUser));
-    setUser(guestUser);
-    setSession({ user: guestUser, access_token: 'guest_token' });
-    return { user: guestUser };
+  const signInWithGoogle = async () => {
+    const redirectUrl = window.location.origin + window.location.pathname;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectUrl, queryParams: { prompt: 'select_account' } }
+    });
+    if (error) throw error; // the browser is redirected to Google on success
+    return data;
   };
 
   const signOut = async () => {
-    localStorage.removeItem('eco_guest_user');
     try {
       await supabase.auth.signOut();
     } catch {
@@ -186,8 +133,7 @@ export const AuthProvider = ({ children }) => {
       signIn, 
       signOut, 
       resetPassword,
-      signInWithGoogle,
-      signInAsGuest
+      signInWithGoogle
     }}>
       {children}
     </AuthContext.Provider>

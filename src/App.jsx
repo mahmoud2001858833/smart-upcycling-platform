@@ -426,7 +426,7 @@ export default function App() {
       return;
     }
 
-    if (!user || session?.access_token === 'guest_token') {
+    if (!user) {
       showToast('سجّل الدخول أولاً لتتمكن من إنشاء مشروع (مشروعان يومياً لكل حساب)', 'info');
       setIsAuthModalOpen(true);
       return;
@@ -525,7 +525,7 @@ export default function App() {
       difficulty: 'متوسط',
       type: 'ديكور منزلي'
     };
-    if (!user || session?.access_token === 'guest_token') {
+    if (!user) {
       showToast('سجّل الدخول أولاً لتتمكن من إنشاء مشروع (مشروعان يومياً لكل حساب)', 'info');
       setIsAuthModalOpen(true);
       return;

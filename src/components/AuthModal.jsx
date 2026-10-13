@@ -21,7 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthModal({ isOpen, onClose }) {
-  const { signIn, signUp, resetPassword, signInWithGoogle, signInAsGuest } = useAuth();
+  const { signIn, signUp, resetPassword, signInWithGoogle } = useAuth();
   
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
@@ -36,7 +36,6 @@ export default function AuthModal({ isOpen, onClose }) {
   
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [shake, setShake] = useState(false);
@@ -92,7 +91,7 @@ export default function AuthModal({ isOpen, onClose }) {
       return 'يجب أن تتكون كلمة المرور من 6 خانات على الأقل.';
     }
     if (msg.includes('email not confirmed')) {
-      return 'يرجى تأكيد بريدك الإلكتروني عبر الرابط المرسل إلى صندوق الوارد (أو تجربة وضع الضيف).';
+      return 'يرجى تأكيد بريدك الإلكتروني عبر الرابط المرسل إلى صندوق الوارد.';
     }
     if (msg.includes('rate limit') || msg.includes('over_email_send_rate_limit')) {
       return 'تم تجاوز الحد المسموح من المحاولات مؤقتاً. يرجى الانتظار دقيقة ثم المحاولة ثانية.';
@@ -187,7 +186,7 @@ export default function AuthModal({ isOpen, onClose }) {
         });
         
         if (data?.user && !data?.session) {
-          setSuccessMessage('تم إنشاء الحساب وحفظه في قاعدة البيانات بنجاح! تم إرسال رسالة تأكيد إلى بريدك الإلكتروني.');
+          setSuccessMessage('تم إنشاء حسابك. سجّل الدخول الآن بالبريد وكلمة المرور.');
         } else {
           setSuccessMessage('أهلاً بك! تم إنشاء حسابك وحفظ بياناتك في قاعدة بيانات المنصة بنجاح.');
           setTimeout(() => {
@@ -213,45 +212,18 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  // Google OAuth Handler
-  const handleGoogleSignIn = async (overrideRole) => {
+  // Google OAuth: redirects to Google and comes back signed in
+  const handleGoogleSignIn = async () => {
     setError(null);
     setGoogleLoading(true);
-    const chosenRole = overrideRole || role || 'student';
     try {
-      await signInWithGoogle({
-        name: fullName || 'طالب الابتكار (حساب Google)',
-        email: email || 'student.innovator@gmail.com',
-        role: chosenRole,
-        school: school.trim() || 'مدرسة الابتكار والاستدامة الخضراء'
-      });
-      setSuccessMessage('تم تسجيل الدخول بحساب Google بنجاح! تم تفعيل حسابك كطالب موثق وحفظ ملفك في السحابة 🎓');
-      setTimeout(() => {
-        onClose();
-        resetForm();
-      }, 700);
+      await signInWithGoogle();
     } catch (err) {
-      triggerErrorShake(formatErrorMessage(err));
-    } finally {
+      const m = String(err?.message || '').toLowerCase();
+      triggerErrorShake(m.includes('provider is not enabled') || m.includes('unsupported provider')
+        ? 'تسجيل الدخول بحساب Google غير مفعّل بعد في إعدادات المنصة. استخدم البريد وكلمة المرور مؤقتاً.'
+        : formatErrorMessage(err));
       setGoogleLoading(false);
-    }
-  };
-
-  // Instant Guest Demo Login Handler
-  const handleGuestSignIn = async () => {
-    setError(null);
-    setGuestLoading(true);
-    try {
-      await signInAsGuest();
-      setSuccessMessage('تم تسجيل الدخول في وضع الضيف التجريبي بنجاح!');
-      setTimeout(() => {
-        onClose();
-        resetForm();
-      }, 700);
-    } catch (err) {
-      triggerErrorShake(formatErrorMessage(err));
-    } finally {
-      setGuestLoading(false);
     }
   };
 
@@ -333,29 +305,9 @@ export default function AuthModal({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Fast Guest Mode Option & Social Login (Only in Signin/Signup) */}
+        {/* Social login (sign-in / sign-up only) */}
         {mode !== 'forgot' && (
           <div className="auth-quick-access-section">
-            {/* Instant Demo Account Access */}
-            <button
-              type="button"
-              className="auth-guest-quick-btn"
-              onClick={handleGuestSignIn}
-              disabled={guestLoading || loading}
-              title="دخول فوري بدون إنشاء حساب لتجربة المنصة بكامل ميزاتها"
-            >
-              <div className="auth-guest-btn-content">
-                <div className="auth-guest-icon-wrap">
-                  {guestLoading ? <Loader2 size={16} className="spin-animate" /> : <Sparkles size={16} />}
-                </div>
-                <div className="auth-guest-texts">
-                  <span className="auth-guest-title">دخول سريع كـ ضيف تجريبي (1-Click Demo)</span>
-                  <span className="auth-guest-desc">استكشف المولد، الحاسبة، والشهادات فوراً بدون بريد</span>
-                </div>
-              </div>
-              <ArrowRight size={16} className="auth-guest-arrow" />
-            </button>
-
             {/* Social Google Login Button */}
             <button
               type="button"
@@ -606,7 +558,7 @@ export default function AuthModal({ isOpen, onClose }) {
           <button 
             type="submit" 
             className="auth-submit-btn" 
-            disabled={loading || googleLoading || guestLoading}
+            disabled={loading || googleLoading}
           >
             {loading ? (
               <>
