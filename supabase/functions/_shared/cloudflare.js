@@ -1,13 +1,10 @@
-// Cloudflare Workers AI client (paid image model "GPT Image 2.5 Sunburst"). Server-side only:
-// secrets CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (token needs the "Workers AI" permission).
-
+// Cloudflare Workers AI client for OpenAI GPT Image 2.5 Sunburst & CF Models
 export function cfConfig(env = {}) {
   return {
     accountId: (env.CLOUDFLARE_ACCOUNT_ID || '').trim(),
     token: (env.CLOUDFLARE_API_TOKEN || '').trim(),
     model: (env.CLOUDFLARE_IMAGE_MODEL || 'openai/gpt-image-2.5-sunburst').trim(),
-    // low | medium | high | xhigh | max | auto  ("medium" = normal quality)
-    quality: (env.CLOUDFLARE_IMAGE_QUALITY || 'medium').trim(),
+    quality: (env.CLOUDFLARE_IMAGE_QUALITY || 'medium').trim(), // low | medium | high | xhigh | max | auto
     size: (env.CLOUDFLARE_IMAGE_SIZE || '1024x1024').trim(),
     base: env.CLOUDFLARE_API_BASE || 'https://api.cloudflare.com/client/v4'
   };
@@ -30,7 +27,10 @@ const toDataUrl = async (value, timeoutMs) => {
       return `data:${type};base64,${btoa(bin)}`;
     } finally { clearTimeout(t); }
   }
-  if (v.length > 100) return `data:image/png;base64,${v}`; // raw base64
+  if (v.length > 100) {
+    const mime = v.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+    return `data:${mime};base64,${v}`;
+  }
   return null;
 };
 
@@ -38,22 +38,47 @@ export async function cloudflareImage({ cfg, prompt, timeoutMs = 120000 }) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${cfg.base}/accounts/${cfg.accountId}/ai/run/${cfg.model}`, {
+    let endpoint = '';
+    let bodyPayload = {};
+
+    if (cfg.model.startsWith('@cf/')) {
+      endpoint = `${cfg.base}/accounts/${cfg.accountId}/ai/run/${cfg.model}`;
+      bodyPayload = { prompt };
+    } else {
+      endpoint = `${cfg.base}/accounts/${cfg.accountId}/ai/run`;
+      bodyPayload = {
+        model: cfg.model,
+        input: {
+          prompt: String(prompt).slice(0, 2000),
+          quality: cfg.quality,
+          size: cfg.size
+        }
+      };
+    }
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}` },
-      body: JSON.stringify({ prompt: String(prompt).slice(0, 2000), quality: cfg.quality, size: cfg.size }) // some models (flux) cap the prompt at 2048 chars
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cfg.token}`
+      },
+      body: JSON.stringify(bodyPayload)
     });
+
     const raw = await res.text();
     let data = null; try { data = JSON.parse(raw); } catch { /* keep raw */ }
+
     if (!res.ok || data?.success === false) {
       const msg = data?.errors?.[0]?.message || data?.error?.message || raw.slice(0, 250) || `HTTP ${res.status}`;
-      throw Object.assign(new Error(`cloudflare ${cfg.model}: ${msg}`), { status: res.status, code: res.status === 401 || res.status === 403 ? 'BAD_KEY' : undefined });
+      throw Object.assign(new Error(`cloudflare ${cfg.model}: ${msg}`), { status: res.status });
     }
+
     const out = data?.result ?? data;
     const candidate = out?.image || out?.images?.[0] || out?.url || (typeof out === 'string' ? out : '');
     const url = await toDataUrl(candidate, 60000);
     if (!url) throw new Error(`cloudflare ${cfg.model}: لم يُرجع صورة`);
+
     return { imageUrl: url, model: cfg.model };
   } catch (e) {
     if (e.name === 'AbortError') throw new Error(`cloudflare ${cfg.model}: انتهت المهلة`);
