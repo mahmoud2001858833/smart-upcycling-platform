@@ -42,7 +42,7 @@ export async function cloudflareImage({ cfg, prompt, timeoutMs = 120000 }) {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}` },
-      body: JSON.stringify({ prompt, quality: cfg.quality, size: cfg.size })
+      body: JSON.stringify({ prompt: String(prompt).slice(0, 2000), quality: cfg.quality, size: cfg.size }) // some models (flux) cap the prompt at 2048 chars
     });
     const raw = await res.text();
     let data = null; try { data = JSON.parse(raw); } catch { /* keep raw */ }

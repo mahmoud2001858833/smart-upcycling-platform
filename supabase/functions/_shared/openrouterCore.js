@@ -556,25 +556,26 @@ export function guideGrid(n) {
 export function composeGuidePrompt({ projectName = '', material = '', visualBible = '', steps = [] }) {
   const list = steps.slice(0, 9);
   const { cols, rows } = guideGrid(list.length);
-  const panels = list.map(st => `Panel ${st.n}: ${clip(st.text, 90)}${st.detail ? ` — ${clip(st.detail, 150)}` : ''}`).join('\n');
+  const panels = list.map(st => `Panel ${st.n}: ${clip(st.text, 60)}${st.detail ? ` — ${clip(st.detail, 100)}` : ''}`).join('\n');
   return clip(`A clean, easy-to-understand visual build guide for ONE specific handmade upcycled product, as a single large image divided into ${list.length} equal panels in a grid of ${cols} columns by ${rows} rows, with generous white gutters between panels. Panels read right-to-left: panel 1 is top-right, then continue leftwards, then the next row.
-THE PRODUCT (identical in every panel): ${clip(visualBible || projectName, 600)}
-Project name: ${clip(projectName, 90)}. Built from: ${clip(material, 200)} — the real recycled materials must be clearly recognizable in every panel (not generic or substituted).
+THE PRODUCT (identical in every panel): ${clip(visualBible || projectName, 380)}
+Project name: ${clip(projectName, 90)}. Built from: ${clip(material, 140)} — the real recycled materials must be clearly recognizable in every panel (not generic or substituted).
+Rules for every panel: one single clear subject, large and centered; a close-up of hands doing exactly that stage with the correct tool and the actual materials; simple uncluttered neutral background; consistent lighting, colours and style across panels; realistic semi-photographic instructional illustration; the work-in-progress state must visibly progress from panel to panel until the finished product appears in the last panel.
+TEXT: the ONLY text allowed is a small clean numeral badge in the top-right corner of each panel showing its stage number (1, 2, 3 …). Absolutely no other words, letters, captions, titles, labels or logos anywhere. Normal quality.
 What each panel shows (use it only to decide the picture; the Arabic is context, do NOT write it):
 ${panels}
-Rules for every panel: one single clear subject, large and centered; a close-up of hands doing exactly that stage with the correct tool and the actual materials; simple uncluttered neutral background; consistent lighting, colours and style across panels; realistic semi-photographic instructional illustration; the work-in-progress state must visibly progress from panel to panel until the finished product appears in the last panel.
-TEXT: the ONLY text allowed is a small clean numeral badge in the top-right corner of each panel showing its stage number (1, 2, 3 …). Absolutely no other words, letters, captions, titles, labels or logos anywhere. Normal quality.`, 2600);
+`, 2000);
 }
 
 /** Final-product photo for the paid image model: the product and its real materials come first. */
 export function composeHeroPrompt({ projectName = '', visualBible = '', prompt = '', materials = '' }) {
   return clip(`Professional product photograph of ONE specific handmade upcycled product.
 Product name: ${clip(projectName, 90)}.
-What it is: ${clip(visualBible || prompt, 700)}
+What it is: ${clip(visualBible || prompt, 500)}
 It is visibly built from these recycled materials: ${clip(materials, 220)}. The recycled material must be clearly recognizable in the product itself (for example aluminium drink cans must look like aluminium cans), never replaced by plain ceramic, wood or generic shapes.
-Extra detail: ${clip(prompt, 400)}
+Extra detail: ${clip(prompt, 250)}
 Style: ${IMAGE_STYLE.hero}
-No text, letters, numbers, logos or watermarks.`, 2200);
+No text, letters, numbers, logos or watermarks.`, 2000);
 }
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
