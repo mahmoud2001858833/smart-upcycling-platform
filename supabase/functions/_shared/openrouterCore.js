@@ -50,15 +50,21 @@ export function resolveConfig(env = {}) {
   return {
     // Cheap + fast: brainstorming many concepts.
     ideationModels: list(env.OPENROUTER_IDEATION_MODEL, [
+      'google/gemini-2.5-flash',
+      'google/gemini-2.0-flash-001',
       'google/gemini-3.8-flash',
       'anthropic/claude-opus-5.5'
     ]),
     // Strongest available: writing the full project manual.
     developModels: list(env.OPENROUTER_DEVELOP_MODEL, [
+      'google/gemini-2.5-flash',
       'anthropic/claude-opus-5.5',
       'google/gemini-3.8-flash'
     ]),
     chatModels: list(env.OPENROUTER_CHAT_MODEL, [
+      'google/gemini-2.5-flash',
+      'google/gemini-2.0-flash-001',
+      'meta-llama/llama-3.3-70b-instruct',
       'google/gemini-3.8-flash',
       'anthropic/claude-opus-5.5'
     ]),

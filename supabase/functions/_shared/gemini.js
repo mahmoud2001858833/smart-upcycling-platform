@@ -13,10 +13,10 @@ export function geminiConfig(env = {}) {
     keys: [...new Set(keys)],
     imageKeys: [...new Set(imageKeys)],
     base: env.GEMINI_API_BASE || GEMINI_BASE,
-    model: env.GEMINI_MODEL || 'gemini-3.8-flash',
-    developModel: env.GEMINI_DEVELOP_MODEL || env.GEMINI_MODEL || 'gemini-3.8-flash',
+    model: env.GEMINI_MODEL || 'gemini-2.5-flash',
+    developModel: env.GEMINI_DEVELOP_MODEL || env.GEMINI_MODEL || 'gemini-2.5-flash',
     // comma separated list: tried in order
-    imageModels: (env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image,gemini-2.5-flash-image').split(',').map(x => x.trim()).filter(Boolean),
+    imageModels: (env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image,gemini-3.1-flash-image').split(',').map(x => x.trim()).filter(Boolean),
     // 'openrouter' (default) | 'gemini' -> which provider handles ideate/develop first
     freeImages: String(env.FREE_IMAGE_FALLBACK || 'off').toLowerCase() === 'on',
     textProvider: (env.TEXT_PROVIDER || 'openrouter').toLowerCase()
@@ -89,13 +89,23 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
   };
   let data = null; let used = model || cfg.model; const errs = [];
   const started = Date.now();
-  const models = [...new Set([used, cfg.model, 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])];
+  const models = [...new Set([
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    used,
+    cfg.model,
+    'gemini-2.0-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite'
+  ])].filter(Boolean);
   for (let i = 0; i < models.length; i++) {
     const m = models[i];
     const left = timeoutMs - (Date.now() - started);
-    if (left < 8000) break;
+    if (left < 6000) break;
     // each attempt gets a slice so a hung/overloaded model can't eat the whole budget
-    const per = i === models.length - 1 ? left : Math.min(left, Math.max(25000, Math.floor(timeoutMs / 2.5)));
+    const per = i === models.length - 1 ? left : Math.min(left, Math.max(15000, Math.floor(left / 2)));
     try { data = await call({ cfg, model: m, body, timeoutMs: per }); used = m; break; } catch (e) {
       errs.push(e.message);
       if (e.code === 'BAD_KEY') break;
