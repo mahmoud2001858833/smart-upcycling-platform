@@ -30,3 +30,7 @@ export async function generateImagen({ apiKey, prompt, aspectRatio = '1:1', mode
     throw e;
   } finally { clearTimeout(timer); }
 }
+
+export function getImagenApiKey(env = {}) {
+  return (env.GEMINI_IMAGE_API_KEY || env.GEMINI_API_KEY || '').trim();
+}
