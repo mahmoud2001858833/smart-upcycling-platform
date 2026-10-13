@@ -13,6 +13,7 @@ import StudentLabReportModal from './StudentLabReportModal.jsx';
 import StudentRubricModal from './StudentRubricModal.jsx';
 import StudentQuizModal from './StudentQuizModal.jsx';
 import { useProjectAiImages } from '../hooks/useProjectAiImages.js';
+import StageGuideImages from './StageGuideImages.jsx';
 
 export default function ProjectDedicatedPage({ 
   project, 
@@ -1214,6 +1215,8 @@ export default function ProjectDedicatedPage({
               </div>
             );
           })()}
+
+          <StageGuideImages project={project} steps={steps} />
         </div>
 
         {/* AI SWARM FUTURE SUGGESTIONS & DEVELOPMENT UPGRADES */}

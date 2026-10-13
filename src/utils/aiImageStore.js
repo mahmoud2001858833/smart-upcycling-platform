@@ -164,6 +164,7 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
               prompt: spec.prompt,
               projectName: spec.projectName || undefined,
               stage: spec.stage || undefined,
+              guide: spec.guide || undefined,
               referenceImage: referenceImage || undefined,
               stageLabel: stageLabel || undefined,
               isFinal: isFinal || undefined

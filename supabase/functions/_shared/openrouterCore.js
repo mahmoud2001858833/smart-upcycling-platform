@@ -65,6 +65,8 @@ export function resolveConfig(env = {}) {
     imageModels: list(env.OPENROUTER_IMAGE_MODEL, [
       'google/gemini-2.5-flash-image'
     ]),
+    // paid model for the 2x2 stage-guide sheets (e.g. the exact OpenRouter slug of GPT Image); falls back to imageModels
+    guideImageModels: [...list(env.OPENROUTER_GUIDE_IMAGE_MODEL, []), ...list(env.OPENROUTER_IMAGE_MODEL, ['google/gemini-2.5-flash-image'])],
     gemini: geminiConfig(env),
     apiBase: env.OPENROUTER_API_BASE || OPENROUTER_API,
     baseUrl: env.OPENROUTER_BASE_URL || (env.OPENROUTER_API_BASE ? `${env.OPENROUTER_API_BASE}/chat/completions` : OPENROUTER_URL),
@@ -537,11 +539,19 @@ const IMAGE_STYLE = {
   step: 'Clear instructional how-to photograph, 3/4 overhead angle, tidy light-wood workbench, bright even daylight, sharp focus on the hands-on action with only hands visible (no faces); the work-in-progress object and the single tool in use are the heroes of the frame; clean uncluttered background.'
 };
 
-const IMAGE_ASPECT = { hero: '4:3', assembly: '4:3', lifestyle: '4:3', step: '3:2' };
+const IMAGE_ASPECT = { hero: '4:3', assembly: '4:3', lifestyle: '4:3', step: '3:2', guide: '1:1' };
+
+/** One 2x2 instructional sheet for up to 4 consecutive steps. */
+export function composeGuidePrompt({ projectName = '', material = '', steps = [] }) {
+  const pos = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'];
+  const quad = steps.slice(0, 4).map((st, i) => `- ${pos[i]} (STEP ${st.n}): ${clip(st.text, 220)}`).join('\n');
+  return clip(`An educational step-by-step DIY upcycling guide illustration in a 2x2 grid layout, normal quality, clean instructional sketch style, neutral workshop background.\nProject: ${clip(projectName, 100)} using ${clip(material, 160)}.\n${quad}\nEach quadrant must clearly display its Step number and hands executing the upcycling step with proper tools.`, 1800);
+}
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
 
 export function composeImagePrompt({ kind = 'step', visualBible = '', prompt = '', stageLabel = '', isFinal = false, hasReference = false, stage = null, projectName = '' }) {
+  if (kind === 'guide') return prompt; // already the full, server-built instruction
   const style = IMAGE_STYLE[kind] || IMAGE_STYLE.step;
   const lines = [
     style,
@@ -625,10 +635,10 @@ async function generateImageOpenRouter({ apiKey, config, kind = 'step', visualBi
   const useRef = validReference(referenceImage);
   const ratio = aspect || IMAGE_ASPECT[kind] || '4:3';
   // main pictures in high resolution; per-step pictures stay at 1K to keep costs sane
-  const size = hd && kind !== 'step' ? config.imageSize : '1K';
+  const size = hd && kind !== 'step' && kind !== 'guide' ? config.imageSize : '1K';
   let lastErr = null;
 
-  for (const model of config.imageModels) {
+  for (const model of (kind === 'guide' ? config.guideImageModels : config.imageModels)) {
     // most capable request first, then progressively simpler ones
     const variants = [];
     if (useRef) variants.push({ ref: true, cfg: 'size' }, { ref: true, cfg: 'aspect' });

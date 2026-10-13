@@ -12,7 +12,7 @@
  */
 
 import {
-  resolveConfig, ideate, develop, generateImage, chatReply, impactAnalysis, newMeter, GatewayError
+  resolveConfig, ideate, develop, generateImage, chatReply, impactAnalysis, composeGuidePrompt, newMeter, GatewayError
 } from './openrouterCore.js';
 import { hasGemini } from './gemini.js';
 import {
@@ -23,7 +23,7 @@ import {
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
-const IMAGE_KINDS = new Set(['hero', 'assembly', 'lifestyle', 'step']);
+const IMAGE_KINDS = new Set(['hero', 'assembly', 'lifestyle', 'step', 'guide']);
 const IDEATE_COUNT = { 3: 8, 2: 6, 1: 5 };
 
 /* ------------------------------------------------------------------ */
@@ -500,9 +500,16 @@ const actions = {
 
   async image({ ctx, payload }) {
     const { store, viewer, limits, config, apiKey } = ctx;
-    const prompt = clip(payload?.prompt, 2500);
-    if (!prompt.trim()) throw new GatewayError('prompt مطلوب', { status: 400, code: 'BAD_REQUEST' });
     const kind = IMAGE_KINDS.has(payload?.kind) ? payload.kind : 'step';
+    let prompt = clip(payload?.prompt, 2500);
+    if (kind === 'guide') {
+      const g = payload?.guide || {};
+      const steps = (Array.isArray(g.steps) ? g.steps : []).slice(0, 4)
+        .map(x => ({ n: Math.max(1, Math.min(99, Number(x?.n) || 1)), text: clip(x?.text, 260) })).filter(x => x.text.trim());
+      if (!steps.length) throw new GatewayError('خطوات المشروع مطلوبة', { status: 400, code: 'BAD_REQUEST' });
+      prompt = composeGuidePrompt({ projectName: g.projectName, material: g.material, steps });
+    }
+    if (!prompt.trim()) throw new GatewayError('prompt مطلوب', { status: 400, code: 'BAD_REQUEST' });
     const started = Date.now();
 
     const c = await getCapacity(ctx);
