@@ -529,26 +529,6 @@ export default function ProjectDetailModal({
                             <Maximize2 size={12} />
                           </div>
                         </div>
-
-                        {onRegenerateStepImage && (
-                          <button
-                            type="button"
-                            className="btn-step-regenerate"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRegenerateStepImage(project, step.id || idx + 1);
-                            }}
-                            disabled={isRegeneratingStepId === (step.id || idx + 1)}
-                            title="توليد صورة بديلة لهذه الخطوة بالذكاء الاصطناعي"
-                          >
-                            {isRegeneratingStepId === (step.id || idx + 1) ? (
-                              <Loader2 size={12} className="spin-animate" />
-                            ) : (
-                              <RefreshCw size={12} />
-                            )}
-                            <span>{isRegeneratingStepId === (step.id || idx + 1) ? 'جاري التوليد...' : 'صورة بديلة'}</span>
-                          </button>
-                        )}
                       </div>
                     </div>
                   ))}

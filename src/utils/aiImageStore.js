@@ -7,8 +7,9 @@
  */
 
 import { callAi } from './aiGateway.js';
+import { detectMaterialCategory, CURATED_MATERIAL_GALLERY } from './imageCatalog.js';
 
-const DB_NAME = 'upcycling-ai-images';
+const DB_NAME = 'upcycling-ai-images-v3';
 const STORE = 'images';
 const MAX_PARALLEL = 3;
 
@@ -24,7 +25,7 @@ export function hashKey(text) {
 }
 
 export function imageKey({ kind, visualBible = '', prompt = '', stage = null }) {
-  return hashKey(`${kind === 'hero' ? 'hero2' : kind}|${visualBible}|${prompt}|${stage?.title || ''}|${(stage?.actions || []).join('~')}`);
+  return hashKey(`${kind === 'hero' ? 'hero3' : kind}|${visualBible}|${prompt}|${stage?.title || ''}|${(stage?.actions || []).join('~')}`);
 }
 
 /* ---------------- IndexedDB (fails soft) ---------------- */
@@ -130,6 +131,61 @@ export async function loadCachedImage(spec) {
   const stored = await idbGet(key);
   if (stored) memory.set(key, stored);
   return stored;
+}
+
+/**
+ * Synthesizes a strictly sanitized English product-craft prompt from project metadata,
+ * preventing tokenizer misinterpretations (e.g. Arabic 'وحدة' misread as woman/portrait).
+ */
+export function buildSafeEnglishCraftPrompt(spec = {}) {
+  const text = `${spec.projectName || ''} ${spec.prompt || ''} ${spec.materials || ''} ${spec.visualBible || ''}`.toLowerCase();
+  
+  // 1. Detect Materials
+  let materialsEn = 'recycled and upcycled sustainable materials';
+  if (/علب.*(المنيوم|بيبسي|مشروبات|صودا)|المنيوم|كانز|ببسي|صفيح|معدن|ألمنيوم/i.test(text)) {
+    materialsEn = 'recycled aluminum soda cans and tin beverage cans';
+  } else if (/خشب|بالتات|مشتاح|طبالي/i.test(text)) {
+    materialsEn = 'reclaimed pallet wood and rustic timber';
+  } else if (/بلاستيك|قناني|زجاجات.*بلاستيك|عبوات/i.test(text)) {
+    materialsEn = 'recycled plastic bottles and molded plastic';
+  } else if (/كرتون|ورق|صناديق/i.test(text)) {
+    materialsEn = 'recycled corrugated cardboard and kraft paper';
+  } else if (/زجاج|مرطبان|قوارير/i.test(text)) {
+    materialsEn = 'recycled glass jars and upcycled bottles';
+  } else if (/قماش|جينز|ملابس|اقمشة/i.test(text)) {
+    materialsEn = 'upcycled denim fabric and textile scraps';
+  } else if (/اطار|إطار|عجلات|كاوشوك/i.test(text)) {
+    materialsEn = 'recycled rubber tire craft';
+  }
+
+  // 2. Detect Product Type
+  let productEn = 'useful desk organizer and craft item';
+  if (/تنظيم|مكتب|حامل|منظم|رف/i.test(text)) {
+    productEn = 'modern functional desk organizer and stationery holder';
+  } else if (/مصباح|انارة|إنارة|اباجورة|ضوء/i.test(text)) {
+    productEn = 'ambient table lamp lighting craft';
+  } else if (/اصيص|أصيص|زراع|حوض.*نبات|نبات/i.test(text)) {
+    productEn = 'indoor botanical planter pot';
+  } else if (/كرسي|مقعد|طاولة|اثاث|أثاث/i.test(text)) {
+    productEn = 'handcrafted eco-friendly furniture';
+  } else if (/ساعة/i.test(text)) {
+    productEn = 'wall clock handmade craft';
+  } else if (/مزهرية|فازة/i.test(text)) {
+    productEn = 'decorative flower vase';
+  }
+
+  // 3. View / Angle
+  if (spec.kind === 'assembly') {
+    return `Knolling flat-lay workshop photo of crafting parts and tools for making a ${productEn} from ${materialsEn}, neatly arranged on wooden workbench, step-by-step DIY assembly, clean craft tools, top-down view, highly detailed, photorealistic 8k, strictly product craft only, no humans, no people, no portraits, no faces`;
+  }
+  if (spec.kind === 'lifestyle') {
+    return `Interior design lifestyle product photography of a finished upcycled ${productEn} made from ${materialsEn}, placed on an organized modern room desk, beautiful ambient lighting, architectural magazine aesthetic, strictly product only, no humans, no people, no portraits, no faces`;
+  }
+  if (spec.kind === 'step') {
+    return `Close-up DIY workshop photo of crafting process making a ${productEn} using ${materialsEn}, work in progress on craft table with tools, sharp focus, highly detailed, strictly product only, no people, no humans, no faces`;
+  }
+  
+  return `Professional studio product photograph of a finished handmade upcycled ${productEn} crafted from ${materialsEn}. Clean modern workshop setting, elegant craftsmanship, award-winning industrial design, hyper-detailed textures, studio lighting, photorealistic 8k, strictly product craft only, absolutely no humans, no people, no portraits, no women, no faces`;
 }
 
 /**

@@ -9,7 +9,7 @@ import {
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
   AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
-  Smartphone, WifiOff, TrendingUp, Cpu
+  Smartphone, WifiOff, TrendingUp, Cpu, Edit3, FileText, Home
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
@@ -34,6 +34,7 @@ import {
 } from './data/inspirationSuggestions.js';
 import { useAuth } from './context/AuthContext';
 import { streamChatMessage } from './utils/resilientAiStream.js';
+import { getRemainingDailyProjects, recordProjectGeneration, MAX_DAILY_PROJECTS } from './utils/dailyLimitTracker.js';
 
 // Dynamic Code Splitting via React.lazy() for fast initial bundle
 const CarbonCalculatorView = lazy(() => import('./components/CarbonCalculatorView.jsx'));
@@ -129,6 +130,12 @@ function ConceptMeters({ scores }) {
 
 export default function App() {
   const { user, session, signOut } = useAuth();
+  const [dailyQuotaRemaining, setDailyQuotaRemaining] = useState(() => getRemainingDailyProjects(user?.id));
+
+  useEffect(() => {
+    setDailyQuotaRemaining(getRemainingDailyProjects(user?.id));
+  }, [user?.id]);
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [selectedProjectModal, setSelectedProjectModal] = useState(null);
@@ -432,6 +439,11 @@ export default function App() {
       return;
     }
 
+    if (getRemainingDailyProjects(user?.id) <= 0) {
+      showToast('وصلت إلى الحد الأقصى اليومي المسموح به (مشروعان يومياً لكل حساب). يتجدد رصيدك تلقائياً غداً الساعة 12:00 منتصف الليل! ⏳', 'warning');
+      return;
+    }
+
     setIsLoading(true);
     setGenProgress({ phase: 'ideate', message: 'عصف ذهني…', materials: allMaterials.join('، ') });
     setGenerationError(null);
@@ -470,6 +482,10 @@ export default function App() {
         setCertificateProject(res.projects[0]);
         setEnvironmentalPoints(p => p + 15);
         setGenerationError(null);
+
+        // Deduct from daily project allowance (max 2 per day)
+        recordProjectGeneration(user?.id);
+        setDailyQuotaRemaining(getRemainingDailyProjects(user?.id));
 
         // Auto-save all generated projects to Saved Projects list safely
         try {
@@ -956,6 +972,21 @@ export default function App() {
               <span>عن مُدام (الجولة 🎬)</span>
             </button>
 
+            {/* Daily Projects Remaining Counter Badge */}
+            <span 
+              className={`eco-point-badge quota-pill ${dailyQuotaRemaining > 0 ? 'green' : 'amber'}`}
+              title={`الرصيد اليومي المتبقي: يحق لكل حساب توليد مشروعين كحد أقصى يومياً. المتبقي لك اليوم: ${dailyQuotaRemaining} من ${MAX_DAILY_PROJECTS}`}
+              style={{
+                backgroundColor: dailyQuotaRemaining > 0 ? '#ecfdf5' : '#fef2f2',
+                color: dailyQuotaRemaining > 0 ? '#047857' : '#b91c1c',
+                borderColor: dailyQuotaRemaining > 0 ? '#a7f3d0' : '#fca5a5',
+                fontWeight: 800
+              }}
+            >
+              <Sparkles size={14} color={dailyQuotaRemaining > 0 ? '#10b981' : '#ef4444'} />
+              <span>المشاريع المتبقية اليوم: <strong>{dailyQuotaRemaining} من {MAX_DAILY_PROJECTS}</strong></span>
+            </span>
+
             <span className="eco-point-badge">
               <Trophy size={15} />
               <span>{environmentalPoints} نقطة بيئية</span>
@@ -1028,6 +1059,12 @@ export default function App() {
                       </div>
 
                       <div className="user-dropdown-stats-grid">
+                        <div className="user-dropdown-stat-card">
+                          <span className="stat-label">المتبقي اليوم</span>
+                          <strong className="stat-val" style={{ color: dailyQuotaRemaining > 0 ? '#10b981' : '#f59e0b', fontFamily: 'var(--font-en)' }}>
+                            {dailyQuotaRemaining} / {MAX_DAILY_PROJECTS} ⚡
+                          </strong>
+                        </div>
                         <div className="user-dropdown-stat-card">
                           <span className="stat-label">نقاط الأثر</span>
                           <strong className="stat-val">{environmentalPoints} 🌱</strong>
@@ -1227,8 +1264,8 @@ export default function App() {
                   className={`studio-tab-btn ${materialSelectTab === 'custom' ? 'active' : ''}`}
                   onClick={() => setMaterialSelectTab('custom')}
                 >
-                  <Camera size={15} />
-                  <span>إدخال حر ومسح بالكاميرا</span>
+                  <Edit3 size={15} />
+                  <span>إدخال نصي حر للمواد</span>
                 </button>
                 <button
                   type="button"
@@ -1328,62 +1365,24 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 3: Custom Text & Camera Scanner */}
+              {/* Tab 3: Custom Text Input Only (Strictly Text Only) */}
               {materialSelectTab === 'custom' && (
                 <div className="studio-tab-pane">
                   <div className="official-textarea-container" style={{ marginBottom: '0.85rem' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                      اكتب أي مواد تملكها بحرية:
+                    <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.45rem' }}>
+                      اكتب أي مواد تملكها بحرية (إدخال نصي مباشر):
                     </label>
                     <textarea
                       className="official-textarea"
-                      placeholder="مثال: علب حليب أطفال، براميل زيت، إطارات سيارات، شماعات سلك، قمصان صوف..."
+                      placeholder="مثال: علب ألمنيوم زي الببسي، زجاجات بلاستيكية فارغة، صناديق كرتون، أقمشة قديمة، خشب مشاتيح..."
                       value={materials}
                       onChange={e => setMaterials(e.target.value)}
+                      rows={4}
                     />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                      💡 اكتب أي خامات منزلية أو ورش عمل تتوفر لديك، وسيقوم الذكاء الاصطناعي بتحليلها واقتراح مشاريع هندسية متكاملة لها.
+                    </p>
                   </div>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-
-                  <button
-                    type="button"
-                    className="btn-upload-camera"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                  >
-                    <Camera size={18} />
-                    <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
-                  </button>
-
-                  {uploadedImagePreview && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--emerald-light)', padding: '0.6rem 0.9rem', borderRadius: '10px', border: '1px solid var(--emerald-border)', marginTop: '0.6rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <img 
-                          src={uploadedImagePreview} 
-                          alt="معاينة الصورة المرفوعة" 
-                          style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--emerald-primary)' }} 
-                        />
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع البيئية</span>
-                        </div>
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={() => { setUploadedImagePreview(null); showToast('تمت إزالة الصورة المرفوعة', 'info'); }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}
-                        title="إزالة الصورة"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1491,22 +1490,63 @@ export default function App() {
 
               <CapacityBanner capacity={platform.capacity} />
 
+              {/* Daily Quota Notice Box */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.65rem 0.95rem',
+                borderRadius: '12px',
+                marginBottom: '1rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                backgroundColor: dailyQuotaRemaining > 0 ? '#ecfdf5' : '#fef2f2',
+                border: `1px solid ${dailyQuotaRemaining > 0 ? '#a7f3d0' : '#fca5a5'}`,
+                color: dailyQuotaRemaining > 0 ? '#065f46' : '#991b1b'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <Sparkles size={15} />
+                  <span>
+                    {dailyQuotaRemaining > 0 
+                      ? `رصيد حسابك المتبقي اليوم: ${dailyQuotaRemaining} من أصل ${MAX_DAILY_PROJECTS} مشاريع`
+                      : `استنفدت حصتك اليومية (${MAX_DAILY_PROJECTS} مشاريع). يتجدد الرصيد تلقائياً منتصف الليل.`}
+                  </span>
+                </div>
+                <span style={{
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '999px',
+                  backgroundColor: dailyQuotaRemaining > 0 ? '#10b981' : '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-en)'
+                }}>
+                  {dailyQuotaRemaining} / {MAX_DAILY_PROJECTS}
+                </span>
+              </div>
+
               {/* Generate Projects CTA */}
               <button
                 type="button"
                 className="cta-analyze-btn"
                 onClick={handleGenerateProjects}
-                disabled={isLoading}
+                disabled={isLoading || dailyQuotaRemaining === 0}
+                style={dailyQuotaRemaining === 0 ? { opacity: 0.65, cursor: 'not-allowed' } : {}}
               >
                 {isLoading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
                     <span>{loadingStep || 'جاري التحليل وتوليد المشاريع عبر 6 وكلاء ذكاء اصطناعي...'}</span>
                   </>
+                ) : dailyQuotaRemaining === 0 ? (
+                  <>
+                    <Clock size={18} />
+                    <span>اكتمل الحد اليومي (مشروعان يومياً لكل حساب)</span>
+                  </>
                 ) : (
                   <>
                     <Sparkles size={18} className="text-amber-300" />
-                    <span>ابتكار مشاريع بالذكاء الاصطناعي</span>
+                    <span>ابتكار مشاريع بالذكاء الاصطناعي ({dailyQuotaRemaining} متبقي اليوم)</span>
                   </>
                 )}
               </button>
@@ -2834,6 +2874,57 @@ export default function App() {
         </div>
       </footer>
         </div> {/* End mudam-main-viewport */}
+
+        {/* ============================================================
+            MOBILE BOTTOM QUICK ACCESS NAVIGATION BAR (شريط تنقل سفلي للهاتف)
+            ============================================================ */}
+        <nav className="mobile-bottom-nav" aria-label="شريط التنقل السفلي للهاتف">
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'generator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('generator')}
+          >
+            <Lightbulb size={20} />
+            <span>المولد</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'students' ? 'active' : ''}`}
+            onClick={() => setActiveTab('students')}
+          >
+            <GraduationCap size={20} />
+            <span>الطلاب</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'calculator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('calculator')}
+          >
+            <Calculator size={20} />
+            <span>حاسبة LCA</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'saved' ? 'active' : ''}`}
+            onClick={() => setActiveTab('saved')}
+          >
+            <Star size={20} />
+            <span>المحفوظة</span>
+            {savedProjects.length > 0 && <span className="mobile-nav-badge">{savedProjects.length}</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${isMobileSidebarOpen ? 'active' : ''}`}
+            onClick={() => setIsMobileSidebarOpen(prev => !prev)}
+          >
+            <Menu size={20} />
+            <span>القائمة</span>
+          </button>
+        </nav>
       </div>   {/* End mudam-layout-wrapper */}
     </div>
   );

@@ -8626,3 +8626,140 @@ img {
   background: #065f46;
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   MOBILE BOTTOM NAVIGATION & SMARTPHONE UX OPTIMIZATIONS
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid #e2e8f0;
+    z-index: 90;
+    padding: 0 0.25rem;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.07);
+  }
+
+  .mobile-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    flex: 1;
+    height: 100%;
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-bottom-nav-item.active {
+    color: #047857;
+  }
+
+  .mobile-bottom-nav-item.active svg {
+    transform: scale(1.15);
+    stroke-width: 2.3;
+  }
+
+  .mobile-nav-badge {
+    position: absolute;
+    top: 5px;
+    right: calc(50% - 18px);
+    background: #10b981;
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+  }
+
+  .official-main-content {
+    padding-bottom: 5.5rem !important;
+  }
+
+  .points-badges-row .eco-point-badge.blue,
+  .points-badges-row .official-live-badge,
+  .points-badges-row .btn-platform-tour-trigger {
+    display: none;
+  }
+
+  .top-bar-main {
+    padding: 0.6rem 0.85rem;
+  }
+
+  .brand-titles p {
+    display: none;
+  }
+
+  .brand-titles h1 {
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .intake-main-panel {
+    padding: 1.15rem 0.9rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .official-main-content {
+    padding: 0.75rem 0.5rem 5.5rem !important;
+  }
+
+  .selection-studio-tabs {
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.4rem;
+  }
+
+  .studio-tab-btn {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.82rem;
+    justify-content: flex-start;
+  }
+
+  .material-quick-chips-grid {
+    gap: 0.35rem;
+  }
+
+  .material-quick-btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .form-select-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .auth-modal-card {
+    width: 95% !important;
+    max-height: 92vh !important;
+    padding: 1.5rem 1rem !important;
+  }
+}
