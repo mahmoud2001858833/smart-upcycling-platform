@@ -587,6 +587,23 @@ Style: ${IMAGE_STYLE.hero}
 Ultra high resolution, professional quality.`, 2000);
 }
 
+/** An AI-written, professional photo brief for the finished product (falls back to the template prompt). */
+export async function craftHeroPrompt({ apiKey, config, projectName = '', visualBible = '', prompt = '', materials = '', meter = null }) {
+  const fallback = composeHeroPrompt({ projectName, visualBible, prompt, materials });
+  try {
+    const { text } = await chat({
+      apiKey, config, meter, models: config.chatModels, role: 'chat', temperature: 0.6, maxTokens: 500, timeoutMs: 25000,
+      messages: [
+        { role: 'system', content: 'You are a product photography art director. Write ONE English image-generation prompt (90-140 words, a single paragraph, no preface, no quotes, no markdown) for a photorealistic studio photograph of a handmade upcycled product. Describe: the exact object and its shape, the recycled materials clearly recognizable in it, colours, textures, craftsmanship details, a fitting realistic setting, soft natural lighting, camera angle and lens, shallow depth of field. The image must contain no text, letters, numbers, logos or watermarks, and no people.' },
+        { role: 'user', content: `Project: ${clip(projectName, 120)}\nRecycled materials: ${clip(materials, 240)}\nObject description: ${clip(visualBible || prompt, 600)}\nExtra: ${clip(prompt, 250)}` }
+      ]
+    });
+    const t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (t.length < 60) return fallback;
+    return clip(`${t} ${NO_TEXT} Ultra high resolution, professional quality.`, 2000);
+  } catch { return fallback; }
+}
+
 /** Proven rule from the sister platform: image models garble text, so the picture itself carries no writing at all. */
 export const NO_TEXT = 'IMPORTANT: Do not include any text, labels, words, letters, numbers, or writing on the image. The image should be purely visual without any textual elements.';
 
@@ -657,7 +674,7 @@ export async function generateImage(args) {
       const text = kind === 'guide'
         ? (args.guideData ? composeGuidePrompt(args.guideData) : prompt)
         : (kind === 'hero'
-            ? composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials })
+            ? await craftHeroPrompt({ apiKey, config, projectName, visualBible, prompt, materials: args.materials, meter })
             : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName }));
       const size = kind === 'guide' && (args.guideCount || 0) > 4 ? '1536x1024' : cf.size;
       const r = await cloudflareImage({ cfg: { ...cf, size }, prompt: text });
