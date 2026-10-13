@@ -426,7 +426,7 @@ export default function App() {
       return;
     }
 
-    if (!user) {
+    if (!user || session?.access_token === 'guest_token') {
       showToast('سجّل الدخول أولاً لتتمكن من إنشاء مشروع (مشروعان يومياً لكل حساب)', 'info');
       setIsAuthModalOpen(true);
       return;
@@ -492,10 +492,11 @@ export default function App() {
       console.error('Error generating AI projects:', err);
       if (err.message === 'TIMEOUT_60S') {
         setGenerationError('استغرقت العملية وقتاً أطول من المعتاد نظراً للضغط على محرك الذكاء الاصطناعي. موادك وخياراتك ما زالت محفوظة، اضغط أدناه لإعادة المحاولة.');
-        showToast('تعذّر التوليد، تجاوزت العملية المهلة المحددة (60 ثانية)', 'error');
+        showToast('تعذّر التوليد، تجاوزت العملية المهلة المحددة', 'error');
       } else if (isLimitError(err)) {
         setGenerationError(err.message);
         showToast(err.message, 'info');
+        if (err.code === 'LOGIN_REQUIRED') setIsAuthModalOpen(true);
       } else {
         setGenerationError('تعذّر التوليد، حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: ' + (err.message || 'حاول مرة أخرى'));
         showToast('حدث خطأ أثناء الاتصال بمحرك الذكاء الاصطناعي', 'error');
@@ -524,6 +525,11 @@ export default function App() {
       difficulty: 'متوسط',
       type: 'ديكور منزلي'
     };
+    if (!user || session?.access_token === 'guest_token') {
+      showToast('سجّل الدخول أولاً لتتمكن من إنشاء مشروع (مشروعان يومياً لكل حساب)', 'info');
+      setIsAuthModalOpen(true);
+      return;
+    }
     setSelectedMaterials(topScenario.materials);
     setUserLevel(topScenario.difficulty || 'متوسط');
     setProjectType(topScenario.type || 'ديكور منزلي');

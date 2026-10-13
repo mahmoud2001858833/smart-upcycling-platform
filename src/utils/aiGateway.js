@@ -99,7 +99,7 @@ export async function callAi(action, payload = {}, { timeoutMs = 150000 } = {}) 
   let data = null;
   try { data = await res.json(); } catch { /* handled below */ }
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || `فشل الاتصال بالبوابة (${res.status})`);
+    throw new AiError(data?.error || data?.message || `فشل الاتصال بالبوابة (${res.status})`, data?.code || `HTTP_${res.status}`);
   }
   return unwrap(data);
 }
