@@ -9,7 +9,7 @@ import {
   X, Database, LogIn, LogOut, HelpCircle, Layers,
   Grid, Eye, BarChart2, GraduationCap, Menu,
   AlertCircle, RotateCcw, Activity, Bot, Wand2, Plus, Download, Play,
-  Smartphone, WifiOff, TrendingUp, Cpu
+  Smartphone, WifiOff, TrendingUp, Cpu, Edit3, FileText, Home
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
@@ -1227,8 +1227,8 @@ export default function App() {
                   className={`studio-tab-btn ${materialSelectTab === 'custom' ? 'active' : ''}`}
                   onClick={() => setMaterialSelectTab('custom')}
                 >
-                  <Camera size={15} />
-                  <span>إدخال حر ومسح بالكاميرا</span>
+                  <Edit3 size={15} />
+                  <span>إدخال نصي حر للمواد</span>
                 </button>
                 <button
                   type="button"
@@ -1328,62 +1328,24 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 3: Custom Text & Camera Scanner */}
+              {/* Tab 3: Custom Text Input Only (Strictly Text Only) */}
               {materialSelectTab === 'custom' && (
                 <div className="studio-tab-pane">
                   <div className="official-textarea-container" style={{ marginBottom: '0.85rem' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                      اكتب أي مواد تملكها بحرية:
+                    <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.45rem' }}>
+                      اكتب أي مواد تملكها بحرية (إدخال نصي مباشر):
                     </label>
                     <textarea
                       className="official-textarea"
-                      placeholder="مثال: علب حليب أطفال، براميل زيت، إطارات سيارات، شماعات سلك، قمصان صوف..."
+                      placeholder="مثال: علب ألمنيوم زي الببسي، زجاجات بلاستيكية فارغة، صناديق كرتون، أقمشة قديمة، خشب مشاتيح..."
                       value={materials}
                       onChange={e => setMaterials(e.target.value)}
+                      rows={4}
                     />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                      💡 اكتب أي خامات منزلية أو ورش عمل تتوفر لديك، وسيقوم الذكاء الاصطناعي بتحليلها واقتراح مشاريع هندسية متكاملة لها.
+                    </p>
                   </div>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-
-                  <button
-                    type="button"
-                    className="btn-upload-camera"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                  >
-                    <Camera size={18} />
-                    <span>📸 ارفع صورة للمواد المتوفرة عندك لتحليلها بالذكاء الاصطناعي</span>
-                  </button>
-
-                  {uploadedImagePreview && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--emerald-light)', padding: '0.6rem 0.9rem', borderRadius: '10px', border: '1px solid var(--emerald-border)', marginTop: '0.6rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <img 
-                          src={uploadedImagePreview} 
-                          alt="معاينة الصورة المرفوعة" 
-                          style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--emerald-primary)' }} 
-                        />
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald-primary)', display: 'block' }}>تم فحص وتحليل الصورة بالذكاء الاصطناعي</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>جاهز لتوليد المشاريع البيئية</span>
-                        </div>
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={() => { setUploadedImagePreview(null); showToast('تمت إزالة الصورة المرفوعة', 'info'); }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}
-                        title="إزالة الصورة"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -2834,6 +2796,57 @@ export default function App() {
         </div>
       </footer>
         </div> {/* End mudam-main-viewport */}
+
+        {/* ============================================================
+            MOBILE BOTTOM QUICK ACCESS NAVIGATION BAR (شريط تنقل سفلي للهاتف)
+            ============================================================ */}
+        <nav className="mobile-bottom-nav" aria-label="شريط التنقل السفلي للهاتف">
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'generator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('generator')}
+          >
+            <Lightbulb size={20} />
+            <span>المولد</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'students' ? 'active' : ''}`}
+            onClick={() => setActiveTab('students')}
+          >
+            <GraduationCap size={20} />
+            <span>الطلاب</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'calculator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('calculator')}
+          >
+            <Calculator size={20} />
+            <span>حاسبة LCA</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'saved' ? 'active' : ''}`}
+            onClick={() => setActiveTab('saved')}
+          >
+            <Star size={20} />
+            <span>المحفوظة</span>
+            {savedProjects.length > 0 && <span className="mobile-nav-badge">{savedProjects.length}</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${isMobileSidebarOpen ? 'active' : ''}`}
+            onClick={() => setIsMobileSidebarOpen(prev => !prev)}
+          >
+            <Menu size={20} />
+            <span>القائمة</span>
+          </button>
+        </nav>
       </div>   {/* End mudam-layout-wrapper */}
     </div>
   );
