@@ -24,7 +24,7 @@ export function hashKey(text) {
 }
 
 export function imageKey({ kind, visualBible = '', prompt = '', stage = null }) {
-  return hashKey(`${kind}|${visualBible}|${prompt}|${stage?.title || ''}|${(stage?.actions || []).join('~')}`);
+  return hashKey(`${kind === 'hero' ? 'hero2' : kind}|${visualBible}|${prompt}|${stage?.title || ''}|${(stage?.actions || []).join('~')}`);
 }
 
 /* ---------------- IndexedDB (fails soft) ---------------- */
@@ -165,6 +165,7 @@ export function requestImage(spec, { priority = 0, force = false, reference = nu
               projectName: spec.projectName || undefined,
               stage: spec.stage || undefined,
               guide: spec.guide || undefined,
+              materials: spec.materials || undefined,
               referenceImage: referenceImage || undefined,
               stageLabel: stageLabel || undefined,
               isFinal: isFinal || undefined
@@ -231,7 +232,7 @@ export function heroSpec(project, view = 'finished') {
     inUse: `The finished upcycled project "${name}" being used in a real home. ${project.idea || ''}`
   }[view] || '';
   const kind = { finished: 'hero', assembly: 'assembly', inUse: 'lifestyle' }[view] || 'hero';
-  return { kind, visualBible: describe(project), prompt: own || generic.slice(0, 900), projectName: name };
+  return { kind, visualBible: describe(project), prompt: own || generic.slice(0, 900), projectName: name, materials: materials.slice(0, 260) };
 }
 
 /** Prompt for one stage picture, always carrying the written stage so the picture matches the explanation. */

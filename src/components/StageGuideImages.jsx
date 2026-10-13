@@ -9,7 +9,13 @@ const asText = v => (Array.isArray(v) ? v.join(', ') : String(v || '')).trim();
 
 /** Short Arabic caption for a stage (the title only: long text makes the model misspell Arabic). */
 function stepText(step, i) {
-  return String(step.title || step.name || `المرحلة ${i + 1}`).replace(/\s+/g, ' ').trim().slice(0, 70);
+  return String(step.title || step.name || `المرحلة ${i + 1}`).replace(/\s+/g, ' ').trim().slice(0, 90);
+}
+
+/** First concrete action of the stage: gives the model what to draw (it is never printed on the picture). */
+function stepDetail(step) {
+  const a = Array.isArray(step.actions) && step.actions.length ? step.actions[0] : (step.detail || step.instruction || step.goal || '');
+  return String(a).replace(/\s+/g, ' ').trim().slice(0, 160);
 }
 
 /** ALL stages go into ONE sheet (up to 8 panels); more than 8 stages are split evenly into the fewest sheets. */
@@ -20,7 +26,7 @@ export function chunkSteps(steps) {
   const per = Math.ceil(n / sheets);
   const out = [];
   for (let i = 0; i < n; i += per) {
-    out.push(steps.slice(i, i + per).map((st, k) => ({ n: i + k + 1, text: stepText(st, i + k) })));
+    out.push(steps.slice(i, i + per).map((st, k) => ({ n: i + k + 1, text: stepText(st, i + k), detail: stepDetail(st) })));
   }
   return out;
 }
@@ -32,8 +38,8 @@ export default function StageGuideImages({ project, steps }) {
   const specs = useMemo(() => groups.map((g, i) => ({
     kind: 'guide',
     visualBible: `${projectName}|${material}`.slice(0, 300),
-    prompt: `guide-v2-${i}|${g.map(x => `${x.n}:${x.text}`).join('|')}`.slice(0, 1500),
-    guide: { projectName, material, steps: g }
+    prompt: `guide-v3-${i}|${g.map(x => `${x.n}:${x.text}`).join('|')}`.slice(0, 1500),
+    guide: { projectName, material, visualBible: String(project?.visualBible || project?.idea || '').slice(0, 600), steps: g }
   })), [groups, projectName, material]);
 
   const [images, setImages] = useState({});   // index -> data URL
@@ -96,7 +102,7 @@ export default function StageGuideImages({ project, steps }) {
             <span>{busy ? 'جاري إنشاء الصور…' : '🎨 إنشاء صور المراحل'}</span>
           </button>
           <p className="text-[11px] text-slate-500">
-            صورة واحدة أنيقة تضم كل المراحل ({groups[0].length > 1 ? `${groups[0].length} خانات` : 'خانة واحدة'}) برقم كل مرحلة وشرحها بالعربية.
+            صورة واحدة أنيقة تضم كل المراحل ({groups[0].length > 1 ? `${groups[0].length} خانات` : 'خانة واحدة'}) بدون أي نص، فقط رقم كل مرحلة.
           </p>
         </div>
       )}

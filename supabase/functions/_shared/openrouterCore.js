@@ -552,16 +552,29 @@ export function guideGrid(n) {
   return { cols: 3, rows: 3 };
 }
 
-/** ONE large elegant sheet with every stage in its own panel: number on top, short Arabic caption. */
-export function composeGuidePrompt({ projectName = '', material = '', steps = [] }) {
+/** ONE large sheet with every stage in its own panel. Only a numeral badge: no words (image models garble text). */
+export function composeGuidePrompt({ projectName = '', material = '', visualBible = '', steps = [] }) {
   const list = steps.slice(0, 9);
   const { cols, rows } = guideGrid(list.length);
-  const panels = list.map(st => `- Panel for stage ${st.n}: header «المرحلة ${st.n}», caption «${clip(st.text, 70)}»`).join('\n');
-  return clip(`A single large, elegant, beautifully designed educational step-by-step DIY upcycling guide poster, divided into ${list.length} equal panels in a clean grid of ${cols} columns by ${rows} rows with thin clear dividers. Panels are read right-to-left, so stage 1 is in the top-right corner and the order continues leftwards, then down.
-Project: ${clip(projectName, 100)}, made from ${clip(material, 160)}. The same object and the same materials appear consistently in every panel.
+  const panels = list.map(st => `Panel ${st.n}: ${clip(st.text, 90)}${st.detail ? ` — ${clip(st.detail, 150)}` : ''}`).join('\n');
+  return clip(`A clean, easy-to-understand visual build guide for ONE specific handmade upcycled product, as a single large image divided into ${list.length} equal panels in a grid of ${cols} columns by ${rows} rows, with generous white gutters between panels. Panels read right-to-left: panel 1 is top-right, then continue leftwards, then the next row.
+THE PRODUCT (identical in every panel): ${clip(visualBible || projectName, 600)}
+Project name: ${clip(projectName, 90)}. Built from: ${clip(material, 200)} — the real recycled materials must be clearly recognizable in every panel (not generic or substituted).
+What each panel shows (use it only to decide the picture; the Arabic is context, do NOT write it):
 ${panels}
-Each panel has a tidy badge at its top with the Arabic header exactly as given (the stage number is clearly visible), then the Arabic caption in one or two short lines under it, then a clean minimal instructional illustration of hands performing that stage with the proper tools on a neutral light workshop background.
-All text must be Arabic, correctly spelled and properly connected, right-to-left, large and highly legible; write ONLY the headers and captions given above and no other words. Soft warm palette (cream, teal, natural wood), refined flat-sketch style, normal quality, uncluttered and elegant.`, 2200);
+Rules for every panel: one single clear subject, large and centered; a close-up of hands doing exactly that stage with the correct tool and the actual materials; simple uncluttered neutral background; consistent lighting, colours and style across panels; realistic semi-photographic instructional illustration; the work-in-progress state must visibly progress from panel to panel until the finished product appears in the last panel.
+TEXT: the ONLY text allowed is a small clean numeral badge in the top-right corner of each panel showing its stage number (1, 2, 3 …). Absolutely no other words, letters, captions, titles, labels or logos anywhere. Normal quality.`, 2600);
+}
+
+/** Final-product photo for the paid image model: the product and its real materials come first. */
+export function composeHeroPrompt({ projectName = '', visualBible = '', prompt = '', materials = '' }) {
+  return clip(`Professional product photograph of ONE specific handmade upcycled product.
+Product name: ${clip(projectName, 90)}.
+What it is: ${clip(visualBible || prompt, 700)}
+It is visibly built from these recycled materials: ${clip(materials, 220)}. The recycled material must be clearly recognizable in the product itself (for example aluminium drink cans must look like aluminium cans), never replaced by plain ceramic, wood or generic shapes.
+Extra detail: ${clip(prompt, 400)}
+Style: ${IMAGE_STYLE.hero}
+No text, letters, numbers, logos or watermarks.`, 2200);
 }
 
 const IMAGE_AVOID = 'Avoid: any text, letters, numbers, logos, watermarks, borders, collage or split-screen, cartoon or CGI look, plastic sheen, distorted hands or extra fingers, floating objects, impossible geometry.';
@@ -637,7 +650,7 @@ export async function generateImage(args) {
   // the paid GPT Image model (Cloudflare Workers AI) draws the stage sheet and the final-product picture
   if ((kind === 'guide' || kind === 'hero') && hasCloudflare(cf)) {
     try {
-      const text = kind === 'guide' ? prompt : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName });
+      const text = kind === 'guide' ? prompt : composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials });
       const size = kind === 'guide' && (args.guideCount || 0) > 4 ? '1536x1024' : cf.size;
       const r = await cloudflareImage({ cfg: { ...cf, size }, prompt: text });
       addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
