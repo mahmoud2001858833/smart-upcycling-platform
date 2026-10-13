@@ -651,15 +651,22 @@ export async function generateImage(args) {
   const imagenKey = (denv('GEMINI_IMAGE_API_KEY') || denv('GEMINI_API_KEY') || gem?.imageKeys?.[0] || gem?.keys?.[0] || gem?.apiKey || '').trim();
   if (!apiKey && !hasGemini(gem) && !hasCloudflare(cf) && !imagenKey) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم', { status: 503, code: 'NO_KEY' });
   const errs = [];
-  // the paid GPT Image model (Cloudflare Workers AI) draws the stage sheet and the final-product picture
-  if ((kind === 'guide' || kind === 'hero') && hasCloudflare(cf)) {
+  // Dedicated Cloudflare Worker is the primary generator for all project image generations (hero, step guides, etc.)
+  if (hasCloudflare(cf)) {
     try {
-      const text = kind === 'guide' ? prompt : composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials });
+      const text = kind === 'guide'
+        ? (args.guideData ? composeGuidePrompt(args.guideData) : prompt)
+        : (kind === 'hero'
+            ? composeHeroPrompt({ projectName, visualBible, prompt, materials: args.materials })
+            : composeImagePrompt({ kind, visualBible, prompt, stageLabel, isFinal, hasReference: false, stage, projectName }));
       const size = kind === 'guide' && (args.guideCount || 0) > 4 ? '1536x1024' : cf.size;
       const r = await cloudflareImage({ cfg: { ...cf, size }, prompt: text });
       addUsage(meter, { usage: { total_tokens: 0, cost: 0 } });
       return { imageUrl: r.imageUrl, model: r.model, usedReference: false, size: '1K' };
-    } catch (e) { errs.push(e); }
+    } catch (e) {
+      console.warn('Dedicated Cloudflare Worker generation failed, trying secondary fallback:', e.message);
+      errs.push(e);
+    }
   }
   // Google Imagen 3 is secondary fallback if Cloudflare fails or is not applicable
   if (imagenKey) {
