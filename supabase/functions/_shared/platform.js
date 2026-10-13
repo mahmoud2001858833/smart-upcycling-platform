@@ -40,7 +40,7 @@ export function resolveLimits(env = {}) {
     // because a whole school can share one address).
     dailyGenerations: int(env.DAILY_GENERATIONS, 2),
     dailyProjects: int(env.DAILY_PROJECTS, 2),
-    dailyImages: int(env.DAILY_IMAGES, 12),
+    dailyImages: int(env.DAILY_IMAGES, 100),
     dailyChats: int(env.DAILY_CHATS, 20),
     anonMultiplier: int(env.ANON_MULTIPLIER, 1),
 
