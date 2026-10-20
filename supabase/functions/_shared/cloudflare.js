@@ -5,6 +5,7 @@ export function cfConfig(env = {}) {
     workerToken: (env.CLOUDFLARE_WORKER_TOKEN || '12345678').trim(),
     accountId: (env.CLOUDFLARE_ACCOUNT_ID || '').trim(),
     token: (env.CLOUDFLARE_API_TOKEN || '').trim(),
+    textModel: (env.CLOUDFLARE_TEXT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast').trim(),
     model: (env.CLOUDFLARE_IMAGE_MODEL || 'cloudflare-worker').trim(),
     quality: (env.CLOUDFLARE_IMAGE_QUALITY || 'medium').trim(), // low | medium | high | xhigh | max | auto
     size: (env.CLOUDFLARE_IMAGE_SIZE || '1024x1024').trim(),
@@ -180,4 +181,36 @@ export async function cloudflareImage({ cfg, prompt, timeoutMs = 120000 }) {
     }
   }
   return await cloudflareClassicImage({ cfg, prompt, timeoutMs });
+}
+
+export const hasCloudflareText = cfg => Boolean(cfg?.accountId && cfg?.token);
+
+/** Text generation through Cloudflare Workers AI (OpenAI-compatible chat endpoint of the REST API). */
+export async function cloudflareText({ cfg, messages, json = false, temperature = 0.7, maxTokens = 4000, timeoutMs = 90000 }) {
+  const model = cfg.textModel || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${cfg.base}/accounts/${cfg.accountId}/ai/v1/chat/completions`, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}` },
+      body: JSON.stringify({
+        model, messages, temperature, max_tokens: Math.min(maxTokens, 8000),
+        ...(json ? { response_format: { type: 'json_object' } } : {})
+      })
+    });
+    const raw = await res.text();
+    let data = null; try { data = JSON.parse(raw); } catch { /* keep raw */ }
+    if (!res.ok) {
+      const msg = data?.errors?.[0]?.message || data?.error?.message || raw.slice(0, 250) || `HTTP ${res.status}`;
+      throw Object.assign(new Error(`cloudflare ${model}: ${msg}`), { status: res.status });
+    }
+    const text = data?.choices?.[0]?.message?.content || data?.result?.response || '';
+    if (!text) throw new Error(`cloudflare ${model}: استجابة فارغة`);
+    return { text, model: `cf:${model.split('/').pop()}`, usage: { total_tokens: data?.usage?.total_tokens || 0, cost: 0 } };
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`cloudflare ${model}: انتهت المهلة`);
+    throw e;
+  } finally { clearTimeout(timer); }
 }

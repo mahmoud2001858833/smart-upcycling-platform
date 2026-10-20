@@ -14,7 +14,7 @@
 import {
   resolveConfig, ideate, develop, generateImage, chatReply, impactAnalysis, composeGuidePrompt, newMeter, GatewayError
 } from './openrouterCore.js';
-import { hasCloudflare } from './cloudflare.js';
+import { hasCloudflare, hasCloudflareText } from './cloudflare.js';
 import { hasGemini } from './gemini.js';
 import {
   resolveLimits, decideCapacity, publicCapacity, fetchCredit, resolveIdentity, hashIp,
@@ -562,7 +562,7 @@ const actions = {
     const started = Date.now();
     const c = await getCapacity(ctx);
     const cap = effectiveCap(c.cap, viewer, limits);
-    if (cap.level === 'closed' && !hasGemini(config.gemini)) {
+    if (cap.level === 'closed' && !hasGemini(config.gemini) && !hasCloudflareText(config.cloudflare)) {
       throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
     }
     await enforceDaily({ store, limits, viewer, kind: 'chat' });
@@ -590,7 +590,7 @@ const actions = {
     const started = Date.now();
     const c = await getCapacity(ctx);
     const cap = effectiveCap(c.cap, viewer, limits);
-    if (cap.level === 'closed' && !hasGemini(config.gemini)) {
+    if (cap.level === 'closed' && !hasGemini(config.gemini) && !hasCloudflareText(config.cloudflare)) {
       throw new GatewayError(cap.message, { status: 503, code: cap.causes.includes('credit') ? 'NO_CREDIT' : 'CAPACITY_CLOSED' });
     }
     await enforceDaily({ store, limits, viewer, kind: 'chat' });

@@ -9,7 +9,7 @@
  * It must never be shipped to the browser.
  */
 
-import { cfConfig, hasCloudflare, cloudflareImage } from './cloudflare.js';
+import { cfConfig, hasCloudflare, hasCloudflareText, cloudflareText, cloudflareImage } from './cloudflare.js';
 import { generateImagen } from './imagen.js';
 import { geminiConfig, hasGemini, geminiText, geminiImage, freeImage } from './gemini.js';
 
@@ -124,27 +124,46 @@ export async function chat({
 }) {
   const gem = config.gemini;
   const gemOn = hasGemini(gem);
-  if (!apiKey && !gemOn) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (OPENROUTER_API_KEY أو GEMINI_API_KEY)', { status: 503, code: 'NO_KEY' });
+  const cfOn = hasCloudflareText(config.cloudflare);
+  if (!apiKey && !gemOn && !cfOn) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (GEMINI_API_KEY أو CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN)', { status: 503, code: 'NO_KEY' });
+  const started = Date.now();
+  const viaCloudflare = async () => {
+    const left = Math.max(20000, timeoutMs - (Date.now() - started));
+    const r = await cloudflareText({ cfg: config.cloudflare, messages, json, temperature, maxTokens, timeoutMs: left });
+    addUsage(meter, { usage: r.usage });
+    return { text: r.text, model: r.model };
+  };
+  // Cloudflare is the safety net behind Gemini / OpenRouter (or the only engine when it is the only key)
+  const withCf = async fn => {
+    try { return await fn(); } catch (e) {
+      if (!cfOn) throw e;
+      try { return await viaCloudflare(); } catch (e2) { e.message += ` | ${e2.message}`; throw e; }
+    }
+  };
+  if (!apiKey && !gemOn) return viaCloudflare();
   // who goes first: the assistant always prefers Gemini; ideate/develop follow TEXT_PROVIDER
   const geminiFirst = gemOn && (!apiKey || role === 'chat' || gem.textProvider === 'gemini');
   const viaGemini = async () => {
     const model = role === 'develop' ? gem.developModel : gem.model;
-    const r = await geminiText({ cfg: gem, model, messages, json, temperature, maxTokens, timeoutMs });
+    const budget = cfOn ? Math.max(30000, timeoutMs - 45000) : timeoutMs;
+    const r = await geminiText({ cfg: gem, model, messages, json, temperature, maxTokens, timeoutMs: budget });
     addUsage(meter, { usage: r.usage });
     return { text: r.text, model: r.model };
   };
-  if (geminiFirst) {
-    try { return await viaGemini(); } catch (e) {
-      if (!apiKey) throw new GatewayError(`تعذر الاتصال بـ Gemini: ${e.message}`, { status: 503, code: e.code === 'BAD_KEY' ? 'BAD_KEY' : 'AI_FAILED' });
-      /* fall through to OpenRouter */
+  return withCf(async () => {
+    if (geminiFirst) {
+      try { return await viaGemini(); } catch (e) {
+        if (!apiKey) throw new GatewayError(`تعذر الاتصال بـ Gemini: ${e.message}`, { status: 503, code: e.code === 'BAD_KEY' ? 'BAD_KEY' : 'AI_FAILED' });
+        /* fall through to OpenRouter */
+      }
     }
-  }
-  try {
-    return await chatOpenRouter({ apiKey, config, models, messages, meter, json, temperature, maxTokens, timeoutMs });
-  } catch (e) {
-    if (gemOn && !geminiFirst) { try { return await viaGemini(); } catch { /* report the first error */ } }
-    throw e;
-  }
+    try {
+      return await chatOpenRouter({ apiKey, config, models, messages, meter, json, temperature, maxTokens, timeoutMs });
+    } catch (e) {
+      if (gemOn && !geminiFirst) { try { return await viaGemini(); } catch { /* report the first error */ } }
+      throw e;
+    }
+  });
 }
 
 async function chatOpenRouter({
