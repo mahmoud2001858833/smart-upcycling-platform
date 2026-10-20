@@ -5,6 +5,8 @@ export function cfConfig(env = {}) {
     workerToken: (env.CLOUDFLARE_WORKER_TOKEN || '12345678').trim(),
     accountId: (env.CLOUDFLARE_ACCOUNT_ID || '').trim(),
     token: (env.CLOUDFLARE_API_TOKEN || '').trim(),
+    textWorkerUrl: (env.CLOUDFLARE_TEXT_WORKER_URL || '').trim(),
+    textWorkerToken: (env.CLOUDFLARE_TEXT_WORKER_TOKEN || env.CLOUDFLARE_WORKER_TOKEN || '12345678').trim(),
     textModel: (env.CLOUDFLARE_TEXT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast').trim(),
     model: (env.CLOUDFLARE_IMAGE_MODEL || 'cloudflare-worker').trim(),
     quality: (env.CLOUDFLARE_IMAGE_QUALITY || 'medium').trim(), // low | medium | high | xhigh | max | auto
@@ -183,7 +185,7 @@ export async function cloudflareImage({ cfg, prompt, timeoutMs = 120000 }) {
   return await cloudflareClassicImage({ cfg, prompt, timeoutMs });
 }
 
-export const hasCloudflareText = cfg => Boolean(cfg?.accountId && cfg?.token);
+export const hasCloudflareText = cfg => Boolean(cfg?.textWorkerUrl || (cfg?.accountId && cfg?.token));
 
 /** Text generation through Cloudflare Workers AI (OpenAI-compatible chat endpoint of the REST API). */
 export async function cloudflareText({ cfg, messages, json = false, temperature = 0.7, maxTokens = 4000, timeoutMs = 90000 }) {
@@ -191,6 +193,21 @@ export async function cloudflareText({ cfg, messages, json = false, temperature 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
+    if (cfg.textWorkerUrl) {
+      // user's own Worker (AI binding): POST {messages,...} -> {text}
+      const wres = await fetch(cfg.textWorkerUrl, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${String(cfg.textWorkerToken).replace(/^Bearer /, '')}`, 'User-Agent': 'Mozilla/5.0' },
+        body: JSON.stringify({ model, messages, json, temperature, max_tokens: Math.min(maxTokens, 8000) })
+      });
+      const wraw = await wres.text();
+      let w = null; try { w = JSON.parse(wraw); } catch { /* keep raw */ }
+      if (!wres.ok) throw Object.assign(new Error(`cloudflare worker: ${w?.error || wraw.slice(0, 250) || 'HTTP ' + wres.status}`), { status: wres.status });
+      const wt = typeof w?.text === 'string' ? w.text : (w ? JSON.stringify(w.text ?? w.response ?? '') : wraw);
+      if (!wt || wt === '""') throw new Error('cloudflare worker: استجابة فارغة');
+      return { text: wt, model: `cf-worker:${model.split('/').pop()}`, usage: { total_tokens: 0, cost: 0 } };
+    }
     const res = await fetch(`${cfg.base}/accounts/${cfg.accountId}/ai/v1/chat/completions`, {
       method: 'POST',
       signal: ctrl.signal,
