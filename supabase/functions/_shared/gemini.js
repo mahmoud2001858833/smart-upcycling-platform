@@ -90,12 +90,8 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
   let data = null; let used = model || cfg.model; const errs = [];
   const started = Date.now();
   const models = [...new Set([
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
     used,
     cfg.model,
-    'gemini-2.0-flash-lite',
     'gemini-3.8-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash-lite'
@@ -111,7 +107,7 @@ export async function geminiText({ cfg, model, messages, json = false, temperatu
     const per = i === models.length - 1 ? left : Math.min(left, Math.max(15000, Math.floor(left / 2)));
     try { data = await call({ cfg, model: m, body, timeoutMs: per }); used = m; break; } catch (e) {
       errs.push(e.message);
-      if (e.code === 'BAD_KEY') break;
+      if (e.code === 'BAD_KEY' || /denied access|PERMISSION_DENIED/i.test(e.message)) { e.code = 'BAD_KEY'; break; } // key/project blocked: other models will fail too
       // overload / quota / timeout / unknown model -> try the next model
     }
   }
