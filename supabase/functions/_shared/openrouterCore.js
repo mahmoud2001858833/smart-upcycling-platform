@@ -126,26 +126,26 @@ export async function chat({
   const gemOn = hasGemini(gem);
   const cfOn = hasCloudflareText(config.cloudflare);
   if (!apiKey && !gemOn && !cfOn) throw new GatewayError('لم يُضبط أي مفتاح ذكاء اصطناعي على الخادم (GEMINI_API_KEY أو CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN)', { status: 503, code: 'NO_KEY' });
-  const started = Date.now();
-  const viaCloudflare = async () => {
-    const left = Math.max(20000, timeoutMs - (Date.now() - started));
-    const r = await cloudflareText({ cfg: config.cloudflare, messages, json, temperature, maxTokens, timeoutMs: left });
-    addUsage(meter, { usage: r.usage });
-    return { text: r.text, model: r.model };
-  };
-  // Cloudflare is the safety net behind Gemini / OpenRouter (or the only engine when it is the only key)
+  // Cloudflare is the PRIMARY text engine (when configured); Gemini / OpenRouter are the safety net behind it
   const withCf = async fn => {
-    try { return await fn(); } catch (e) {
-      if (!cfOn) throw e;
-      try { return await viaCloudflare(); } catch (e2) { e.message += ` | ${e2.message}`; throw e; }
-    }
+    if (!cfOn) return fn();
+    const cfBudget = (apiKey || gemOn) ? Math.min(timeoutMs, 60000) : timeoutMs;
+    let cfErr;
+    try {
+      const r = await cloudflareText({ cfg: config.cloudflare, messages, json, temperature, maxTokens, timeoutMs: cfBudget });
+      addUsage(meter, { usage: r.usage });
+      return { text: r.text, model: r.model };
+    } catch (e) { cfErr = e; }
+    if (!apiKey && !gemOn) throw cfErr;
+    console.warn('Cloudflare text failed, using backup engines:', cfErr.message);
+    try { return await fn(); } catch (e) { e.message += ` | ${cfErr.message}`; throw e; }
   };
-  if (!apiKey && !gemOn) return viaCloudflare();
+  if (!apiKey && !gemOn) return withCf(async () => { throw new Error('no backup'); });
   // who goes first: the assistant always prefers Gemini; ideate/develop follow TEXT_PROVIDER
   const geminiFirst = gemOn && (!apiKey || role === 'chat' || gem.textProvider === 'gemini');
   const viaGemini = async () => {
     const model = role === 'develop' ? gem.developModel : gem.model;
-    const budget = cfOn ? Math.max(30000, timeoutMs - 45000) : timeoutMs;
+    const budget = cfOn ? Math.max(30000, timeoutMs - 30000) : timeoutMs;
     const r = await geminiText({ cfg: gem, model, messages, json, temperature, maxTokens, timeoutMs: budget });
     addUsage(meter, { usage: r.usage });
     return { text: r.text, model: r.model };
@@ -245,7 +245,9 @@ function typeText(v) { return TYPE_TEXT[v] || String(v || TYPE_TEXT.all); }
 
 const DESIGNER_PERSONA = `You are a world-class upcycling designer and circular-economy engineer — think of the product sense of Dieter Rams, the hands-on rigor of a master woodworker/metalworker, and the clarity of the best DIY instructors.
 You know real material properties (PET, HDPE, glass, aluminium, corrugated cardboard, denim, plywood, steel cans...), how they cut, bond, bend, crack, burn, rust and age.
-You NEVER invent physically impossible builds. Every measurement, tool and technique you give must work in a normal home workshop.`;
+You NEVER invent physically impossible builds. Every measurement, tool and technique you give must work in a normal home workshop.
+
+You also think like an environmental scientist and a circular-economy strategist: every project must answer a REAL environmental problem (plastic and metal waste, water scarcity, energy waste, urban heat, food waste, biodiversity loss, noise, air quality, microplastics, e-waste) and you can name the mechanism and a defensible, modest estimate of the impact. You prefer ideas that are surprising, elegant and useful over decorative ones, and you never pad a design with materials it does not need.`;
 
 export function buildIdeationMessages({ materials, level, type, count = 8, avoid = [] }) {
   const system = `${DESIGNER_PERSONA}
@@ -261,6 +263,8 @@ HARD RULES
 6. Think about the CLEVER MECHANISM: a physical principle, a joint, a trick of the material that makes the idea feel inventive (e.g. capillary wicking, Helmholtz resonance, living hinges in PET, solar chimney, counterweights).
 7. INNOVATION TEST: before keeping a concept ask "have I seen this exact thing on a craft blog?". If yes, replace it with something that combines two of the user's materials in a way that creates a NEW function.
 8. Be honest in your scores. Do not give every concept 9s.
+9. ENVIRONMENTAL VALUE: every concept must solve a specific, named environmental problem (e.g. saving drinking water, cutting plastic reuse waste, cooling a balcony, feeding pollinators, sorting waste at home, harvesting rain, reducing standby energy). Say which one in "envProblem". Decorative-only ideas are not allowed.
+10. ELEGANCE: the finished object must look like a designed product (clean lines, limited palette, 1-2 recycled materials clearly visible as the hero of the design). Prefer few materials used intelligently over many materials thrown together.
 
 AUDIENCE: ${levelText(level)}
 CATEGORY PREFERENCE: ${typeText(type)}
@@ -276,6 +280,7 @@ OUTPUT: valid JSON only, no markdown. Names/pitches in elegant Modern Standard A
       "mechanism": "الحيلة الفيزيائية/الهندسية التي تجعلها ذكية",
       "usesMaterials": ["..."],
       "whyNotCliche": "ما الذي يميزها عن الفكرة المعتادة",
+      "envProblem": "المشكلة البيئية المحددة التي تحلها الفكرة",
       "scores": { "wow": 1-10, "novelty": 1-10, "usefulness": 1-10, "feasibility": 1-10 }
     }
   ]
@@ -297,12 +302,15 @@ QUALITY BAR
 - Give a checkpoint per step: how the builder KNOWS the step is correct (what it should look/feel/measure like).
 - Include a real troubleshooting section with failures that actually happen with these materials.
 - Safety must match the audience. Name the real hazards (glass edges, solvent fumes, hot glue burns, sharp metal burrs, ...).
-- 6 to 9 steps, in a logical order: preparation → measuring/cutting → forming → assembly → finishing → test.
-- Use ONLY the user's materials as the main body; extra supplies (glue, screws, paint, LED strip...) go in the list flagged "supply": true and must be cheap and common.
+- 7 to 9 steps (never fewer than 7), in a logical order: preparation → measuring/cutting → forming → assembly → finishing → test.
+- Every step lists the exact tool used and the exact measurement, and its "minutes" must be realistic: the project's total time is the sum of the steps' minutes.
+- MATERIALS DISCIPLINE: the main body uses at most 3-4 of the user's materials, and ONLY those that appear in a step. Do not list a material that no step uses. Extra supplies (glue, screws, paint, LED strip...) go in the list flagged "supply": true, at most 3, cheap and common.
+- The recycled material must stay VISIBLE and recognisable in the finished design (for example aluminium cans must still look like aluminium cans), never hidden under paint so that it looks like new ceramic.
+- ENVIRONMENTAL IMPACT: state in "sustainability.explanation" the specific environmental problem solved and how co2SavedKg / wasteDivertedKg were estimated (material weight × emission factor, in one sentence). Use modest, defensible numbers.
 - Numbers must be internally consistent (the parts you cut must add up to the finished dimensions you state).
 
 IMAGE PROMPTS (for an image model, written in ENGLISH)
-- "visualBible": ONE dense paragraph (60-100 words) that describes the finished object precisely and permanently — overall shape and proportions, each material and where it is used, exact colour names, finish (matte/gloss/raw), approximate size in cm, and 2-3 distinguishing details. It is prepended to every image so the object looks identical in all pictures, so be concrete, never vague.
+- "visualBible": ONE dense paragraph (60-100 words) that describes the finished object precisely and permanently — overall shape and proportions, each RECYCLED material and where it is visibly used (say what it is: e.g. crushed aluminium drink cans, cut PET bottles), exact colour names, finish (matte/gloss/raw), approximate size in cm, and 2-3 distinguishing details. It is prepended to every image so the object looks identical in all pictures, so be concrete, never vague.
 - Each step "imagePrompt": it MUST illustrate exactly what that step's "actions" tell the builder to do, so someone reading the step and looking at the picture sees the same thing. Name the real materials of this project (not generic words like "material"), the real tool, and one visible measurement or mark from the step. Describe ONLY what the camera sees at that stage: the exact state of the partially built object (which parts exist, which are still loose), the one specific tool or material in use, the hands doing the action (no faces), and what the viewer should notice. 40-70 words, concrete and visual. The LAST step shows the completed object being tested. Never request text, labels, logos or watermarks inside the image.
 - "heroImagePrompt" (finished, beautiful, styled shot), "assemblyImagePrompt" (flat-lay / exploded layout of all parts and tools before assembly), "lifestyleImagePrompt" (the object in use in a real home setting).
 
@@ -392,6 +400,14 @@ export function pickTopConcepts(concepts = [], n = 3) {
   return picked;
 }
 
+/** The project's total time is always the sum of its steps (the model often states a different figure). */
+function totalTime(steps) {
+  const m = steps.reduce((a, s) => a + (s.minutes || 0), 0);
+  if (!m) return '';
+  const h = Math.floor(m / 60), r = m % 60;
+  return h ? (r ? `${h} ساعة و${r} دقيقة` : `${h} ساعة`) : `${m} دقيقة`;
+}
+
 const str = (v, d = '') => (typeof v === 'string' ? v.trim() : (v == null ? d : String(v)));
 const arr = v => (Array.isArray(v) ? v : (v ? [v] : []));
 
@@ -417,7 +433,7 @@ export function normalizeDeveloped(raw) {
   });
 
   if (!str(r.name)) problems.push('name is missing');
-  if (steps.length < 5) problems.push(`only ${steps.length} steps; need 6 to 9`);
+  if (steps.length < 7) problems.push(`only ${steps.length} steps; need 7 to 9, each with a tool, a measurement and realistic minutes`);
   steps.forEach((s, i) => {
     if (s.actions.length < 2) problems.push(`step ${i + 1} has fewer than 2 actions`);
     if (!s.imagePrompt) problems.push(`step ${i + 1} is missing imagePrompt`);
@@ -451,7 +467,7 @@ export function normalizeDeveloped(raw) {
     safety: {
       ppe: str(safety.ppe), hazards: arr(safety.hazards).map(h => str(h)).filter(Boolean), childNote: str(safety.childNote)
     },
-    time: str(r.time),
+    time: totalTime(steps) || str(r.time),
     difficulty: str(r.difficulty, 'متوسط'),
     cost: { diyUsd: Number(cost.diyUsd) || 0, marketEquivalentUsd: Number(cost.marketEquivalentUsd) || 0 },
     results: str(r.results),
