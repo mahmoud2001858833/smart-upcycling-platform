@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import SidebarNav from './components/SidebarNav.jsx';
 import GenerationProgressPanel from './components/GenerationProgressPanel.jsx';
+import ShowcaseProject from './components/ShowcaseProject.jsx';
+import { SHOWCASE_MATERIAL } from './data/showcaseProject.js';
 import ViewLoadingFallback from './components/ViewLoadingFallback.jsx';
 import { useOnlineStatus } from './hooks/useOnlineStatus.js';
 import {
@@ -422,7 +424,7 @@ export default function App() {
 
   // Generate Projects with Live AI Engine (with 60-second timeout & safe retry)
   const handleGenerateProjects = async () => {
-    const allMaterials = [...selectedMaterials];
+    const allMaterials = selectedMaterials.filter(m => m !== SHOWCASE_MATERIAL);
     if (materials.trim()) {
       const extra = materials.split(/[،,\n]+/).map(m => m.trim()).filter(Boolean);
       allMaterials.push(...extra);
@@ -1361,6 +1363,20 @@ export default function App() {
                         </button>
                       );
                     })}
+                    {(() => {
+                      const on = selectedMaterials.includes(SHOWCASE_MATERIAL);
+                      return (
+                        <button
+                          type="button"
+                          key={SHOWCASE_MATERIAL}
+                          className={`material-quick-btn showcase ${on ? 'selected' : ''}`}
+                          onClick={() => toggleMaterial(SHOWCASE_MATERIAL)}
+                        >
+                          <span className="check-dot">{on ? <Check size={11} strokeWidth={3} /> : '+'}</span>
+                          <span>{SHOWCASE_MATERIAL}</span>
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1452,6 +1468,8 @@ export default function App() {
                   💡 لم يتم تحديد أي خامات بعد. اختر حزمة ملهمة أو انقر على الخامات في التبويبات أعلاه.
                 </div>
               )}
+
+              {selectedMaterials.includes(SHOWCASE_MATERIAL) && <ShowcaseProject />}
 
               {/* Modern Segmented Preferences Controls */}
               <div className="preferences-segmented-box">
