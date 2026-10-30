@@ -234,11 +234,19 @@ const LEVEL_TEXT = {
 
 const TYPE_TEXT = {
   practical: 'practical, everyday-useful objects',
-  scientific: 'science-driven projects that demonstrate a real physical/chemical/biological principle and can be tested',
+  scientific: 'science-driven projects built as a real controlled experiment: a testable hypothesis, a measurable result (voltage, temperature, mass, salinity, growth, flow...) and a comparison against a control. Examples of strong scientific archetypes: solar distillation, solar thermal collectors with a convection chimney, aluminium-air cells, evaporative cooling, capillary wicking irrigation, acoustic resonators, water filtration with measured turbidity',
   artistic: 'art and interior-decor pieces with strong visual identity',
   group: 'collaborative projects for a classroom/team where several people build parts and combine them',
   all: 'any category — but keep the three final picks very different from each other'
 };
+
+const SCIENCE_RULES = `
+SCIENTIFIC PROJECT RULES (this category was chosen)
+- Build it as a science-fair grade investigation: state a hypothesis, the independent variable, the dependent variable you measure, and what stays constant.
+- Include a control (the same setup without the key feature) and a measuring plan with the instrument, the unit and how often you record (a small data table in the last steps).
+- Explain the physical / chemical / biological principle in plain words and say what result would DISPROVE the hypothesis.
+- Only promise numbers the builder can measure; never invent final results.
+- The "test" step must be the real experiment, and "results" must describe what to measure and how to read the graph.`;
 
 function levelText(v) { return LEVEL_TEXT[v] || String(v || LEVEL_TEXT.adult); }
 function typeText(v) { return TYPE_TEXT[v] || String(v || TYPE_TEXT.all); }
@@ -267,7 +275,7 @@ HARD RULES
 10. ELEGANCE: the finished object must look like a designed product (clean lines, limited palette, 1-2 recycled materials clearly visible as the hero of the design). Prefer few materials used intelligently over many materials thrown together.
 
 AUDIENCE: ${levelText(level)}
-CATEGORY PREFERENCE: ${typeText(type)}
+CATEGORY PREFERENCE: ${typeText(type)}${type === 'scientific' ? SCIENCE_RULES : ''}
 ${avoid.length ? `DO NOT repeat these earlier ideas: ${avoid.join(' | ')}` : ''}
 
 OUTPUT: valid JSON only, no markdown. Names/pitches in elegant Modern Standard Arabic.
@@ -315,7 +323,7 @@ IMAGE PROMPTS (for an image model, written in ENGLISH)
 - "heroImagePrompt" (finished, beautiful, styled shot), "assemblyImagePrompt" (flat-lay / exploded layout of all parts and tools before assembly), "lifestyleImagePrompt" (the object in use in a real home setting).
 
 AUDIENCE: ${levelText(level)}
-CATEGORY: ${typeText(type)}
+CATEGORY: ${typeText(type)}${type === 'scientific' ? SCIENCE_RULES : ''}
 
 OUTPUT: valid JSON only, no markdown. All human-facing text in elegant, clear Modern Standard Arabic (numbers may use Western digits). Image prompts in English.
 {
