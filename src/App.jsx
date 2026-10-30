@@ -424,6 +424,12 @@ export default function App() {
 
   // Generate Projects with Live AI Engine (with 60-second timeout & safe retry)
   const handleGenerateProjects = async () => {
+    // the ready-made sample is not generated: open it directly (no fake loading)
+    if (selectedMaterials.includes(SHOWCASE_MATERIAL)) {
+      showToast('هذا مشروع نموذجي جاهز مسبقاً، وليس توليداً جديداً', 'info');
+      document.getElementById('showcase-project')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     const allMaterials = selectedMaterials.filter(m => m !== SHOWCASE_MATERIAL);
     if (materials.trim()) {
       const extra = materials.split(/[،,\n]+/).map(m => m.trim()).filter(Boolean);

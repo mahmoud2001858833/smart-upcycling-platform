@@ -11,7 +11,7 @@ const Block = ({ title, children }) => (
 export default function ShowcaseProject() {
   const total = P.steps.reduce((a, s) => a + s.minutes, 0);
   return (
-    <article className="showcase-project" dir="rtl">
+    <article id="showcase-project" className="showcase-project" dir="rtl">
       <header className="sc-head">
         <span className="sc-badge">مشروع نموذجي مُعدّ مسبقاً (غير مولَّد الآن)</span>
         <h3 className="sc-title">{P.name}</h3>
