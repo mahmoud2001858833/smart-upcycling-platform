@@ -8794,3 +8794,6 @@ img {
 .sc-warn { color: #a4310b; }
 .sc-check { color: #0b6b3a; }
 @media (max-width: 720px) { .sc-images, .sc-two { grid-template-columns: 1fr; } .sc-figure img { height: 220px; } }
+.showcase-loading { display: flex; align-items: center; justify-content: center; gap: .7rem; margin: 1rem 0; padding: 1.4rem; border: 1px dashed var(--emerald-primary); border-radius: 16px; background: var(--emerald-light); color: #0f3d24; font-weight: 700; font-size: .92rem; }
+.showcase-spinner { width: 20px; height: 20px; border-radius: 50%; border: 3px solid rgba(4,106,56,.25); border-top-color: var(--emerald-primary); animation: showcase-spin .8s linear infinite; }
+@keyframes showcase-spin { to { transform: rotate(360deg); } }
