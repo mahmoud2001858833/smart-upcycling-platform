@@ -17,7 +17,8 @@ import {
   Wifi,
   WifiOff,
   Smartphone,
-  TrendingUp
+  TrendingUp,
+  Presentation
 } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
@@ -44,6 +45,12 @@ export default function SidebarNav({
       label: 'عن مُدام (الجولة التعريفية 🎬)',
       icon: Compass,
       badge: 'جديد'
+    },
+    {
+      id: 'ceremony',
+      label: 'عرض الحفل',
+      icon: Presentation,
+      badge: null
     },
     {
       id: 'generator',

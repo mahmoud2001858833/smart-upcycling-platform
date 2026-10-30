@@ -43,6 +43,7 @@ const CarbonCalculatorView = lazy(() => import('./components/CarbonCalculatorVie
 const SmartEnvironmentalForecasting = lazy(() => import('./components/SmartEnvironmentalForecasting.jsx'));
 const LcaDirectoryBrowser = lazy(() => import('./components/LcaDirectoryBrowser.jsx'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
+const CeremonyPresentationPage = lazy(() => import('./components/CeremonyPresentationPage.jsx'));
 const MaterialsLibraryModal = lazy(() => import('./components/MaterialsLibraryModal.jsx'));
 const ProjectDedicatedPage = lazy(() => import('./components/ProjectDedicatedPage.jsx'));
 const EcoCertificateModal = lazy(() => import('./components/EcoCertificateModal.jsx'));
@@ -1251,6 +1252,12 @@ export default function App() {
         {/* ============================================================
             TAB 1: GENERATOR TAB (INPUTS & DYNAMIC PROJECTS)
             ============================================================ */}
+        {activeTab === 'ceremony' && (
+          <Suspense fallback={<ViewLoadingFallback message="جاري تحميل عرض الحفل..." />}>
+            <CeremonyPresentationPage />
+          </Suspense>
+        )}
+
         {activeTab === 'generator' && (
           <div className={`intake-layout-grid ${(projects.length > 0 || isLoading) ? 'has-results' : ''}`}>
             {/* Right Column: Inputs Section (RTL) */}
