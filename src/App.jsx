@@ -217,6 +217,7 @@ export default function App() {
     'خشب',
     'علب ألمنيوم'
   ]);
+  const [showShowcase, setShowShowcase] = useState(false);
   const [userLevel, setUserLevel] = useState('adult');
   const [projectType, setProjectType] = useState('practical');
   const [isLoading, setIsLoading] = useState(false);
@@ -426,8 +427,9 @@ export default function App() {
   const handleGenerateProjects = async () => {
     // the ready-made sample is not generated: open it directly (no fake loading)
     if (selectedMaterials.includes(SHOWCASE_MATERIAL)) {
+      setShowShowcase(true);
       showToast('هذا مشروع نموذجي جاهز مسبقاً، وليس توليداً جديداً', 'info');
-      document.getElementById('showcase-project')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => document.getElementById('showcase-project')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
       return;
     }
     const allMaterials = selectedMaterials.filter(m => m !== SHOWCASE_MATERIAL);
@@ -1475,7 +1477,7 @@ export default function App() {
                 </div>
               )}
 
-              {selectedMaterials.includes(SHOWCASE_MATERIAL) && <ShowcaseProject />}
+              {showShowcase && selectedMaterials.includes(SHOWCASE_MATERIAL) && <ShowcaseProject />}
 
               {/* Modern Segmented Preferences Controls */}
               <div className="preferences-segmented-box">
